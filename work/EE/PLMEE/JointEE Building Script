@@ -1,0 +1,93 @@
+JointEE Building Script
+
+Trigger_n_Argument
+	Model
+		input:
+			(train)
+			- sentences: List[str]
+			- event_types: List[str]
+			- triggers: List[Span]
+			(eval)
+			- sentences: List[str] (len==1)
+			- event_types: List[List[str]]
+			- origin2token_lst: List[dict]
+		output:
+			(train)
+			- trigger_start (bsz, seq_l, 1)
+			- trigger_end (bsz, seq_l, 1)
+			- argument_start (bsz, seq_l, role_cnt)
+			- argument_end (bsz, seq_l, role_cnt)
+			(eval)
+			- pred SentenceWithEvents
+	Loss
+		input:
+			- trigger_start (bsz, seq_l, 1)
+			- trigger_end (bsz, seq_l, 1)
+			- trigger_label_start (bsz, seq_l, 1)
+			- trigger_label_end (bsz, seq_l, 1)
+			- argument_start (bsz, seq_l, role_cnt)
+			- argument_end (bsz, seq_l, role_cnt)
+			- argument_label_start (bsz, seq_l, role_cnt)
+			- argument_label_end (bsz, seq_l, role_cnt)
+		output: loss
+	Evaluator
+		input:
+			- (original format)pred
+			- (original format)gt
+		output:
+			- scores
+
+
+train_dataloader: {
+	sentences: ,  List[str]
+	event_types: ,  List[str]
+	triggers: ,  SpanList
+}, {
+	trigger_label_start: ,  (bsz, seq_l, 1)
+	trigger_label_end: ,
+	argument_label_start: , (bsz, seq_l, role_cnt)
+	argument_label_end: ,
+}
+
+train dataset:
+- sentence
+- event_type
+- trigger labels (start label and end label)
+- *trigger (one of many)
+- *argument labels (start label and end label)
+
+eval_dataloader: {
+	sentences: ,  List[str]
+	event_types: ,  List[List[str]],
+	token2origin_lst: ,  List[dict]
+}, {
+	gt: ,  SentenceWithEvents
+}
+
+eval dataset:
+- content
+- event_types
+- origin format
+- token2origin
+
+common data process:
+	[origin, content, events]
+			|
+			V
+		tokenize and calculate match, get all the essentials
+	[origin, content, events, input_ids, token_type_ids, attention_mask, tokens, match]
+			|
+			V
+		build a tree and 合并同触发词论元
+	[origin, ..., match, List[{event_type: , triggers: {arguments: ,}, ]]
+			|
+			V
+		calculate labels for trigger and argument
+	[origin, ..., match, List[{event_type: , trigger: ,}]]
+			|
+			V
+		split to trigger label and argument label
+	[origin, ..., match, ]
+
+[sentence, events] -> [sentence, event_type, trigger, arguments] -> 合并同类型、同触发词的论元 [sentence, event_type, trigger, arguments]
+-> 

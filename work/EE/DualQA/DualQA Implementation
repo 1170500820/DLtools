@@ -1,0 +1,147 @@
+DualQA Implementation
+
+实现DualQA需要的前置任务：
+	- ERR模块需要输入NER识别的结果，因此需要复现一个NER模型，包装为易调用格式，用于DualQA-ERR的训练数据生成
+	  这个NER可以调优，因此考虑到改进性，可以多实现几个NER。
+	  更考虑到我自己的想法也需要NER，这里不妨做的更细致一些，完善一下基础工具
+
+	- ConceptNet
+	  另外，这个ConceptNet的作用看起来是产生描述，那么知识图谱能不能用进来呢？
+
+	- 遗留问题。
+	  如果训练集中某个句子长度大于256，我会直接扔掉。然后tokenize的时候，我也会设置max_length为256。但是如果在测试时遇到长度大于256的句子，会被截断。此时的match是如何计算的？
+
+	- 陈伯翰建议用crf代替CNN，可以试试 
+
+复述模型基本流程
+	- Question Generation and Instance Encode
+	  sentence -> embeddings
+	  注意要使用固定的max_seq_len=C，256就可以。这个是后面的Role Classifier中的CNN部分需要的
+	  输入的sample是，sentence, event_type, trigger, role, argument。其中，一个sentence可能有多个event_type，选一个；一个event_type可能对应多个trigger，选一个；从该event的role和arguments的选择策略？可能与训练模型有关，看了后面的来补充这里。（GAN？）
+
+	  原句子tokenize模式：
+	  <CLS> [质押] <SEP> [累计] <SEP> [质押] <SEP> [3900万股股份,占其所持有股份比例为11.15%,占公司总股本比例为4.98%。] <SEP>
+	  	如果触发词刚好在开头或者结尾，<SEP>是重复2个，还是直接合并为1个？
+
+	  EAR的组装与tokenize模式：
+	  [论元类型]在[事件类型]中的论元角色是什么？（[ConceptNet输出的描述？]）
+	  直接tokenize
+	  <CLS>与<SEP>是否保留？
+
+	  ERR与EAR类似，只不过没有使用ConceptNet
+
+	  一个argument可能有多个role，一个role有可能包含多个argument，这个问题怎么解决？
+
+	- Flow Attention
+	  公式7是不是错了啊？这个第一应该是E而不是F吧
+
+	- Argument and Role Classifier
+
+	- 训练过程
+		数据按8:1:1分为训练、开发、测试集
+		其中训练集再按一定比例分为标注集与未标注集，未标注集将用于模型训练过程中的标注
+
+		模型训练时，两个模型同时训练。
+		这时的每个batch，是同一个句子的，还是随机呢？
+		应该是输入同一个句子，然后ERR和EAR问句都是通过该句子生成。因为DualQA中的Encoding层都是共享的，所以每次训练的时候只输入一次句子，然后QA和QR也分别输入一次，是最符合“共享参数”这个想法的。
+		当然也可以实验不共享的效果，直接分开输入就行，一次QA为None，一次QR为None。
+
+		训练完成（按照文章推断，应该是1个epoch），分别使用EAR和ERR对未标注集的数据进行标注，然后筛选其中一致的结果，加入到训练集中，用新的训练集开始训练。
+
+		直到未标注集耗尽或模型收敛，结束。
+		使用其中的EAR来进行测试
+
+
+- 一个word可能有多个role吗？这种情况有多少？
+- 一个role可能有多个word，这种情况有多少？
+
+先不考虑其他问题。
+
+
+！ 考虑两种实现模式，第一种是，EAR会使用所有当前role的对应argument，是多分类，而ERR则只会有一个对应role，是单分类
+	第二种则是ERR与EAR均单分类。
+	目前使用的是第二种
+
+model
+	input:
+		(train)
+		- Context input_ids, token_type_ids and attention_mask  (bsz, seq_l)
+		- QuestionArg input_ids, token_type_ids and attention_mask  (bsz, seq_l)
+		- QuestionRole input_ids, token_type_ids and attention_mask  (bsz, seq_l)
+		(eval)
+		- Context tokenized result(input_ids, token_type_ids and attention_mask)
+		-  QuestionArg tokenized result
+	output:
+		(train)
+		- EAR_output_start  (bsz, seq_l)
+		- EAR_output_end  (bsz, seq_l)
+		- ERR_output  (bsz, role_cnt)
+		(eval)
+		_ EAR_output
+
+loss
+	input:
+		- argument_target_start  (bsz, seq_l)
+		- argument_target_end  (bsz, seq_l)
+		- role_target  (bsz, role_cnt)
+
+evaluator
+	input:
+		- 
+	output:
+		- scores
+
+data process
+	(不考虑一个句子有多个事件类型的数据流程)
+	首先，需要对每个句子进行Event Detection，获得类型与触发词
+	暂时不考虑重复类型，现在每个句子只有一个类型和一个对应的触发词
+
+	现在对每一个句子-事件-触发词
+	QA和QR的训练数据是成对的。对于每一个arg-role对，分别生成两种问句。这是直接忽略了role-》多个arg的情况吗？
+	可以不完全相对，比如每个arg的问句是role，但是role的对应问句包含了所有arg
+
+	* 只有在生成数据阶段才会用到NER吗？
+
+train_dataloader
+	train_dataset
+		[origin]
+			|
+			V
+		[content, events]
+			|
+		过滤长度非法的content，替换非法字符
+			|
+			V
+		[content, events]
+			|
+		样本划分，以content-事件类型-触发词对数据进行划分
+			|
+			V
+		[content, event_type, trigger_info, other_mentions]
+		其中other_mentions包括所有argument_info
+			|
+		*任务相关*生成问句对与label
+			|
+			V
+		[content, event_type, trigger_info, other_mentions, argument_questions, argument_labels, role_questions, role_labels]
+			|
+		按照问句划分
+			|
+			V
+		[content, event_type, trigger_info, argument_info, argument_question, argument_label, role_question, role_label]
+			|
+		分别对content，以及每一个argument_Q和role_Q进行tokenize
+			|
+			V
+		[content, event_type, trigger_info, other_mentions, *tokenized_content, argument_questions, argument_labels, role_questions, role_labels, *tokenized_argument_questions, *tokenized_role_questions]
+			|
+		将label进行tensor化
+			|
+			V
+		[content, event_type, trigger_info, other_mentions, argument_questions, argument_labels, role_questions, role_labels, tokenized_argument_questions, tokenized_role_questions, argument_target, role_target]
+			|
+			V
+		分别按eval与train进行batchify
+
+
+val_dataloader
