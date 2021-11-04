@@ -43,7 +43,7 @@ def write_record(record: MyRecordType, save_path: str, record_attr_v: Dict[str, 
     pickle.dump(record, open(save_name, 'wb'))
 
 
-def build_record(data_lst: list, names: List[str], descriptions: List[List[str]] = None) -> MyRecordType:
+def build_record(data_lst: list, names: List[str], descriptions: List[List[Union[str, Dict[str, List[str]]]]] = None) -> MyRecordType:
     """
 
     :param data_lst: 需要写入的data
@@ -63,3 +63,74 @@ def build_record(data_lst: list, names: List[str], descriptions: List[List[str]]
 
 def simple_save_record(anything):
     write_record()
+
+
+def parser_record_name(record_name: str) -> dict:
+    """
+    输入一个record的文件名，返回该record的文件名中所包含的属性
+    :param record_name: record的文件名
+    :return:
+    """
+    parts = record_name.split('.')
+    if parts[0] != 'record':
+        raise Exception('[parse_record_name]record文件名应当以record开头')
+    record_attrs = {"key": {}, 'attrs': set()}
+    for elem in parts[1:]:
+        if '-' in elem:
+            if elem.count('-') > 1:
+                raise Exception(f'[parse_record_name]record文件属性错误-包含多个连字符->{elem}')
+            key, value = elem.split('-')
+            record_attrs['key'][key] = value
+        else:
+            record_attrs['attrs'].add(elem)
+    return record_attrs
+
+
+# 选择器的早期设计，通过一个简单dict实现
+# 四个key值分别代表
+class MySelectConditionDict(TypedDict):
+    include_key: dict
+    include_attr: set
+    exclude_key: dict
+    exclude_attr: set
+
+
+def condition_judge(filename: str, condition: MySelectConditionDict) -> bool:
+    """
+    判断一个文件名是否符合条件
+    :param filename:
+    :param condition:
+    :return:
+    """
+    record_attrs = parser_record_name(filename)
+    if 'include_key' in condition:
+        for key, value in condition['include_key']:
+            if key not in record_attrs['key']:
+                return False
+            elif value != record_attrs['key'][key]:
+                return False
+    if 'include_attr' in condition:
+        for attrs in condition['include_attr']:
+            if attrs not in record_attrs['attrs']:
+                return False
+    if 'exclude_key' in condition:
+        for key, value in condition['exclude_key']:
+            if key not in record_attrs['key']:
+                continue
+            elif value == record_attrs['key'][key]:
+                return False
+    if 'exclude_attr' in condition:
+        for attrs in condition['exclude_attr']:
+            if attrs in record_attrs['attrs']:
+                return False
+    return True
+
+
+def select_files(filenames: List[str], condition: MySelectConditionDict):
+    """
+    返回符合条件的文件名
+    :param filenames:
+    :param condition: 条件dict
+    :return:
+    """
+    return list(filter(lambda x: condition_judge(x, condition), filenames))
