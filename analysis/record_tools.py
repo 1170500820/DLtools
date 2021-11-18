@@ -23,7 +23,7 @@ class MyRecordType(TypedDict):
 
 def write_record(record: MyRecordType, save_path: str, record_attr_v: Dict[str, Any] = None, record_attr_s: Set[str] = None):
     """
-
+    将record数据写入到文件当中，按照属性来生成文件名，以点'.'做分隔
     :param record: record数据本体
     :param save_path: 保存该文件的路径
     :param record_attr_v: 应当写入文件名的属性的键值对
@@ -45,6 +45,11 @@ def write_record(record: MyRecordType, save_path: str, record_attr_v: Dict[str, 
 
 def build_record(data_lst: list, names: List[str], descriptions: List[List[Union[str, Dict[str, List[str]]]]] = None) -> MyRecordType:
     """
+    将一个序列的data数据包装成record的形式
+
+    data_lst        d1,     d2,     ...
+    names           loss,   scores, ...
+    descriptions    [b, n], [b, float], ...
 
     :param data_lst: 需要写入的data
     :param names: 需要写入的data的名字
@@ -55,6 +60,10 @@ def build_record(data_lst: list, names: List[str], descriptions: List[List[Union
         "meta": None,
         "data": {}
     }
+    if names is None:
+        names = [None] * len(data_lst)
+    if descriptions is None:
+        descriptions = [None] * len(data_lst)
     for (elem_data, elem_name, elem_des) in zip(data_lst, names, descriptions):
         record_dict['data'][elem_name] = elem_data
         record_dict['data']['_' + elem_name] = elem_des
