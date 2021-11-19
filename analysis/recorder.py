@@ -1,3 +1,7 @@
+"""
+用于从model中抽取数据的recorder类
+因为recorder与record相互依赖，所以目前放在analysis目录下没什么问题？
+"""
 from type_def import *
 from evaluate.evaluator import BaseEvaluator
 import torch
