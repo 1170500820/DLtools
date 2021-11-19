@@ -1,7 +1,9 @@
 # todo 找找还有没有能够写成tools的
 import inspect
+import typing
 
 from type_def import *
+import typing_utils
 
 import json
 import numpy as np
@@ -10,6 +12,43 @@ from transformers import BertTokenizerFast
 import pandas as pd
 import torch
 import functools
+
+
+"""
+Infer Tools
+
+todolist:
+infer structure
+    multi layer list的完整形状
+    dict结构的推断
+    dict与list的复合结构的推断
+    包含其他类型的dict与list的复合结构的推断
+需要解决的问题
+    复合结构的表示，通过typing吗？
+"""
+
+
+def infer_list_shape(data):
+    """
+    推断data作为list的形状
+    一个合法的维度，其每个元素的长度必须相同。
+    比如[[1, 2], [3, 4]]是(2, 2)
+    而[[1, 2], [3, 4, 5]]只能是(2)
+    保证长度一致，是为了能够包装为ndarray之类的类型，进行更复杂的矩阵操作
+    :param data:
+    :return:
+    """
+    if typing_utils.issubtype(type(data), typing.Sequence):
+        outer_len = len(data)
+        if outer_len == 0:
+            return tuple([outer_len])
+        inner_lens = list(infer_list_shape(d) for d in data)  # list of Tuple[int], len > 0
+        if len(set(inner_lens)) == 1:
+            return tuple([outer_len] + list(inner_lens[0]))
+        else:
+            return tuple([outer_len])
+    else:
+        return ()
 
 """
 Dict Tools
