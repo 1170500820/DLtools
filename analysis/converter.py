@@ -30,6 +30,43 @@ class RecordDataWrap:
     def __repr__(self):
         return self.get().__repr__()
 
+    # 内置方法-索引
+    def __getitem__(self, item):
+        if hasattr(self, 'data'):
+            if hasattr(self.data, '__getitem__'):
+                return self.data.__getitem__(item)
+            raise Exception('[RecordDataWrap]内部data没有__getitem__属性！')
+        raise Exception('[RecordDataWrap]未找到data属性！')
+
+    def __setitem__(self, key, value):
+        if hasattr(self, 'data'):
+            if hasattr(self.data, '__setitem__'):
+                return self.data.__setitem__(key, value)
+            raise Exception('[RecordDataWrap]内部data没有__setitem__属性！')
+        raise Exception('[RecordDataWrap]未找到data属性！')
+
+    def __delitem__(self, key):
+        if hasattr(self, 'data'):
+            if hasattr(self.data, '__delitem__'):
+                return self.data.__delitem__(key)
+            raise Exception('[RecordDataWrap]内部data没有__delitem__属性！')
+        raise Exception('[RecordDataWrap]未找到data属性！')
+
+    # 内置方法-迭代
+    def __iter__(self):
+        if hasattr(self, 'data'):
+            if hasattr(self.data, '__iter__'):
+                return self.data.__iter__()
+            raise Exception('[RecordDataWrap]内部data没有__iter__属性！')
+        raise Exception('[RecordDataWrap]未找到data属性！')
+
+    def __next__(self):
+        if hasattr(self, 'data'):
+            if hasattr(self.data, '__next__'):
+                return self.data.__next__()
+            raise Exception('[RecordDataWrap]内部data没有__next__属性！')
+        raise Exception('[RecordDataWrap]未找到data属性！')
+
 
 def classic_record_to_data_matrix(filepath: str):
     """
