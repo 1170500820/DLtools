@@ -39,10 +39,13 @@ def check_BIO_string(BIO_string: List[str]):
     last = 'O'
     for idx, elem in enumerate(BIO_string):
         if elem[0] == 'I':
+            breakpoint()
             if last == 'B' + elem[1:] or last == elem:
+                last = elem
                 continue
             else:
                 raise Exception(f'[check_BIO_string]非法的I位置:{idx}！')
+        last = elem
     return
 
 
