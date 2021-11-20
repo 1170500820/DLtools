@@ -28,7 +28,7 @@ infer structure
 """
 
 
-def infer_list_shape(data):
+def infer_sequence_shape(data):
     """
     推断data作为list的形状
     一个合法的维度，其每个元素的长度必须相同。
@@ -42,13 +42,14 @@ def infer_list_shape(data):
         outer_len = len(data)
         if outer_len == 0:
             return tuple([outer_len])
-        inner_lens = list(infer_list_shape(d) for d in data)  # list of Tuple[int], len > 0
+        inner_lens = list(infer_sequence_shape(d) for d in data)  # list of Tuple[int], len > 0
         if len(set(inner_lens)) == 1:
             return tuple([outer_len] + list(inner_lens[0]))
         else:
             return tuple([outer_len])
     else:
         return ()
+
 
 """
 Dict Tools
@@ -105,6 +106,24 @@ def split_dict(d: dict, key_lst: StrList, keep_origin=False):
         else:
             new_dict[elem_key] = d.pop(elem_key)
     return new_dict, d
+
+
+def flattern_dict(d: dict, order=True):
+    """
+    把一个dict的value展开为list
+
+    :param d:
+    :param order: 是否保持展开的顺序一致
+        若为是，则会将value按照key词典序排序
+    :return:
+    """
+    if not order:
+        return list(d.values())
+    else:
+        keys_and_values = list(d.items())
+        keys_and_values.sort()
+        sorted_values = list(x[1] for x in keys_and_values)
+        return sorted_values
 
 
 def modify_key_of_dict(d: Dict[str, Any], modify_func: Callable[[str], str]):
@@ -687,4 +706,6 @@ todo function list
     按返回值，划分为两个不同的list。可以是bool，true第一个list，false第二个list
     也可以是实值，直接按照结果的不同划分list（无序或者按实值序）
     应用点：将mentions分为trigger与其他
+2，infertools
+    见本py文件的infer部分
 """
