@@ -15,6 +15,7 @@ import numpy as np
 from type_def import *
 from settings import *
 from utils import format_convert, tools
+from pathlib import Path
 
 
 """
@@ -132,6 +133,21 @@ def build_record(data_lst: list, names: List[str], descriptions: List[List[Union
     return record_dict
 
 
+def merge_record(record1: MyRecordType, record2: MyRecordType):
+    """
+    合并两个record中的数据
+
+    目前没有meta的定义，因此直接合并
+    后续引入了meta，可能需要先根据meta判断meta和data是否能够合并，然后再执行
+    :param record1:
+    :param record2:
+    :return:
+    """
+    #
+    record1['data'].update(record2['data'])
+    return record1
+
+
 def build_record_with_infer(seq_data, seq_data_name: str = 'default', elem_name: str = 'seq_elem') -> MyRecordType:
     """
     使用infer_sequence_shape推断seq_data的shape，然后给每一个维度一个默认的名字，并构建record
@@ -170,6 +186,9 @@ record文件的读与写会包含很多东西
 def parse_record_data(record_dict: dict):
     """
     record文件中用于存放数据的dict，默认是record['data']
+    将record转换为ndarray与dimension。
+
+    准确来说是转换为ndarray，并抽取dimension信息（如果存在的话）
     :param record_dict:
     :return:
     """
@@ -200,7 +219,7 @@ def parse_record_data(record_dict: dict):
     return matrix_dict
 
 
-def read_record(filepath: str) -> Dict[str, dict]:
+def read_record(filepath: str) -> Dict[str, Any]:
     """
     主入口函数。
 
@@ -216,6 +235,27 @@ def read_record(filepath: str) -> Dict[str, dict]:
     return m
 
 
+def universal_load(filepath: str) -> Tuple[np.ndarray, list]:
+    """
+    尝试根据文件名和文件内容，对文件的类型进行推断，先转换为record格式，然后转换为ndarray
+    :param filepath:
+    :return:
+    """
+    p = Path(filepath)
+    suffix = p.suffix
+    if p.stem.split('.')[0] == 'record':
+        m = read_record(filepath)
+        ndary, dims = m['value'], m['dimension']
+        return ndary, dims
+    elif suffix == '.conll':
+        conll_lst = format_convert.conllner_to_lst(filepath)
+        conll_record = build_record([conll_lst], ['conll_samples'], [['samples', 'Dict[id, chars and tags] conll sample dict']])
+        conll_matrix = parse_record_data(conll_record)
+        return conll_matrix
+    else:
+        raise NotImplementedError
+
+
 """
 将record文件转化为ndarray与dimension
 用RecordDataWrap包装以保证转换为ndarray后不会有歧义
@@ -225,14 +265,21 @@ def read_record(filepath: str) -> Dict[str, dict]:
 """
 
 
-def wrap_record_item_to_ndarray(record, array_dimension_cnt: int):
+def wrap_record_item_to_ndarray(record_data, array_dimension_cnt: int):
+    """
+    根据提供的维度，将record中的数据部分包装为ndarray
+    :param record_data: 序列型数据
+    :param array_dimension_cnt: 合法的维度数目
+        record的序列型数据中，其合法的维度数目代表按这个深度转换为ndarray，不存在list长度不一致的情况
+    :return:
+    """
     if array_dimension_cnt == 0:
-        return RecordDataWrap(record)
+        return RecordDataWrap(record_data)
     if array_dimension_cnt == 1:
-        record_lst = list(RecordDataWrap(x) for x in record)
+        record_lst = list(RecordDataWrap(x) for x in record_data)
         return np.array(record_lst)
     else:
-        return np.array([wrap_record_item_to_ndarray(x, array_dimension_cnt - 1) for x in record])
+        return np.array([wrap_record_item_to_ndarray(x, array_dimension_cnt - 1) for x in record_data])
 
 
 """
@@ -370,9 +417,6 @@ def record_to_data_matrix(record_path: str):
             matrix_dict[elem_name] = np.array(data_lst, dtype=object)
 
     return matrix_dict
-
-
-
 
 
 def write_record(record: MyRecordType, save_path: str, record_attr_v: Dict[str, Any] = None, record_attr_s: Set[str] = None):
