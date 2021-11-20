@@ -132,6 +132,22 @@ def build_record(data_lst: list, names: List[str], descriptions: List[List[Union
     return record_dict
 
 
+def build_record_with_infer(seq_data, seq_data_name: str = 'default', elem_name: str = 'seq_elem') -> MyRecordType:
+    """
+    使用infer_sequence_shape推断seq_data的shape，然后给每一个维度一个默认的名字，并构建record
+    :param seq_data: 任意类型数据均可接受，但是对序列数据处理才有意义
+    :param seq_data_name: 整个seq_data的名字
+    :param elem_name: sequence中每一个最小元素的名字
+    :return:
+    """
+    shape = tools.infer_sequence_shape(seq_data)
+    desc = [elem_name]
+    default_dim_names = list(f'dim-{x + 1}' for x in range(len(shape)))
+    descriptions = default_dim_names + desc
+    result_record = build_record([seq_data], [seq_data_name], [descriptions])
+    return result_record
+
+
 """
 record IO
 
