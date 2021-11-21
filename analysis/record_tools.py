@@ -14,6 +14,13 @@ any    ->    record    ->    ndarray
     everywhere       ui only
 
 """
+
+# todo 多图排版管理
+# todo 多个平行数据同时处理 比如我想同时分析MultiCoNER所有语言的分布特性
+#   - 多层RecordDataWrap封装？多重封装、多重解包，管理更复杂，但是能够表示更复杂的数据
+# todo 对data_array更方便的解析和变形
+# todo RecordDataWrap的分析函数，针对各种数据的分析函数，有必要汇总，而不用每次都在ui中定义
+
 import copy
 import pickle
 import numpy as np
@@ -366,7 +373,6 @@ def generate_data_array_from_old(data_array: np.ndarray, gen_function: Callable[
     """
     对data_array的每一个元素分别调用gen_function, 用返回值作为新的元素
     以此对整个data_array调用gen_function，然后生成一个形状相同的新data_array
-    todo 可以返回一个List[RecordDataWrap]，直接生成多个data_array
     :param data_array:
     :param gen_function
     :return:
@@ -378,9 +384,7 @@ def generate_data_array_from_old(data_array: np.ndarray, gen_function: Callable[
         return_size = len(result)
         new_data_array[x] = RecordDataWrap(result)
     new_data_array = release_RecordDataWrap(new_data_array)  # (*, return_size)
-    print(new_data_array.shape)
     new_data_arrays = list(x.T for x in list(new_data_array.T))
-    print(new_data_arrays[0].shape)
     return new_data_arrays
 
 
