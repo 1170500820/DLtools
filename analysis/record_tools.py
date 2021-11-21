@@ -1,6 +1,11 @@
 """
 管理record文件的读/写
 
+*any -> 各种各样格式的数据
+record -> 便于存储的数据类型
+data_array -> 方便jupyterlab上进行复杂处理的数据类型
+该py文件就是用于处理上述三种数据格式
+
 record类型是recorder从模型中抽取信息之后保存为pickle文件的格式。
 而jupyter-lab上又会将record解析为ndarray与dimension。不过ndarray属于jupyter-lab-analyze-ui的内部状态，因此只需要为jupyter-lab
 提供转换的接口。从外部文件读取，或者转换数据格式时，仍然以record为中心
@@ -9,6 +14,7 @@ any    ->    record    ->    ndarray
     everywhere       ui only
 
 """
+import copy
 import pickle
 import numpy as np
 
@@ -92,6 +98,13 @@ class RecordDataWrap:
                 return self.data.__next__()
             raise Exception('[RecordDataWrap]内部data没有__next__属性！')
         raise Exception('[RecordDataWrap]未找到data属性！')
+
+    # 复制方法
+    def __copy__(self):
+        return RecordDataWrap(self.data.copy())
+
+    def __deepcopy__(self, memodict={}):
+        return RecordDataWrap(copy.deepcopy(self.data))
 
 
 """
@@ -283,12 +296,15 @@ def wrap_record_item_to_ndarray(record_data, array_dimension_cnt: int):
 
 
 """
-ndarray of RecordDataWrap的处理函数
+Data_array(ndarray) Tools
 
+ndarray of RecordDataWrap的处理函数
 这里提供一些处理ndarray包装的RecordDataWrap的工具
 
-- release_RecordDataWrap
-    将RecordDataWrap内部的序列释放出来
+1, Under Wrap Level
+  在RecordDataWrap以及更细粒度水平上修改。比如说通过对每个RecordDataWrap的操作获得新的data_array
+    - release_RecordDataWrap
+        将RecordDataWrap内部的序列释放出来
 """
 
 
@@ -318,6 +334,25 @@ def release_RecordDataWrap(matrix: np.ndarray, level=-1):
     released_matrix = np.array(matrix_lst)
     full_released_matrix = release_RecordDataWrap(released_matrix, level-1)
     return full_released_matrix
+
+
+def flattern_data_array_of_dict(matrix: np.ndarray):
+    """
+    将一个以dict作为RecordDataWrap内部格式的data_array按dict展开，
+    :param matrix: matrix中的每个RecordDataWrap内部的dict都必须具有相同的key，以及同样类型的value
+    :return:
+    """
+    example_dict = matrix.reshape(-1)[0]
+    keys = list(example_dict().keys())
+    keys.sort()
+
+    expanded_matrices = list(copy.deepcopy(matrix) for i in range(len(keys)))
+    for (sample_key, sample_matrix) in zip(keys, expanded_matrices):
+        for x in np.ndindex(sample_matrix.shape):
+            sample_matrix[x] = RecordDataWrap(copy.deepcopy(sample_matrix[x][sample_key]))
+
+    return expanded_matrices, keys
+
 
 
 def classic_record_to_data_matrix(filepath: str):
@@ -443,8 +478,6 @@ def write_record(record: MyRecordType, save_path: str, record_attr_v: Dict[str, 
 
     save_name = save_path + filename
     pickle.dump(record, open(save_name, 'wb'))
-
-
 
 
 def simple_save_record(anything):
