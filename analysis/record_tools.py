@@ -49,7 +49,11 @@ class RecordDataWrap:
     shape = ()
 
     def __init__(self, data):
-        self.data = data
+        if isinstance(data, RecordDataWrap):  # RecordDataWrap禁止多重包装
+            self.data = data.data
+        else:
+            self.data = data
+        # self.data = data
         if hasattr(self.data, 'shape'):
             self.shape = getattr(self.data, 'shape')
 
@@ -106,6 +110,10 @@ class RecordDataWrap:
     def __deepcopy__(self, memodict={}):
         return RecordDataWrap(copy.deepcopy(self.data))
 
+    # 不能实现这个方法！一旦实现了，将RecordDataWrap包装为ndarray时封装就会失效
+    # # 内置方法-长度
+    # def __len__(self):
+    #     return len(self.data)
 
 """
 convert to record
@@ -290,9 +298,9 @@ def wrap_record_item_to_ndarray(record_data, array_dimension_cnt: int):
         return RecordDataWrap(record_data)
     if array_dimension_cnt == 1:
         record_lst = list(RecordDataWrap(x) for x in record_data)
-        return np.array(record_lst)
+        return np.array(record_lst, dtype='object')
     else:
-        return np.array([wrap_record_item_to_ndarray(x, array_dimension_cnt - 1) for x in record_data])
+        return np.array([wrap_record_item_to_ndarray(x, array_dimension_cnt - 1) for x in record_data], dtype='object')
 
 
 """
@@ -336,7 +344,7 @@ def release_RecordDataWrap(matrix: np.ndarray, level=-1):
     return full_released_matrix
 
 
-def flattern_data_array_of_dict(matrix: np.ndarray):
+def flatten_data_array_of_dict(matrix: np.ndarray):
     """
     将一个以dict作为RecordDataWrap内部格式的data_array按dict展开，
     :param matrix: matrix中的每个RecordDataWrap内部的dict都必须具有相同的key，以及同样类型的value
@@ -353,6 +361,27 @@ def flattern_data_array_of_dict(matrix: np.ndarray):
 
     return expanded_matrices, keys
 
+
+def generate_data_array_from_old(data_array: np.ndarray, gen_function: Callable[[RecordDataWrap], List[RecordDataWrap]]):
+    """
+    对data_array的每一个元素分别调用gen_function, 用返回值作为新的元素
+    以此对整个data_array调用gen_function，然后生成一个形状相同的新data_array
+    todo 可以返回一个List[RecordDataWrap]，直接生成多个data_array
+    :param data_array:
+    :param gen_function
+    :return:
+    """
+    new_data_array = np.empty_like(data_array)
+    return_size = -1
+    for x in np.ndindex(data_array.shape):
+        result = gen_function(data_array[x])
+        return_size = len(result)
+        new_data_array[x] = RecordDataWrap(result)
+    new_data_array = release_RecordDataWrap(new_data_array)  # (*, return_size)
+    print(new_data_array.shape)
+    new_data_arrays = list(x.T for x in list(new_data_array.T))
+    print(new_data_arrays[0].shape)
+    return new_data_arrays
 
 
 def classic_record_to_data_matrix(filepath: str):
