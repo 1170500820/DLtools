@@ -7,6 +7,7 @@ from type_def import *
 from transformers import BertTokenizer
 import work.NER.CCF_settings as CCF_settings
 import torch
+from utils import format_convert, tools
 
 # todo 将BIOE的string，转化为spanlist
 
@@ -269,6 +270,98 @@ def tensor_to_ner_label(ner_tensor: torch.Tensor, ner_tag_lst=CCF_settings.ner_t
     if bsz_not_exist:
         labels = labels[0]
     return labels
+
+
+"""
+专门用于加载各类NER的函数
+"""
+
+
+def load_msra_ner(file_dir: str):
+    """
+    读取msra的ner数据
+    :param file_dir:
+    :return:
+        {
+        "msra_train_chars": List[str],
+        "msra_train_tags": List[str],
+        "msra_test_chars": List[str],
+        "msra_test_tags": List[str]
+        }
+    """
+    # 配置两个文件的路径
+    train_filename = 'msra_train_bio.txt'
+    test_filename = 'msra_test_bio.txt'
+    if file_dir[-1] != '/':
+        file_dir += '/'
+    train_filepath = file_dir + train_filename
+    test_filepath = file_dir + test_filename
+
+    # 读取
+    train_filedicts = format_convert.conllner_to_lst(train_filepath)  # List[Dict["chars": , "tags": ]]
+    train_datadict = tools.transpose_list_of_dict(train_filedicts)  # Dict["chars": List[List[str]], "tags": List[List[str]]]
+    test_filedicts = format_convert.conllner_to_lst(test_filepath)  # same
+    test_datadict = tools.transpose_list_of_dict(test_filedicts)  # same
+    # {"chars": , "tags": }
+
+    result = {
+        "msra_train_chars": train_datadict['chars'],
+        "msra_train_tags": train_datadict['tags'],
+        "msra_test_chars": test_datadict['chars'],
+        "msra_test_tags": test_datadict['tags']
+        }
+    return result
+
+
+def load_weibo_ner(file_dir: str):
+    """
+    读取weibo的ner数据
+    :param file_dir:
+    :return:
+        {
+        "weibo_train_chars": List[str],
+        "weibo_train_seg": List[str],
+        "weibo_train_tags": List[str],
+        "weibo_dev_chars": List[str],
+        "weibo_dev_seg": List[str],
+        "weibo_dev_tags": List[str],
+        "weibo_test_chars": List[str],
+        "weibo_test_seg": List[str],
+        "weibo_test_tags": List[str],
+        }
+    """
+    # 配置路径
+    train_name = 'weiboNER_2nd_conll.train'
+    dev_name = 'weiboNER_2nd_conll.dev'
+    test_name = 'weiboNER_2nd_conll.test'
+    if file_dir[-1] != '/':
+        file_dir += '/'
+    train_path = file_dir + train_name
+    dev_path = file_dir + dev_name
+    test_path = file_dir + test_name
+
+    # 读取
+    train_dicts = format_convert.conllner_weibo_to_lst(train_path)
+    train_datadict = tools.transpose_list_of_dict(train_dicts)
+    dev_dicts = format_convert.conllner_weibo_to_lst(dev_path)
+    dev_datadict = tools.transpose_list_of_dict(dev_dicts)
+    test_dicts = format_convert.conllner_weibo_to_lst(test_path)
+    test_datadict = tools.transpose_list_of_dict(test_dicts)
+    # chars, seg, tags
+
+    result = {
+        "weibo_train_chars": train_datadict['chars'],
+        "weibo_train_seg": train_datadict['seg'],
+        "weibo_train_tags": train_datadict['tags'],
+        "weibo_dev_chars": dev_datadict['chars'],
+        "weibo_dev_seg": dev_datadict['seg'],
+        "weibo_dev_tags": dev_datadict['tags'],
+        "weibo_test_chars": test_datadict['chars'],
+        "weibo_test_seg": test_datadict['seg'],
+        "weibo_test_tags": test_datadict['tags'],
+        }
+    return result
+
 
 
 if __name__ == '__main__':
