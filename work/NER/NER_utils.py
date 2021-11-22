@@ -39,7 +39,6 @@ def check_BIO_string(BIO_string: List[str]):
     last = 'O'
     for idx, elem in enumerate(BIO_string):
         if elem[0] == 'I':
-            breakpoint()
             if last == 'B' + elem[1:] or last == elem:
                 last = elem
                 continue
@@ -67,7 +66,7 @@ def BIO_to_spandict(BIO_string: List[str]) -> Dict[str, List[Tuple[int, int]]]:
     :return:
     """
     check_BIO_string(BIO_string)
-    tag_types = list(set(x[2:] for x in set(BIO_string)))
+    tag_types = list(set(x[2:] for x in set(BIO_string) - {'O'}))
     spandict = {x: [] for x in tag_types}  # Dict[type name, list of span tuple]
 
     # 根据每一个tag以及其上一个tag，判断该tag是否是标注内
@@ -273,4 +272,5 @@ def tensor_to_ner_label(ner_tensor: torch.Tensor, ner_tag_lst=CCF_settings.ner_t
 
 
 if __name__ == '__main__':
-    pass
+    tags = ['O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'B-CW', 'I-CW', 'I-CW', 'O', 'O', 'B-PER', 'I-PER', 'O', 'B-PER', 'I-PER', 'O', 'B-PER', 'I-PER', 'O']
+    print(BIO_to_spandict(tags))
