@@ -65,5 +65,33 @@ def conllner_to_lst(filepath: str) -> List[Dict[str, Any]]:
     return dict_lst
 
 
+def conllner_weibo_to_lst(filepath: str) -> List[Dict[str, Any]]:
+    """
+    输入文件路径，读取其中的数据，每个sample转化为一个dict
+    包含的keys：
+        - chars
+        - tags
+        - seg
+    专门为weibo的NER数据提供
+    weibo的数据会在char后面加入0和1来表示分词信息，本函数在conllner_to_lst的基础上将分词隔离出来而已
+    :param filepath:
+    :return:
+    """
+    dict_lst = conllner_to_lst(filepath)
+    new_dict_lst = []
+    for elem_d in dict_lst:
+        chars = elem_d['chars']
+        real_chars, seg = [], []
+        for elem_char in chars:
+            real_chars.append(elem_char[:-1])
+            seg.append(elem_char[-1])
+        new_dict_lst.append({
+            "seg": seg,
+            "chars": real_chars,
+            "tags": elem_d['tags']
+        })
+    return new_dict_lst
+
+
 if __name__ == '__main__':
     d = conllner_to_lst('../data/NLP/SemEval/MultiCoNER/training_data/MIX_Code_mixed/mix_train.conll')
