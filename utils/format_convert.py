@@ -10,7 +10,7 @@ def conllner_to_lst(filepath: str) -> List[Dict[str, Any]]:
     """
     输入文件路径，读取其中的数据，每个sample转化为一个dict
     包含的keys：
-        - tokens
+        - chars
         - tags
         - id
 
@@ -23,6 +23,15 @@ def conllner_to_lst(filepath: str) -> List[Dict[str, Any]]:
     maynard _ _ B-LOC
     天 _ _ O
     气 _ _ O
+
+    华 O
+    盛 O
+    顿 O
+    maynard B-LOC
+    天 O
+    气 O
+
+    (两种格式都能够处理)
 
     不同sample之间用两个\n进行分割
     :param filepath: Conll训练文件的路径
@@ -44,10 +53,11 @@ def conllner_to_lst(filepath: str) -> List[Dict[str, Any]]:
             taggings = sents
 
         # tokens and tags
-        sample['tokens'], sample['tags'] = [], []
+        sample['chars'], sample['tags'] = [], []
         for elem_tagging in taggings:
-            cur_token, _, _, cur_tagging = elem_tagging.split()
-            sample['tokens'].append(cur_token)
+            elem_tagging_split = elem_tagging.split()
+            cur_token, cur_tagging = elem_tagging_split[0], elem_tagging_split[-1]
+            sample['chars'].append(cur_token)
             sample['tags'].append(cur_tagging)
 
         dict_lst.append(sample)
