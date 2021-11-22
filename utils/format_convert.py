@@ -34,11 +34,14 @@ def conllner_to_lst(filepath: str) -> List[Dict[str, Any]]:
         elem_sample = elem_sample.strip()  # 有时会遇到三个\n
         sample = {}
         sents = elem_sample.split('\n')
-        info, taggings = sents[0], sents[1:]
+        if sents[0][0] == '#':
+            info, taggings = sents[0], sents[1:]
 
-        # id
-        info_detail = info.split('\t')
-        sample['id'] = info_detail[0].split()[-1]
+            # id
+            info_detail = info.split('\t')
+            sample['id'] = info_detail[0].split()[-1]
+        else:
+            taggings = sents
 
         # tokens and tags
         sample['tokens'], sample['tags'] = [], []
