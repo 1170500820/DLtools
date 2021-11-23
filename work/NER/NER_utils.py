@@ -3,9 +3,11 @@
 
 
 """
+import numpy as np
+
 from type_def import *
 from transformers import BertTokenizer
-import work.NER.CCF_settings as CCF_settings
+import work.NER.CCF_settings as CCF_settings, NER_settings
 import torch
 from utils import format_convert, tools
 
@@ -270,6 +272,19 @@ def tensor_to_ner_label(ner_tensor: torch.Tensor, ner_tag_lst=CCF_settings.ner_t
     if bsz_not_exist:
         labels = labels[0]
     return labels
+
+
+def tags_to_ndarray(BIO_tags: List[str], ner_tag_idx: Dict[str, int]):
+    """
+    将NER tag直接转换为np.ndarray
+    :param BIO_tags:
+    :param ner_tag_idx: 根据tag获取对应index对dict，index即为ndarray target对对应值
+    :return:
+    """
+    target = np.zeros((len(BIO_tags)), dtype=np.int)
+    for i in range(len(BIO_tags)):
+        target[i] = ner_tag_idx[BIO_tags[i]]
+    return target
 
 
 """
