@@ -462,11 +462,21 @@ def find_matches(content: str, tokenized_seq: [str, ]) -> Tuple[dict, dict]:
 
 
 class bert_tokenizer:
-    def __init__(self, max_len=256):
+    def __init__(self, max_len=256, plm_path='bert-base-chinese'):
         self.tokenizer = BertTokenizerFast.from_pretrained('bert-base-chinese')
         self.max_len = max_len
 
     def __call__(self, input_lst: List[Union[str,List[str]]]):
+        """
+        每个tokenize结果包括
+        - token
+        - input_ids
+        - token_type_ids
+        - attention_mask
+        - offset_mapping
+        :param input_lst:
+        :return:
+        """
         results = []
         for elem_input in input_lst:
             tokenized = self.tokenizer(
