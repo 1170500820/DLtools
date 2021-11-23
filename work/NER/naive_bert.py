@@ -207,7 +207,7 @@ def train_dataset_factory(data_dicts: List[Dict[str, Any]], bsz: int = CCF_setti
     text_result = tools.transpose_list_of_dict(text_result)
     data_dict.update(text_result)
     data_dicts = tools.transpose_dict_of_list(data_dict)
-    # [text, input_ids, token_type_ids, attention_mask, offset_mappings, BIO_anno, class]
+    # [text, input_ids, token_type_ids, attention_mask, offset_mapping, BIO_anno, class]
 
     # generate ner label
     def generate_ner_label(datadict: Dict[str, Any]):
@@ -229,7 +229,7 @@ def train_dataset_factory(data_dicts: List[Dict[str, Any]], bsz: int = CCF_setti
         datadict['ner_target'] = ner_target  # (seq_l, ner_cnt)
         return [datadict]
     data_dicts = tools.map_operation_to_list_elem(convert_ner_label_to_tensor, data_dicts)
-    # [text, input_ids, token_type_ids, attention_mask, offset_mappings, BIO_anno, BIO_anno_token, class, ner_target]
+    # [text, input_ids, token_type_ids, attention_mask, offset_mapping, BIO_anno, BIO_anno_token, class, ner_target]
 
     train_dataset = SimpleDataset(data_dicts)
 
