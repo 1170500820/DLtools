@@ -270,7 +270,7 @@ def batchify_ndarray_1d(array_lst: Sequence[np.ndarray], padding=0):
     max_length = max(lengths)
     pad_lengths = max_length - lengths
     for i in range(array_lst_size):
-        array_lst[i] = np.pad(array_lst, (0, pad_lengths[i]), mode='constant', constant_values=padding)
+        array_lst[i] = np.pad(array_lst[i], (0, pad_lengths[i]), mode='constant', constant_values=padding)
     result = np.stack(array_lst)  # (bsz, max_length)
 
     # check result
