@@ -7,7 +7,7 @@ import numpy as np
 
 from type_def import *
 from transformers import BertTokenizer
-import work.NER.CCF_settings as CCF_settings, NER_settings
+from work.NER import CCF_settings, NER_settings
 import torch
 from utils import format_convert, tools
 
