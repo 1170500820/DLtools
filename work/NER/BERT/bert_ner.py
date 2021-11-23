@@ -60,7 +60,8 @@ class BERT_NER(nn.Module):
         :param attention_mask: (bsz, seq_l (+2))
         :return:
         """
-        output, pooled = self.bert(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
+        result = self.bert(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
+        output, pooled = result[0], result[1]
         # pooled (bsz, hidden), output (bsz, seq_l, hidden)
 
         ner_result = self.ner_cls(output)  # (bsz, seq_l, ner_cnt)
