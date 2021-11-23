@@ -17,10 +17,10 @@ from utils.data import SimpleDataset
 
 class BERT_NER(nn.Module):
     def __init__(self,
-                 bert_plm_path: str,
-                 ner_cnt: int,
-                 plm_lr: float,
-                 others_lr: float):
+                 bert_plm_path: str = NER_settings.default_plm,
+                 ner_cnt: int = len(NER_settings.msra_ner_tags),
+                 plm_lr: float = NER_settings.plm_lr,
+                 others_lr: float = NER_settings.others_lr):
         super(BERT_NER, self).__init__()
 
         # 保存初始化参数
@@ -148,7 +148,7 @@ def train_dataset_factory(data_dicts: List[Dict[str, Any]], bsz: int = NER_setti
         dict_of_data = tools.transpose_list_of_dict(lst)
         batchified_data = {}
         for elem_data in ['input_ids', 'token_type_ids', 'attention_mask', 'target']:
-            batchified_data[elem_data] = torch.Tensor(tools.batchify_ndarray_1d(dict_of_data[elem_data]))
+            batchified_data[elem_data] = torch.tensor(tools.batchify_ndarray_1d(dict_of_data[elem_data]))
         return {
             'input_ids': batchified_data['input_ids'],  # (bsz, seq_l)
             'token_type_ids': batchified_data['token_type_ids'],  # (bsz, seq_l)
@@ -181,7 +181,7 @@ def val_dataset_factory(data_dicts: List[Dict[str, Any]]):
         dict_of_data = tools.transpose_list_of_dict(lst)
         batchified_data = {}
         for elem_data in ['input_ids', 'token_type_ids', 'attention_mask']:
-            batchified_data[elem_data] = torch.Tensor(tools.batchify_ndarray_1d(dict_of_data[elem_data]))
+            batchified_data[elem_data] = torch.tensor(tools.batchify_ndarray_1d(dict_of_data[elem_data]))
         return {
             'input_ids': batchified_data['input_ids'],  # (bsz, seq_l)
             'token_type_ids': batchified_data['token_type_ids'],  # (bsz, seq_l)
@@ -261,6 +261,8 @@ model_registry = {
     "evaluator": BERT_NER_Evaluator,
     'loss': BERT_NER_Loss,
     "dataset": dataset_factory,
+    'args': [
+        {'name': "--file_dir", 'dest': 'file_dir', 'type': str, 'help': '训练/测试数据文件的路径'}]
 }
 
 
