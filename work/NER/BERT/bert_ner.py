@@ -99,7 +99,7 @@ class BERT_NER_Evaluator(BaseEvaluator):
 
     def eval_single(self,
                     ner_result: torch.Tensor,
-                    ner_string_gt: List[str]):
+                    ner_gt: List[str]):
         """
 
         :param ner_result:
@@ -108,7 +108,7 @@ class BERT_NER_Evaluator(BaseEvaluator):
         """
         ner_result = ner_result.squeeze(dim=0)  # (seq_l, ner_cnt)
         ner_tag_result = NER_utils.tensor_to_ner_label(ner_result)  # List[str]
-        self.f1_evaluator.eval_single(ner_tag_result, ner_string_gt)
+        self.f1_evaluator.eval_single(ner_tag_result, ner_gt)
 
     def eval_step(self) -> Dict[str, Any]:
         sf1 = self.f1_evaluator.eval_step()
