@@ -4,6 +4,13 @@
 from type_def import *
 
 
+"""
+reader部分
+
+这部分实现各种数据集的读取函数。
+NER、EE、RE等领域有各种各样的数据集格式，在这里会给各种格式都实现一个初步读取的函数，把他们都转换成由容器良好组织、方便进一步处理的格式
+"""
+
 # CoNll NER data
 #  我不太清楚CoNll的具体格式，这里的代码是按照MultiCoNER评测的数据格式写的
 def conllner_to_lst(filepath: str) -> List[Dict[str, Any]]:
