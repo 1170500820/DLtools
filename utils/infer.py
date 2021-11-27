@@ -39,6 +39,14 @@ def infer_sequence_shape(data):
         return ()
 
 
+# infer会需要返回一个容器的结构特点信息
+# 用dict
+#  {
+#   "type": list, set, tuple, dict, List[int], ...
+#   "feature": 序列的结构特点
+#   "value": 能反映结构特点的一些值
+#  }
+
 def infer_sequence_of_int(int_seq: Sequence[int], set_limit=50):
     """
     分析一个int类型的序列的类型，可能是如下类型：
@@ -50,7 +58,9 @@ def infer_sequence_of_int(int_seq: Sequence[int], set_limit=50):
     :return:
     """
     # 可以直接使用与float相同的函数
-    return infer_sequence_of_float(int_seq, set_limit)
+    d = infer_sequence_of_float(int_seq, set_limit)
+    d['type'] = 'List[int]'
+    return d
 
 
 def infer_sequence_of_float(float_seq: Sequence[int], set_limit=50):
@@ -65,11 +75,23 @@ def infer_sequence_of_float(float_seq: Sequence[int], set_limit=50):
     """
     float_set = set(float_seq)
     if len(float_set) == 1:
-        return 'single', list(float_seq)[0]
+        return {
+            "type": "List[float]",
+            "feature": 'single',
+            "value": list(float_seq)[0]
+        }
     elif len(float_seq) <= set_limit:
-        return 'set', float_set
+        return {
+            "type": "List[float]",
+            "feature": 'set',
+            "value": float_set
+        }
     else:
-        return 'range', (min(float_seq), max(float_seq))
+        return {
+            "type": "List[float]",
+            "feature": 'range',
+            "value": tuple([min(float_seq), max(float_seq)])
+        }
 
 
 def infer_sequence_of_str(str_seq: Sequence[str], set_limit=50):
@@ -85,12 +107,24 @@ def infer_sequence_of_str(str_seq: Sequence[str], set_limit=50):
     """
     str_set = set(str_seq)
     if len(str_set) == 1:
-        return 'single', list(str_seq)[0]
+        return {
+            "type": "List[str]",
+            "feature": 'single',
+            "value": list(str_seq)[0]
+        }
     elif len(str_seq) <= set_limit:
-        return 'set', str_set
+        return {
+            "type": "List[str]",
+            "feature": 'set',
+            "value": str_set
+        }
     else:
         lengths = list(len(x) for x in str_set)
-        return 'range', (min(lengths), max(lengths))
+        return {
+            "type": "List[str]",
+            "feature": 'range',
+            "value": tuple([min(lengths), max(lengths)])
+        }
 
 
 def check_list_type(lst: list) -> str:
@@ -137,11 +171,23 @@ def infer_sequence_of_list(lst_seq: Sequence[list], set_limit=50):
     length_set, type_set = set(list_lengths), set(list_types)
 
     if len(length_set) == 1:
-        return 'single', list_lengths[0], type_set
+        return {
+            "type": "List[list]",
+            "feature": 'single',
+            "value": (list_lengths[0], type_set)
+        }
     elif len(length_set) <= set_limit:
-        return 'set', length_set, type_set
+        return {
+            "type": "List[list]",
+            "feature": 'set',
+            "value": (length_set, type_set)
+        }
     else:
-        return 'range', tuple([min(length_set), max(length_set)]), type_set
+        return {
+            "type": "List[list]",
+            "feature": 'range',
+            "value": (tuple([min(length_set), max(length_set)]), type_set)
+        }
 
 
 def infer_sequence_of_tuple(tuple_seq: Sequence[Tuple], set_limit=50):
@@ -151,7 +197,9 @@ def infer_sequence_of_tuple(tuple_seq: Sequence[Tuple], set_limit=50):
     :param set_limit:
     :return:
     """
-    return infer_sequence_of_list(tuple_seq, set_limit)
+    d = infer_sequence_of_list(tuple_seq, set_limit)
+    d['type'] = 'List[tuple]'
+    return d
 
 
 def infer_sequence_of_set(set_seq: Sequence[set], set_limit=50):
@@ -161,7 +209,9 @@ def infer_sequence_of_set(set_seq: Sequence[set], set_limit=50):
     :param set_limit:
     :return:
     """
-    return infer_sequence_of_set(set_seq, set_limit)
+    d = infer_sequence_of_set(set_seq, set_limit)
+    d['type'] = 'List[set]'
+    return d
 
 
 def infer_sequence(seq: Sequence[Any], set_limit=50):
@@ -187,10 +237,28 @@ def infer_sequence(seq: Sequence[Any], set_limit=50):
             return infer_sequence_of_set(seq, set_limit)
         elif seq_type == tuple:
             return infer_sequence_of_tuple(seq, set_limit)
-        else:  # 其他python object
-            pass
-    else:
-        pass
+        else:  # 其他python object。object无法分析，因此不提供feature与value
+            return {
+                "type": 'List[obj]',
+                "feature": None,
+                "value": None
+            }
+    else:  # 对于包含不止一种类型的list，也无法分析，因此不提供value和feature
+        return {
+            "type": 'List[multi]',
+            "feature": None,
+            "value": None
+        }
+
+
+def is_sequence_structure_similar(seq1: Sequence[Any], seq2: Sequence[Any]) -> bool:
+    """
+    判断两个sequence是否在结构上相似
+    :param seq1:
+    :param seq2:
+    :return:
+    """
+    return False
 
 
 def infer_dicts_pattern(dicts: List[dict]):
