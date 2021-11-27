@@ -3,8 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
+from models.sam import SAM
 import numpy as np
 from itertools import chain
+import pickle
 
 from work.PR_Lab import mnist_setting
 
@@ -12,11 +14,13 @@ from type_def import *
 from evaluate.evaluator import BaseEvaluator, KappaEvaluator, PrecisionEvaluator
 from utils import tools
 from utils.data import SimpleDataset
+from models.model_utils import get_init_params
 
 
 class Naive_Linear(nn.Module):
     def __init__(self, input_dim: int = mnist_setting.input_dim_1, label_cnt: int = mnist_setting.label_cnt_1):
         super(Naive_Linear, self).__init__()
+        self.init_params = get_init_params(locals())
         self.input_dim = input_dim
         self.label_cnt = label_cnt
 
@@ -33,7 +37,7 @@ class Naive_Linear(nn.Module):
         self.linear4 = nn.Linear(32 * 4, 32 * 2)
         self.batch_norm4 = nn.BatchNorm1d(32 * 2)
 
-        self.linear5 = nn.Linear(32 * 2, 10)
+        self.linear5 = nn.Linear(32 * 2, label_cnt)
         self.init_weights()
 
     def init_weights(self):
@@ -56,6 +60,7 @@ class Naive_Linear(nn.Module):
         params4 = self.linear4.parameters()
         params5 = self.linear5.parameters()
         linear_optimizer = AdamW(params=chain(params1, params2, params3, params3, params4, params5), lr=mnist_setting.lr)
+        # sam_optimizer = SAM(params=chain(params1, params2, params3, params3, params4, params5), base_optimizer=AdamW , lr=mnist_setting.lr)
         return [linear_optimizer]
     
     def forward(self, inp: torch.Tensor):
@@ -169,7 +174,7 @@ def val_dataset_factory(samples: List[List[float]], labels: List[int]):
 
 
 def dataset_factory(file_dir: str, bsz: int = mnist_setting.bsz, shuffle=True):
-    label_path, sample_path = 'TrainLabels.csv', 'TrainSamples.csv'
+    label_path, sample_path = 'TrainLabels-300.csv', 'TrainSamples-300.csv'
     if file_dir[-1] != '/':
         file_dir += '/'
     label_path = file_dir + label_path
@@ -188,12 +193,39 @@ def dataset_factory(file_dir: str, bsz: int = mnist_setting.bsz, shuffle=True):
     return train_dataloader, val_dataloader
 
 
+class UseModel:
+    def __init__(self, state_dict_path: str, init_params_path):
+        init_params = pickle.load(open(init_params_path, 'rb'))
+        self.model = Naive_Linear(**init_params)
+        self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cpu')))
+        self.model.eval()
+
+    def __call__(self, vector: Sequence[float]):
+        """
+
+        :param vector:
+        :return:
+        """
+        if not isinstance(vector, torch.Tensor):
+            vector = torch.tensor(vector)  # (seq_l)
+        if len(vector.shape) == 1:  # convert to (1, seq_l)
+            vector = vector.unsqueeze(dim=0)
+
+        mnist_result = self.model(vector)['mnist_result']  # (1, label_cnt)
+        mnist_result = mnist_result.squeeze()  # (label_cnt)
+        _, max_idx = torch.max(mnist_result, 0)  # (1)
+        max_idx = float(max_idx.clone().detach())
+        return max_idx
+
+
 model_registry = {
     "model": Naive_Linear,
     "loss": MNIST_Loss,
     "evaluator": MNIST_Evaluator,
     "dataset": dataset_factory,
     'args': [
-        {'name': "--file_dir", 'dest': 'file_dir', 'type': str, 'help': '训练/测试数据文件的路径'}
+        {'name': "--file_dir", 'dest': 'file_dir', 'type': str, 'help': '训练/测试数据文件的路径'},
+        {'name': '--input_dim', 'dest': 'input_dim', 'type': int},
+        {'name': '--label_cnt', 'dest': 'label_cnt', 'type': int}
     ]
 }
