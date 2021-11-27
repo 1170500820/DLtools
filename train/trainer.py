@@ -32,7 +32,8 @@ class Trainer:
             model_save_epoch=100,
             model_save_path='.',
             grad_acc_step=1,
-            do_eval=True):
+            do_eval=True,
+            use_cuda=True):
         print(f'Training Settings:'
               f'\n\ttotal_epoch:{total_epoch or "None"}'
               f'\n\tprint_info_freq:{print_info_freq or "None"}'
@@ -64,7 +65,8 @@ class Trainer:
             "model_save_path": str(model_save_path),
             "grad_acc_step": str(grad_acc_step)
         }
-        model.cuda()
+        if use_cuda:
+            model.cuda()
         def convert_to_cuda(input_dict: dict):
             result_dict = {}
             for k, v in input_dict.items():
@@ -73,6 +75,7 @@ class Trainer:
                 else:
                     result_dict[k] = v
             return result_dict
+
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
             for i_batch, train_sample in enumerate(iter(train_loader)):
@@ -81,7 +84,8 @@ class Trainer:
                 train_input, train_gt = train_sample
                 if recorder:
                     recorder.record_before_forward(train_input=train_input, train_gt=train_gt, full_model=model)
-                train_input, train_gt = convert_to_cuda(train_input), convert_to_cuda(train_gt)
+                if use_cuda:
+                    train_input, train_gt = convert_to_cuda(train_input), convert_to_cuda(train_gt)
                 model_output = model(**train_input)
                 if recorder:
                     recorder.record_after_forward(model_output=model_output, full_model=model)
@@ -112,7 +116,8 @@ class Trainer:
                             recorder.eval_checkin()
                         for test_sample in tqdm(iter(test_loader)):
                             inputs, gts = test_sample
-                            inputs, gts = convert_to_cuda(inputs), convert_to_cuda(gts)
+                            if use_cuda:
+                                inputs, gts = convert_to_cuda(inputs), convert_to_cuda(gts)
                             model_output = model(**inputs)
                             evaluator.eval_single(**model_output, **gts)
                             del model_output
