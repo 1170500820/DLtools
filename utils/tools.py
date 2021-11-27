@@ -20,6 +20,16 @@ Dict Tools
 """
 
 
+class dotdict(dict):
+    """
+    这个奇妙的设计来自
+    https://github.com/sonack/PatternRecognitionExps/blob/65b191b5409223ba317a39e28b4664846e916973/%E5%AE%9E%E9%AA%8C4-MNIST%E5%88%86%E7%B1%BB%E8%80%83%E8%AF%95/main.py#L28
+    """
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
 def transpose_dict_of_list(dict_of_list: Dict[str, list]):
     """
     将一个包含多个长度相同的list为value，拆解为list，list中的每个dict只包含对应key的list的一个元素
