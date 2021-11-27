@@ -22,6 +22,12 @@ python run_train.py --epoch 21 --save_epoch 5 --bsz 16 --eval_freq_batch 300 --e
 
 
 
+```python
+python run_train.py --epoch 20 --save_epoch 21 --bsz 4 --eval_freq_batch 300 --eval_freq_epoch 1 --eval_start_batch 100 --eval_start_epoch 2 --print_info_freq 500 --dir work.NER.BERT.bert_ner + --file_dir data/NLP/MSRA/
+```
+
+
+
 ## 目录
 
 - **analysis**
