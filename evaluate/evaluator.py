@@ -540,6 +540,33 @@ def calculate_kappa_score(pred: List[Hashable], gt: List[Hashable], classes: Lis
     return kappa
 
 
+def precision_score(total: int, correct: int):
+    """
+    简单的，直接计算单分类的准确率
+    :param total:
+    :param correct:
+    :return:
+    """
+    return correct / total if total != 0 else 0
+
+
+def calculate_precision_score(pred: List[Hashable], gt: List[Hashable]):
+    """
+    给定预测结果和实际结果，计算precision得分
+    :param pred:
+    :param gt:
+    :return:
+    """
+    # 分别统计每个类下的预测个数与实际个数
+    total, correct = 0, 0
+    for (elem_pred, elem_gt) in zip(pred, gt):
+        total += 1
+        if elem_pred == elem_gt:
+            correct += 1
+    precision = precision_score(total, correct)
+    return precision
+
+
 class KappaEvaluator(BaseEvaluator):
     def __init__(self):
         super(KappaEvaluator, self).__init__()
@@ -555,6 +582,24 @@ class KappaEvaluator(BaseEvaluator):
         self.pred_lst, self.gt_lst = [], []
         return {
             "Kappa": kappa
+        }
+
+
+class PrecisionEvaluator(BaseEvaluator):
+    def __init__(self):
+        super(PrecisionEvaluator, self).__init__()
+        self.pred_lst = []
+        self.gt_lst = []
+
+    def eval_single(self, pred: Hashable, gt: Hashable):
+        self.pred_lst.append(pred)
+        self.gt_lst.append(gt)
+
+    def eval_step(self) -> Dict[str, Any]:
+        precision = calculate_precision_score(self.pred_lst, self.gt_lst)
+        self.pred_lst, self.gt_lst = [], []
+        return {
+            "precision": precision
         }
 
 
