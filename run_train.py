@@ -29,6 +29,10 @@ def readCommand(argv) -> Dict[str, Any]:
     # 或者指定数据的目录
     parser.add_argument('--data_dir', dest='data_dir', type=str, help='数据所在的目录', required=False)
 
+    # 是否使用CUDA
+    parser.add_argument('--no_cuda', dest='use_cuda', help='是否在训练中使用CUDA', action='store_false')
+    parser.set_defaults(use_cuda=True)
+
     # 通用的训练参数
     parser.add_argument('--epoch', dest='epoch', type=int, help='训练的最大epoch数', default=10)
     parser.add_argument('--save_epoch', dest='save_epoch', type=int, help='保存模型的频率（按epoch计）', default=10)
@@ -156,7 +160,8 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
         model_save_path=working_path,
         model_save_epoch=param_dict['save_epoch'],
         grad_acc_step=param_dict['acc'],
-        do_eval=param_dict['do_eval']
+        do_eval=param_dict['do_eval'],
+        use_cuda=param_dict['use_cuda']
     )
 
 
