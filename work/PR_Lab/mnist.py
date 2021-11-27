@@ -19,20 +19,43 @@ class Naive_Linear(nn.Module):
         super(Naive_Linear, self).__init__()
         self.input_dim = input_dim
         self.label_cnt = label_cnt
-        self.linear = nn.Linear(input_dim, input_dim // 2)
-        self.linear2 = nn.Linear(input_dim // 2, label_cnt)
+
+
+        self.linear1 = nn.Linear(input_dim, 128 * 8)
+        self.batch_norm1 = nn.BatchNorm1d(128 * 8)
+
+        self.linear2 = nn.Linear(128 * 8, 64 * 4)
+        self.batch_norm2 = nn.BatchNorm1d(64 * 4)
+
+        self.linear3 = nn.Linear(64 * 4, 32 * 4)
+        self.batch_norm3 = nn.BatchNorm1d(32 * 4)
+
+        self.linear4 = nn.Linear(32 * 4, 32 * 2)
+        self.batch_norm4 = nn.BatchNorm1d(32 * 2)
+
+        self.linear5 = nn.Linear(32 * 2, 10)
         self.init_weights()
 
     def init_weights(self):
-        torch.nn.init.xavier_uniform_(self.linear.weight)
-        self.linear.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.linear1.weight)
+        self.linear1.bias.data.fill_(0)
         torch.nn.init.xavier_uniform_(self.linear2.weight)
         self.linear2.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.linear3.weight)
+        self.linear3.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.linear4.weight)
+        self.linear4.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.linear5.weight)
+        self.linear5.bias.data.fill_(0)
+
 
     def get_optimizers(self):
-        params = self.linear.parameters()
+        params1 = self.linear1.parameters()
         params2 = self.linear2.parameters()
-        linear_optimizer = AdamW(params=chain(params, params2), lr=mnist_setting.lr)
+        params3 = self.linear3.parameters()
+        params4 = self.linear4.parameters()
+        params5 = self.linear5.parameters()
+        linear_optimizer = AdamW(params=chain(params1, params2, params3, params3, params4, params5), lr=mnist_setting.lr)
         return [linear_optimizer]
     
     def forward(self, inp: torch.Tensor):
@@ -41,10 +64,29 @@ class Naive_Linear(nn.Module):
         :param inp: (bsz, input_dim)
         :return: 
         """
-        out = self.linear(inp)  # (bsz, input_dim // 2)
-        out = F.relu(out)
-        out = self.linear2(out)  # (input_dim //2, label_cnt)
-        out = F.dropout(out, p=0.3)
+        out = F.dropout(inp, p=0.1)
+        out = self.linear1(out)
+        out = self.batch_norm1(out)
+        out = F.gelu(out)
+
+        out = F.dropout(out, p=0.1)
+        out = self.linear2(out)
+        out = self.batch_norm2(out)
+        out = F.gelu(out)
+
+        out = F.dropout(out, p=0.1)
+        out = self.linear3(out)
+        out = self.batch_norm3(out)
+        out = F.gelu(out)
+
+        out = F.dropout(out, p=0.1)
+        out = self.linear4(out)
+        out = self.batch_norm4(out)
+        out = F.gelu(out)
+
+        out = F.dropout(out, p=0.1)
+        out = self.linear5(out)  # (bsz, label_cnt)
+
         out = F.softmax(out, dim=-1)  # (bsz, label_cnt)
         return {
             "mnist_result": out  # (bsz, label_cnt)
