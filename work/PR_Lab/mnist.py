@@ -173,8 +173,8 @@ def val_dataset_factory(samples: List[List[float]], labels: List[int]):
     return val_dataloader
 
 
-def dataset_factory(file_dir: str, bsz: int = mnist_setting.bsz, shuffle=True):
-    label_path, sample_path = 'TrainLabels-300.csv', 'TrainSamples-300.csv'
+def dataset_factory(file_dir: str, bsz: int = mnist_setting.bsz, shuffle=True, full=True):
+    label_path, sample_path = 'TrainLabels.csv', 'TrainSamples.csv'
     if file_dir[-1] != '/':
         file_dir += '/'
     label_path = file_dir + label_path
@@ -187,7 +187,10 @@ def dataset_factory(file_dir: str, bsz: int = mnist_setting.bsz, shuffle=True):
     train_samples, val_samples = tools.split_list_with_ratio(samples, mnist_setting.train_val_split)
     train_labels, val_labels = tools.split_list_with_ratio(labels, mnist_setting.train_val_split)
 
-    train_dataloader = train_dataset_factory(train_samples, train_labels, bsz=bsz, shuffle=shuffle)
+    if full:
+        train_dataloader = train_dataset_factory(samples, labels, bsz=bsz, shuffle=shuffle)
+    else:
+        train_dataloader = train_dataset_factory(train_samples, train_labels, bsz=bsz, shuffle=shuffle)
     val_dataloader = val_dataset_factory(val_samples, val_labels)
 
     return train_dataloader, val_dataloader
@@ -218,6 +221,30 @@ class UseModel:
         return max_idx
 
 
+def make_prediction(input_file: str, output_file: str, model_path, params_path):
+    print('loading data...', end='  ')
+    lines = open(input_file, 'r').read().strip().split('\n')
+    samples = list(list(float(x) for x in a.split(',')) for a in lines)  # List[List[float]]
+    print('Done!')
+
+    print('loading model...', end='  ')
+    model = UseModel(model_path, params_path)
+    print('Done!')
+
+    print('making predictions...', end='  ')
+    results = list(model(x) for x in samples)
+    print('Done!')
+
+    print('writing to csv...', end='  ')
+    f = open(output_file, 'w')
+    out = ''
+    for elem in results:
+        out += str(int(elem)) + '\n'
+    f.write(out)
+    f.close()
+    print('Done!')
+
+
 model_registry = {
     "model": Naive_Linear,
     "loss": MNIST_Loss,
@@ -229,3 +256,7 @@ model_registry = {
         {'name': '--label_cnt', 'dest': 'label_cnt', 'type': int}
     ]
 }
+
+if __name__ == '__main__':
+    # make_prediction('../../data/MNIST/2/TrainSamples-300.csv', '../../data/MNIST/2/pred.csv', 'checkpoint/Naive_Linear-save-100-2.pth', 'checkpoint/Naive_Linear-init_param-2.pk')
+    make_prediction('../../data/MNIST/1/TrainSamples.csv', '../../data/MNIST/1/pred.csv', 'checkpoint/Naive_Linear-save-100.pth', 'checkpoint/Naive_Linear-init_param.pk')
