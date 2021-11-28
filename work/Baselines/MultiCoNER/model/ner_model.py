@@ -147,15 +147,21 @@ class NERBaseAnnotator(pl.LightningModule):
         self.log(suffix + 'loss', loss, on_step=on_step, on_epoch=on_epoch, prog_bar=True, logger=True)
 
     def perform_forward_step(self, batch, mode=''):
+        """
+
+        :param batch: tokens, token_mask, tags: (bsz, seq_l)
+        :param mode:
+        :return:
+        """
         tokens, tags, token_mask, metadata = batch
         batch_size = tokens.size(0)
 
-        embedded_text_input = self.encoder(input_ids=tokens, attention_mask=token_mask)
-        embedded_text_input = embedded_text_input.last_hidden_state
-        embedded_text_input = self.dropout(F.leaky_relu(embedded_text_input))
+        embedded_text_input = self.encoder(input_ids=tokens, attention_mask=token_mask)  # pooled and hidden
+        embedded_text_input = embedded_text_input.last_hidden_state  # (bsz, seq_l, hidden)
+        embedded_text_input = self.dropout(F.leaky_relu(embedded_text_input))  # (bsz, seq_l, hidden)
 
         # project the token representation for classification
-        token_scores = self.feedforward(embedded_text_input)
+        token_scores = self.feedforward(embedded_text_input)  # (bsz, seq_l, target_size)
 
         # compute the log-likelihood loss and compute the best NER annotation sequence
         output = self._compute_token_tags(token_scores=token_scores, tags=tags, token_mask=token_mask, metadata=metadata, batch_size=batch_size)
