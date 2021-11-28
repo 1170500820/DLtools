@@ -30,7 +30,7 @@ NER类的标注格式有BIOS，也有BIO，每一种都需要写一套转化函�
 
 def check_BIO_string(BIO_string: List[str]):
     """
-    检查一个BIO的strlist是否合法
+    检查一个BIO的strlist是否合法。如果合法，则直接返回。否则报错
 
     - 长度为0是合法的
     - I-type前面要么是B-type，要么是I-type，否则非法
@@ -51,12 +51,22 @@ def check_BIO_string(BIO_string: List[str]):
     return
 
 
+def check_BIOES_string(BIOES_string: List[str]):
+    """
+    检查一个BIOES的strlist是否合法。如果合法，则直接返回。否则报错
+    :param BIOES_string:
+    :return:
+    """
+    # todo
+    return
+
+
 def BIO_to_spandict(BIO_string: List[str]) -> Dict[str, List[Tuple[int, int]]]:
     """
-    将BISO格式标注，转化为span的dict。
+    将BIO格式标注，转化为span的dict。
     不会检查BIO_string合法性。如果BIO_string存在非法标注，抛出异常
 
-    其中BISO格式：
+    其中BIO格式：
         如果词长为1，则为B-type
         词长>=2，则为 B-type, I-type, ...
         否则为O
@@ -99,6 +109,94 @@ def BIO_to_spandict(BIO_string: List[str]) -> Dict[str, List[Tuple[int, int]]]:
         span_list = []
 
     return spandict
+
+
+def BIOES_to_spandict(BIOES_string: List[str]) -> Dict[str, List[Tuple[int, int]]]:
+    """
+    检查BIOES_string的合法性
+    by syl <- 有bug找他
+    :param BIOES_string:
+    :return:
+    """
+    check_BIOES_string(BIOES_string)
+    begin_index = 0
+    state = 0
+    sentence_info = dict()
+    for i in range(len(BIOES_string)):
+        tag = BIOES_string[i]  # B M E  S  O
+        label = tag[0]
+        entity_type = '' if label == 'O' else tag[2:]  # LOC
+        if state == 0:
+            if label == 'B':
+                state = 1
+                begin_index = i
+            elif label == 'M':
+                pass
+            elif label == 'E':
+                pass
+            elif label == 'S':
+                begin_index = i
+                end_index = i + 1
+                if entity_type in sentence_info:
+                    sentence_info[entity_type].append(tuple([begin_index, end_index]))
+                else:
+                    sentence_info[entity_type] = [tuple([begin_index, end_index])]
+            elif label == 'O':
+                pass
+            else:
+                raise ValueError
+        elif state == 1:
+            if label == 'B':
+                begin_index = i
+            elif label == 'M':
+                state = 2
+            elif label == 'E':
+                state = 0
+                end_index = i + 1
+                if entity_type in sentence_info:
+                    sentence_info[entity_type].append(tuple([begin_index, end_index]))
+                else:
+                    sentence_info[entity_type] = [tuple([begin_index, end_index])]
+            elif label == 'S':
+                state = 0
+                begin_index = i
+                end_index = i + 1
+                if entity_type in sentence_info:
+                    sentence_info[entity_type].append(tuple([begin_index, end_index]))
+                else:
+                    sentence_info[entity_type] = [tuple([begin_index, end_index])]
+            elif label == 'O':
+                state = 0
+            else:
+                raise ValueError
+        elif state == 2:
+            if label == 'B':
+                state = 1
+                begin_index = i
+            elif label == 'M':
+                pass
+            elif label == 'E':
+                state = 0
+                end_index = i + 1
+                if entity_type in sentence_info:
+                    sentence_info[entity_type].append(tuple([begin_index, end_index]))
+                else:
+                    sentence_info[entity_type] = [tuple([begin_index, end_index])]
+            elif label == 'S':
+                state = 0
+                begin_index = i
+                end_index = i + 1
+                if entity_type in sentence_info:
+                    sentence_info[entity_type].append(tuple([begin_index, end_index]))
+                else:
+                    sentence_info[entity_type] = [tuple([begin_index, end_index])]
+            elif label == 'O':
+                state = 0
+            else:
+                raise ValueError
+        else:
+            raise ValueError
+    return sentence_info
 
 
 def spandict_to_BIO(spandict: Dict[str, List[Tuple[int, int]]], BIO_string_length: int) -> List[str]:
@@ -380,5 +478,5 @@ def load_weibo_ner(file_dir: str):
 
 
 if __name__ == '__main__':
-    tags = ['O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'B-CW', 'I-CW', 'I-CW', 'O', 'O', 'B-PER', 'I-PER', 'O', 'B-PER', 'I-PER', 'O', 'B-PER', 'I-PER', 'O']
+    tags = ['B-AA', 'I-AA', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'B-CW', 'I-CW', 'I-CW', 'O', 'O', 'B-PER', 'I-PER', 'O', 'B-PER', 'I-PER', 'O', 'B-PER', 'I-PER', 'O']
     print(BIO_to_spandict(tags))
