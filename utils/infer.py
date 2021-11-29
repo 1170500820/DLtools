@@ -14,6 +14,8 @@ import typing
 
 from type_def import *
 import typing_utils
+from functools import reduce
+from utils import tools
 
 
 def infer_sequence_shape(data):
@@ -134,6 +136,7 @@ def check_list_type(lst: list) -> str:
     - float
     - str
     - tuple
+    - dict
     - list
     - set
     - object 包含除上述几个类型之外的类型
@@ -144,7 +147,7 @@ def check_list_type(lst: list) -> str:
     type_set = set(type(x) for x in lst)
     if len(type_set) > 1:
         return 'mix'
-    elif list(type_set)[0] in {int, float, str, tuple, list, set}:
+    elif list(type_set)[0] in {int, float, str, tuple, list, set, dict}:
         return str(list(type_set)[0]).split('\'')[1]
     else:
         return 'object'
@@ -237,6 +240,8 @@ def infer_sequence(seq: Sequence[Any], set_limit=50):
             return infer_sequence_of_set(seq, set_limit)
         elif seq_type == tuple:
             return infer_sequence_of_tuple(seq, set_limit)
+        elif seq_type == dict:
+            return infer_dicts_pattern(seq)
         else:  # 其他python object。object无法分析，因此不提供feature与value
             return {
                 "type": 'List[obj]',
@@ -249,6 +254,40 @@ def infer_sequence(seq: Sequence[Any], set_limit=50):
             "feature": None,
             "value": None
         }
+
+
+def get_common_n_uncommon_keys(lst_dict: Sequence[dict]):
+    """
+    获取一个dict的序列中，所有dict所共有的keys，以及不共有的keys
+    :param lst_dict:
+    :return:
+    """
+    key_sets = []
+    all_keys = set()
+    for elem_dict in lst_dict:
+        key_sets.append(set(elem_dict.keys()))
+        all_keys.update(elem_dict.keys())
+
+    common_keys = key_sets[0]
+    for i in range(1, len(key_sets)):
+        common_keys = common_keys.intersection(key_sets[i])
+    for elem in common_keys:
+        all_keys.remove(elem)
+    return common_keys, all_keys
+
+
+def is_sequence_of_dict_similar(lst_dict: Sequence[dict]):
+    """
+    判断一个dict的序列是否相似
+    只有当序列中所有当dict至少有一个共同的key的时候，认为这个序列的dict是相似的
+    :param lst_dict:
+    :return:
+    """
+    common_keys, _ = get_common_n_uncommon_keys(lst_dict)
+    if len(common_keys) > 0:
+        return True
+    else:
+        return False
 
 
 def is_sequence_structure_similar(seq1: Sequence[Any], seq2: Sequence[Any]) -> bool:
@@ -264,6 +303,41 @@ def is_sequence_structure_similar(seq1: Sequence[Any], seq2: Sequence[Any]) -> b
 def infer_dicts_pattern(dicts: List[dict]):
     """
     分析一组dict的模式
+    一个dict的模式通过一个template_dict(feature)表示
+    而uncommon的keys则放在value当中。
+    这样能够与前面的infer的类型对应上
+    {
+    "type": 'List[dict]',
+    "feature": 共有的keys的模版
+        {
+        key1: seq_type1,
+        key2: seq_type2,
+        ...
+        }
+    "value": 不共有的keys
+    }
     :param dicts:
     :return:
     """
+    common, uncommon = get_common_n_uncommon_keys(dicts)
+    if not is_sequence_of_dict_similar(dicts):  # dict之间并不相似
+        return {
+            "type": "List[dict]",
+            "feature": {},
+            "value": uncommon
+        }
+    else:
+        dict_of_lst, _ = tools.split_dict(tools.transpose_list_of_dict(dicts), list(common))
+        feature = {k: infer_sequence(v) for (k, v) in dict_of_lst.items()}
+        return {
+            "type": "List[dict]",
+            "feature": feature,
+            "value": uncommon
+        }
+
+
+if __name__ == '__main__':
+    import json, rich
+    dicts = list(map(json.loads, open('../data/NLP/InformationExtraction/duee_fin/duee_fin_dev.json/duee_fin_dev.json', 'r').read().strip().split('\n')))
+    rich.inspect(infer_dicts_pattern(dicts))
+
