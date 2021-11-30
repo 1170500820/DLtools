@@ -327,7 +327,8 @@ def infer_dicts_pattern(dicts: List[dict]):
             "value": uncommon
         }
     else:
-        dict_of_lst, _ = tools.split_dict(tools.transpose_list_of_dict(dicts), list(common))
+        new_dicts = list(tools.split_dict(x, list(common), keep_origin=True)[0] for x in dicts)
+        dict_of_lst = tools.transpose_list_of_dict(new_dicts)
         feature = {k: infer_sequence(v) for (k, v) in dict_of_lst.items()}
         return {
             "type": "List[dict]",
@@ -338,6 +339,10 @@ def infer_dicts_pattern(dicts: List[dict]):
 
 if __name__ == '__main__':
     import json, rich
-    dicts = list(map(json.loads, open('../data/NLP/InformationExtraction/duee_fin/duee_fin_dev.json/duee_fin_dev.json', 'r').read().strip().split('\n')))
-    rich.inspect(infer_dicts_pattern(dicts))
+    dicts = list(map(json.loads, open('../data/NLP/InformationExtraction/duie/duie_sample.json/duie_sample.json', 'r').read().strip().split('\n')))
+    spos_lst = list(x['spo_list'] for x in dicts)
+    spos = []
+    for elem in spos_lst:
+        spos += elem
+    rich.inspect(infer_dicts_pattern(spos))
 
