@@ -437,6 +437,7 @@ def find_matches(content: str, tokenized_seq: [str, ]) -> Tuple[dict, dict]:
 
 class bert_tokenizer:
     def __init__(self, max_len=256, plm_path='bert-base-chinese'):
+        print('this version of bert_tokenizer is about to deprecated')
         self.tokenizer = BertTokenizerFast.from_pretrained('bert-base-chinese')
         self.max_len = max_len
 
