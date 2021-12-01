@@ -3,7 +3,9 @@ import json
 
 from type_def import *
 from work.RE import RE_settings
-from utils import format_convert, tools
+from utils import format_convert, tools, tokenize_tools
+from utils.tokenize_tools import OffsetMapping
+
 
 
 Triplet = Tuple[int, int, int, int, int]  # hashable
@@ -33,6 +35,25 @@ def convert_lists_to_triplet_casrel(subjects: SpanList, objects_with_relation: L
     return triplets
 
 
+def convert_lists_to_words_casrel(sentence: str, offset_mapping: OffsetMapping, relations: List[str], subjects: SpanList, objects_with_relation: List[List[SpanList]]) -> Tuple[str, str, str]:
+    """
+    将CASREL框架下的subjects与objects list转换为词本体
+    (relation, subject, object)
+    :param sentence:
+    :param offset_mapping:
+    :param subjects:
+    :param objects_with_relation:
+    :return:
+    """
+    triplets = convert_lists_to_triplet_casrel(subjects, objects_with_relation)
+    words = []
+    for elem_triplet in triplets:
+        rel = relations[elem_triplet[0]]
+        subject_span = tokenize_tools.tokenSpan_to_charSpan(elem_triplet[1: 3], offset_mapping)
+        object_span = tokenize_tools.tokenSpan_to_charSpan(elem_triplet[3: 5], offset_mapping)
+        words.append((rel, subject_span, object_span))
+    return words
+
 def load_NYT_re(file_dir: str):
     """
     加载NYT的经过预处理格式的数据。（预处理格式即将id都转化为词，并且分为normal、epo等类别的数据）
@@ -54,17 +75,17 @@ def load_NYT_re(file_dir: str):
         file_dir += '/'
     filenames = {
         'test': 'new_test.json',
-        'test_epo': 'new_test_epo.json',
-        'test_seo': 'new_test_seo.json',
-        'test_normal': 'new_test_normal.json',
+        # 'test_epo': 'new_test_epo.json',
+        # 'test_seo': 'new_test_seo.json',
+        # 'test_normal': 'new_test_normal.json',
         'train': 'new_train.json',
-        'train_epo': 'new_train_epo.json',
-        'train_seo': 'new_train_seo.json',
-        'train_normal': 'new_train_normal.json',
+        # 'train_epo': 'new_train_epo.json',
+        # 'train_seo': 'new_train_seo.json',
+        # 'train_normal': 'new_train_normal.json',
         'valid': 'new_valid.json',
-        'valid_epo': 'new_valid_epo.json',
-        'valid_seo': 'new_valid_seo.json',
-        'valid_normal': 'new_valid_normal.json',
+        # 'valid_epo': 'new_valid_epo.json',
+        # 'valid_seo': 'new_valid_seo.json',
+        # 'valid_normal': 'new_valid_normal.json',
     }
     loaded = {}
     for k, v in filenames.items():
@@ -83,7 +104,7 @@ def load_NYT_re(file_dir: str):
                 })
             data_lst.append({
                 "text": text,
-                "triplets": relations
+                "triplets": triplets
             })
         loaded[k] = data_lst
     return loaded
@@ -99,13 +120,13 @@ def load_WebNLG_re(file_dir: str):
         file_dir += '/'
     filenames = {
         'train': 'new_train.json',
-        'train_epo': 'new_train_epo.json',
-        'train_seo': 'new_train_seo.json',
-        'train_normal': 'new_train_normal.json',
+        # 'train_epo': 'new_train_epo.json',
+        # 'train_seo': 'new_train_seo.json',
+        # 'train_normal': 'new_train_normal.json',
         'valid': 'new_valid.json',
-        'valid_epo': 'new_valid_epo.json',
-        'valid_seo': 'new_valid_seo.json',
-        'valid_normal': 'new_valid_normal.json',
+        # 'valid_epo': 'new_valid_epo.json',
+        # 'valid_seo': 'new_valid_seo.json',
+        # 'valid_normal': 'new_valid_normal.json',
     }
     loaded = {}
     for k, v in filenames.items():
@@ -124,7 +145,7 @@ def load_WebNLG_re(file_dir: str):
                 })
             data_lst.append({
                 "text": text,
-                "triplets": relations
+                "triplets": triplets
             })
         loaded[k] = data_lst
     return loaded
@@ -156,7 +177,7 @@ def load_duie_re(file_dir: str):
     filenames = {
         "valid": 'duie_dev.json/duie_dev.json',
         "train": 'duie_train.json/duie_train.json',
-        "test": "duit_test2.json/duie_test2.json"
+        "test": "duie_test2.json/duie_test2.json"
     }
     loaded = {}
     for k, v in filenames.items():
@@ -165,18 +186,25 @@ def load_duie_re(file_dir: str):
         if k == 'test':
             for elem in dicts:
                 text = elem['text']
+                text = text.replace('\t', ' ').replace('  ', ' ').replace('\u3000', ' ').replace('\xa0', ' ')
                 data_lst.append({
                     "text": text,
                     "triplets": None
                 })
+            loaded[k] = data_lst
         else:
             for elem in dicts:
                 triplets = []  # 当前句子所对应的所有triplet
                 text = elem['text']
+                text = text.replace('\t', ' ').replace('  ', ' ').replace('\u3000', ' ').replace('\xa0', ' ')
                 relations = elem['spo_list']
                 for elem_rel in relations:
                     sub, obj, rel = elem_rel['subject'], elem_rel['object']['@value'], elem_rel['predicate']
+                    sub = sub.replace('\t', ' ').replace('  ', ' ').replace('\u3000', ' ').replace('\xa0', ' ')
+                    obj = obj.replace('\t', ' ').replace('  ', ' ').replace('\u3000', ' ').replace('\xa0', ' ')
                     _, other_objects = tools.split_dict(elem_rel['object'], ['@value'], keep_origin=True)
+                    for elem_k in other_objects.keys():
+                        other_objects[elem_k] = other_objects[elem_k].replace('\t', ' ').replace('  ', ' ').replace('\u3000', ' ').replace('\xa0', ' ')
                     triplets.append({
                         "subject": sub,
                         "object": obj,
@@ -185,8 +213,106 @@ def load_duie_re(file_dir: str):
                     })
                 data_lst.append({
                     "text": text,
-                    "triplets": relations
+                    "triplets": triplets
                 })
             loaded[k] = data_lst
-        return data_lst
+    return loaded
+
+
+def get_word_occurrences_in_sentence(sentence: str, word: str):
+    """
+    计算一个word在一个sentence中的每一个出现的span:(第一个char的index，最后一个char的index)
+    如果word只有一个char，那么span[0] == span[1]
+    本函数要求word至少在sentence中出现在一次，否则会抛出异常
+    :param sentence:
+    :param word:
+    :return:
+    """
+    word_len = len(word)
+    starts = [i for i in range(len(sentence)) if sentence.startswith(word, i)]
+    spans = list((x, x + word_len - 1) for x in starts)
+    if len(spans) == 0:
+        raise Exception(f'[get_word_occurrences_in_sentence]No occurrences of word:[{word}] found in sentence:[{sentence}]')
+    return spans
+
+
+def add_index_to_re_data(d: dict, find_all=False):
+    """
+    为关系抽取的数据的dict添加index信息。
+    如果一个词在句子中多次出现且find_all=False，则选择第一次出现
+    :param d: 符合下面格式的一个dict，
+    {
+    'text': 原句，
+    'triplets': [
+            {
+            "subject": str,
+            'object': str,
+            'relation': str,
+            'other_objects': {
+                "type": str
+            }
+            }, ...
+        ] or None
+    }
+    :param find_all: 若为True，则position是一个list，保存所有存在
+    :return:
+    """
+    text = d['text']
+    triplets = d['triplets']
+    for elem_triplet in triplets:
+        sub_occur = get_word_occurrences_in_sentence(text, elem_triplet['subject'])
+        obj_occur = get_word_occurrences_in_sentence(text, elem_triplet['object'])
+        if find_all:
+            elem_triplet['subject_occur'] = sub_occur
+            elem_triplet['object_occur'] = obj_occur
+        else:
+            elem_triplet['subject_occur'] = sub_occur[0]
+            elem_triplet['object_occur'] = obj_occur[0]
+        if 'other_objects' in elem_triplet:
+            for k, v in elem_triplet['other_objects']:
+                v_occur = get_word_occurrences_in_sentence(text, v)
+                if find_all:
+                    elem_triplet['other_objects'][k + '_occur'] = v_occur
+                else:
+                    elem_triplet['other_objects'][k + '_occur'] = v_occur[0]
+    return d
+
+
+def count_multi_occurrences(data_type: str, data_dir: str):
+    """
+    用于统计重复出现的一个小函数
+    :param data_type: NYT, WebNLG, duie
+    :param data_dir:
+    :return:
+    """
+    if data_type == 'NYT':
+        d = load_NYT_re(data_dir)
+    elif data_type == 'WebNLG':
+        d = load_WebNLG_re(data_dir)
+    elif data_type == 'duie':
+        d = load_duie_re(data_dir)
+    else:
+        raise Exception
+    for key, value in d.items():
+        if data_type == 'duie' and key == 'test':
+            continue
+        print(f'{data_type}--{key}')
+        entity, entity_multi = 0, 0
+        for triplet_dict in value:
+            text = triplet_dict['text']
+            relations = triplet_dict['triplets']
+            for elem_rel in relations:
+                entity += 2
+                if len(get_word_occurrences_in_sentence(text, elem_rel['subject'])) > 1:
+                    entity_multi += 1
+                if len(get_word_occurrences_in_sentence(text, elem_rel['object'])) > 1:
+                    entity_multi += 1
+        print(f'total entity: {entity}\nentity with multi occur: {entity_multi}\nratio: {entity_multi / entity if entity != 0 else 0}')
+        print('_' * 20)
+
+
+if __name__ == '__main__':
+    count_multi_occurrences('duie', '../../data/NLP/InformationExtraction/duie/')
+    count_multi_occurrences('NYT', '../../data/NLP/InformationExtraction/NYT/generated/')
+    count_multi_occurrences('WebNLG', '../../data/NLP/InformationExtraction/WebNLG/generated')
 
