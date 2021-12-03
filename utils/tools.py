@@ -585,9 +585,19 @@ def map_operation_to_list_elem(operation: ElemOperator, lst: InDictList) -> InDi
 
 
 # 下面是由map_operation_to_list_elem衍生出的function
+
+"""
+InDict粒度
+- 对key的改、删、增操作
+    - list_of_dict_modify
+    - list_of_dict_add
+    - list_of_dict_delete
+"""
+
+
 def list_of_dict_modify(operation: Callable[[Any], Any], lst: InDictList, keyname: str = None) -> InDictList:
     """
-    对于每一个dict，使用operation接收其中的某个key所对应的value，返回一个修改好的value
+    对于每一个dict，使用operation接收其中的某个key所对应的value，返回一个修改好的新value替换旧value
     :param keyname: 如果为None，则通过inspect.getfullargspec获得opeartion所需要的输入参数（排除self后应当只有一个，否则报错）
     :param operation: 接收value，返回修改后的value。不会对输入和输出的类型做约束，但要求输入和输出数量都为1
     :param lst:
@@ -607,34 +617,6 @@ def list_of_dict_modify(operation: Callable[[Any], Any], lst: InDictList, keynam
         data_dict[keyname] = v_result
         return [data_dict]
     result = map_operation_to_list_elem(wrap_operation, lst)
-    return result
-
-
-def list_of_dict_filter(bool_operation: Callable, lst: InDictList, keynames: str = None) -> InDictList:
-    """
-    这里不要求bool_operation只包含单个参数，因为有可能要根据不同key之间的关系来决定是否删除
-    所以inspect.getfullargspec之后只需要检查参数个数是否为0即可
-    :param keynames:
-    :param bool_operation: 返回值为布尔值的函数。如果返回False，则删除这一个data_dict。否则
-    :param lst:
-    :return:
-    """
-    if keynames is None:
-        operation_params = list(inspect.getfullargspec(bool_operation)[0])
-        if 'self' in operation_params:
-            operation_params.remove('self')
-        if len(operation_params) == 0:
-            raise Exception('[list_of_dict_filter]bool_operation不包含可用参数！')
-        keynames = operation_params
-
-    def wrap_bool_operation(data_dict: Dict[str, Any]):
-        _, input_dict = split_dict(data_dict, keynames, keep_origin=True)
-        if bool_operation(**input_dict):
-            return [data_dict]
-        else:
-            return []
-    result = map_operation_to_list_elem(wrap_bool_operation, lst)
-
     return result
 
 
@@ -676,6 +658,75 @@ def list_of_dict_add(add_operation: Callable, lst: InDictList, return_name: StrL
     res = map_operation_to_list_elem(wrap_add_operation, lst)
 
     return res
+
+
+def list_of_dict_delete(lst: InDictList, delete_names: StrList) -> InDictList:
+    """
+    删除某些key，
+    :param lst:
+    :param delete_names:
+    :return:
+    """
+    new_lst = []
+    for elem in lst:
+        new_lst.append(split_dict(elem, delete_names)[0])
+    return new_lst
+
+
+"""
+InDictList粒度
+"""
+
+
+def list_of_dict_filter(bool_operation: Callable, lst: InDictList, keynames: str = None) -> InDictList:
+    """
+    这里不要求bool_operation只包含单个参数，因为有可能要根据不同key之间的关系来决定是否删除
+    所以inspect.getfullargspec之后只需要检查参数个数是否为0即可
+    :param keynames:
+    :param bool_operation: 返回值为布尔值的函数。如果返回False，则删除这一个data_dict。否则
+    :param lst:
+    :return:
+    """
+    if keynames is None:
+        operation_params = list(inspect.getfullargspec(bool_operation)[0])
+        if 'self' in operation_params:
+            operation_params.remove('self')
+        if len(operation_params) == 0:
+            raise Exception('[list_of_dict_filter]bool_operation不包含可用参数！')
+        keynames = operation_params
+
+    def wrap_bool_operation(data_dict: Dict[str, Any]):
+        _, input_dict = split_dict(data_dict, keynames, keep_origin=True)
+        if bool_operation(**input_dict):
+            return [data_dict]
+        else:
+            return []
+    result = map_operation_to_list_elem(wrap_bool_operation, lst)
+
+    return result
+
+
+def list_of_dict_groupby(groupby_operation: Callable[InDict, Hashable], lst: InDictList) -> Dict[Hashable, InDictList]:
+    """
+    groupby_operation接收一个InDict，输出一个Hashable。这个Hashable将被用于作为group的键值
+
+    :param groupby_operation:
+    :param lst:
+    :return:
+        {
+        Hashable1: InDictList,
+        Hashable2: InDictList,
+        ...
+        }
+    """
+    group_dict = {}
+    for elem_indict in lst:
+        h = groupby_operation(elem_indict)
+        if h not in group_dict:
+            group_dict[h] = [elem_indict]
+        else:
+            group_dict[h].append(elem_indict)
+    return group_dict
 
 
 """
