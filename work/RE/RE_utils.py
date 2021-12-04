@@ -11,6 +11,8 @@ from utils.tokenize_tools import OffsetMapping
 Triplet = Tuple[int, int, int, int, int]  # hashable
 
 
+# 用于将模型预测转换为index和字符串的两个函数
+
 def convert_lists_to_triplet_casrel(subjects: SpanList, objects_with_relation: List[List[SpanList]]) -> List[Triplet]:
     """
     将CASREL框架下的subjects与objects list转化为由与具体标注无关的index表示的triplet格式(hashable)
@@ -53,6 +55,10 @@ def convert_lists_to_words_casrel(sentence: str, offset_mapping: OffsetMapping, 
         object_span = tokenize_tools.tokenSpan_to_charSpan(elem_triplet[3: 5], offset_mapping)
         words.append((rel, subject_span, object_span))
     return words
+
+
+# 专用加载数据集的三个函数，分别加载NYT，WebNLG，duie
+
 
 def load_NYT_re(file_dir: str):
     """
@@ -219,6 +225,34 @@ def load_duie_re(file_dir: str):
     return loaded
 
 
+def tokenize_loaded_re_data(data_dicts: List[dict], data_type: str, lst_tokenizer):
+    """
+    输入的dict
+    {
+    'text': 原句，
+    'triplets': [
+            {
+            "subject": str,
+            'subject_occur": span,
+            'object': str,
+            "object_occur": span,
+            'relation': str,
+            }, ...
+        ] or None
+    }
+    其中'other_objects'系列先忽略.
+    :param data_dicts:
+    :param data_type:
+    :return:
+    """
+    data_dict = tools.transpose_list_of_dict(data_dicts)
+    tokenized = lst_tokenizer(data_dict['text'])
+    data_dict.update(tools.transpose_list_of_dict(tokenized))
+    # get input_ids, token_type_ids, attention_mask, offset_mapping
+    data_dicts = tools.transpose_dict_of_list(data_dict)
+    return data_dicts
+
+
 def get_word_occurrences_in_sentence(sentence: str, word: str):
     """
     计算一个word在一个sentence中的每一个出现的span:(第一个char的index，最后一个char的index)
@@ -236,7 +270,7 @@ def get_word_occurrences_in_sentence(sentence: str, word: str):
     return spans
 
 
-def add_index_to_re_data(d: dict, find_all=False):
+def add_index_to_re_data(d: dict, find_all=False) -> dict:
     """
     为关系抽取的数据的dict添加index信息。
     如果一个词在句子中多次出现且find_all=False，则选择第一次出现
@@ -275,6 +309,24 @@ def add_index_to_re_data(d: dict, find_all=False):
                     elem_triplet['other_objects'][k + '_occur'] = v_occur
                 else:
                     elem_triplet['other_objects'][k + '_occur'] = v_occur[0]
+    return d
+
+
+def add_token_span_to_re_data(d: dict, offset_mapping: OffsetMapping) -> dict:
+    """
+    将d中的char index都转换为token span
+    :param d:
+    :param offset_mapping:
+    :return:
+    """
+    triplets = d['triplets']
+    for elem_triplet in triplets:
+        if isinstance(elem_triplet['subject_occur'], list):
+            elem_triplet['subject_token_span'] = list(tokenize_tools.charSpan_to_tokenSpan(x, offset_mapping) for x in elem_triplet['subject_occur'])
+            elem_triplet['object_token_span'] = list(tokenize_tools.charSpan_to_tokenSpan(x, offset_mapping) for x in elem_triplet['object_occur'])
+        else:
+            elem_triplet['subject_token_span'] = tokenize_tools.charSpan_to_tokenSpan(elem_triplet['subject_occur'], offset_mapping)
+            elem_triplet['object_token_span'] = tokenize_tools.charSpan_to_tokenSpan(elem_triplet['object_occur'], offset_mapping)
     return d
 
 
