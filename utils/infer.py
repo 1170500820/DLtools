@@ -15,6 +15,7 @@ import typing
 from type_def import *
 import typing_utils
 from functools import reduce
+from itertools import chain
 from utils import tools
 
 
@@ -147,6 +148,8 @@ def check_list_type(lst: list) -> str:
     type_set = set(type(x) for x in lst)
     if len(type_set) > 1:
         return 'mix'
+    elif len(type_set) == 0:
+        return 'empty'
     elif list(type_set)[0] in {int, float, str, tuple, list, set, dict}:
         return str(list(type_set)[0]).split('\'')[1]
     else:
@@ -329,7 +332,10 @@ def infer_dicts_pattern(dicts: List[dict]):
     else:
         new_dicts = list(tools.split_dict(x, list(common), keep_origin=True)[0] for x in dicts)
         dict_of_lst = tools.transpose_list_of_dict(new_dicts)
-        feature = {k: infer_sequence(v) for (k, v) in dict_of_lst.items()}
+        feature = {}
+        for k, v in dict_of_lst.items():
+            feature[k] = infer_sequence(v)
+        # feature = {k: infer_sequence(v) for (k, v) in dict_of_lst.items()}
         return {
             "type": "List[dict]",
             "feature": feature,
@@ -339,10 +345,8 @@ def infer_dicts_pattern(dicts: List[dict]):
 
 if __name__ == '__main__':
     import json, rich
-    dicts = list(map(json.loads, open('../data/NLP/InformationExtraction/duie/duie_sample.json/duie_sample.json', 'r').read().strip().split('\n')))
-    spos_lst = list(x['spo_list'] for x in dicts)
-    spos = []
-    for elem in spos_lst:
-        spos += elem
-    rich.inspect(infer_dicts_pattern(spos))
+    dicts = list(map(json.loads, open('../data/NLP/EventExtraction/duee/duee_train.json/duee_train.json', 'r').read().strip().split('\n')))
+    events = list(chain(*list(x['event_list'] for x in dicts)))
+    arguments = list(chain(*list(x['arguments'] for x in events)))
+    rich.inspect(infer_dicts_pattern(arguments))
 
