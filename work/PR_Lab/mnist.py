@@ -258,5 +258,5 @@ model_registry = {
 }
 
 if __name__ == '__main__':
-    # make_prediction('../../data/MNIST/2/TrainSamples-300.csv', '../../data/MNIST/2/pred.csv', 'checkpoint/Naive_Linear-save-100-2.pth', 'checkpoint/Naive_Linear-init_param-2.pk')
-    make_prediction('../../data/MNIST/1/TrainSamples.csv', '../../data/MNIST/1/pred.csv', 'checkpoint/Naive_Linear-save-100.pth', 'checkpoint/Naive_Linear-init_param.pk')
+    make_prediction('../../data/MNIST/2/TestSamples-300.csv', '../../data/MNIST/2/Result.csv', 'checkpoint/Naive_Linear-save-100-2.pth', 'checkpoint/Naive_Linear-init_param-2.pk')
+    # make_prediction('../../data/MNIST/1/TestSamples.csv', '../../data/MNIST/1/Result.csv', 'checkpoint/Naive_Linear-save-100.pth', 'checkpoint/Naive_Linear-init_param.pk')

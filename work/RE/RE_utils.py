@@ -7,7 +7,6 @@ from utils import format_convert, tools, tokenize_tools
 from utils.tokenize_tools import OffsetMapping
 
 
-
 Triplet = Tuple[int, int, int, int, int]  # hashable
 
 
