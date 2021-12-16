@@ -466,6 +466,23 @@ class bert_tokenizer:
         return results
 
 
+def get_word_occurrences_in_sentence(sentence: str, word: str):
+    """
+    计算一个word在一个sentence中的每一个出现的span:(第一个char的index，最后一个char的index)
+    如果word只有一个char，那么span[0] == span[1]
+    本函数要求word至少在sentence中出现在一次，否则会抛出异常
+    :param sentence:
+    :param word:
+    :return:
+    """
+    word_len = len(word)
+    starts = [i for i in range(len(sentence)) if sentence.startswith(word, i)]
+    spans = list((x, x + word_len - 1) for x in starts)
+    if len(spans) == 0:
+        raise Exception(f'[get_word_occurrences_in_sentence]No occurrences of word:[{word}] found in sentence:[{sentence}]')
+    return spans
+
+
 def argument_span_determination(binary_start: IntList, binary_end: IntList, prob_start: ProbList, prob_end: ProbList) -> SpanList:
     """
     来自paper: Exploring Pre-trained Language Models for Event Extraction and Generation
@@ -588,6 +605,7 @@ def map_operation_to_list_elem(operation: ElemOperator, lst: InDictList) -> InDi
 
 """
 InDict粒度
+只要一个操作不需要知道InDictList的全局信息，对每一个InDict同等的进行，那么这个操作就是InDict粒度的。可以很容易和InDictList粒度的操作区分。
 - 对key的改、删、增操作
     - list_of_dict_modify
     - list_of_dict_add
@@ -706,7 +724,7 @@ def list_of_dict_filter(bool_operation: Callable, lst: InDictList, keynames: str
     return result
 
 
-def list_of_dict_groupby(groupby_operation: Callable[InDict, Hashable], lst: InDictList) -> Dict[Hashable, InDictList]:
+def list_of_dict_groupby(groupby_operation: Callable[[InDict], Hashable], lst: InDictList) -> Dict[Hashable, InDictList]:
     """
     groupby_operation接收一个InDict，输出一个Hashable。这个Hashable将被用于作为group的键值
 
