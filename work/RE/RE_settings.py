@@ -1,7 +1,11 @@
 
 
-default_plm = 'bert-base-chinese'
-
+default_plm = {
+    'WebNLG': 'bert-base-uncased',
+    'NYT': 'bert-base-uncased',
+    "duie": "bert-base-chinese"
+}
+default_datatype = 'duie'
 
 # dataset
 NYT_relations = [
@@ -83,7 +87,6 @@ duie_relations = [
     "国籍",
     "官方语言", ]
 duie_relations_idx = {x: i for (i, x) in enumerate(duie_relations)}
-
 
 WebNLG_relations = [
  "senators" ,
@@ -336,6 +339,17 @@ WebNLG_relations = [
 ]
 WebNLG_relations_idx = {x: i for (i, x) in enumerate(WebNLG_relations)}
 
+
+relations = {
+    "WebNLG": WebNLG_relations,
+    "NYT": NYT_relations,
+    "duie": duie_relations
+}
+indexes = {
+    "WebNLG": WebNLG_relations_idx,
+    "NYT": NYT_relations_idx,
+    "duie": duie_relations_idx
+}
 
 
 # model
