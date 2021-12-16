@@ -224,49 +224,7 @@ def load_duie_re(file_dir: str):
     return loaded
 
 
-def tokenize_loaded_re_data(data_dicts: List[dict], data_type: str, lst_tokenizer):
-    """
-    输入的dict
-    {
-    'text': 原句，
-    'triplets': [
-            {
-            "subject": str,
-            'subject_occur": span,
-            'object': str,
-            "object_occur": span,
-            'relation': str,
-            }, ...
-        ] or None
-    }
-    其中'other_objects'系列先忽略.
-    :param data_dicts:
-    :param data_type:
-    :return:
-    """
-    data_dict = tools.transpose_list_of_dict(data_dicts)
-    tokenized = lst_tokenizer(data_dict['text'])
-    data_dict.update(tools.transpose_list_of_dict(tokenized))
-    # get input_ids, token_type_ids, attention_mask, offset_mapping
-    data_dicts = tools.transpose_dict_of_list(data_dict)
-    return data_dicts
 
-
-def get_word_occurrences_in_sentence(sentence: str, word: str):
-    """
-    计算一个word在一个sentence中的每一个出现的span:(第一个char的index，最后一个char的index)
-    如果word只有一个char，那么span[0] == span[1]
-    本函数要求word至少在sentence中出现在一次，否则会抛出异常
-    :param sentence:
-    :param word:
-    :return:
-    """
-    word_len = len(word)
-    starts = [i for i in range(len(sentence)) if sentence.startswith(word, i)]
-    spans = list((x, x + word_len - 1) for x in starts)
-    if len(spans) == 0:
-        raise Exception(f'[get_word_occurrences_in_sentence]No occurrences of word:[{word}] found in sentence:[{sentence}]')
-    return spans
 
 
 def add_index_to_re_data(d: dict, find_all=False) -> dict:
@@ -363,7 +321,8 @@ def count_multi_occurrences(data_type: str, data_dir: str):
 
 
 if __name__ == '__main__':
-    count_multi_occurrences('duie', '../../data/NLP/InformationExtraction/duie/')
-    count_multi_occurrences('NYT', '../../data/NLP/InformationExtraction/NYT/generated/')
-    count_multi_occurrences('WebNLG', '../../data/NLP/InformationExtraction/WebNLG/generated')
+    d = load_NYT_re('../../data/NLP/InformationExtraction/NYT/generated/')
+    # count_multi_occurrences('duie', '../../data/NLP/InformationExtraction/duie/')
+    # count_multi_occurrences('NYT', '../../data/NLP/InformationExtraction/NYT/generated/')
+    # count_multi_occurrences('WebNLG', '../../data/NLP/InformationExtraction/WebNLG/generated')
 
