@@ -409,3 +409,29 @@ def generate_relation_to_object_labels(data_dicts: List[Dict[str, Any]], relatio
         d['relation_to_object_start_label'] = relation_start_arrays
         d['relation_to_object_end_label'] = relation_end_arrays
     return data_dicts
+
+
+def generate_subject_gt_for_relation_object_pair_sample(data_dict: Dict[str, Any]):
+    seq_l = len(data_dict['input_ids'])
+    subject_start_gt, subject_end_gt = np.zeros(seq_l), np.zeros(seq_l)
+    span = data_dict['subject_token_span']
+    if isinstance(span, list):
+        for elem_span in span:
+            subject_end_gt[elem_span[1]] = 1
+            subject_start_gt[elem_span[0]] = 1
+    else:
+        subject_end_gt[span[1]] = 1
+        subject_start_gt[span[0]] = 1
+    data_dict['subject_start_gt'] = subject_start_gt
+    data_dict['subject_end_gt'] = subject_end_gt
+
+
+def generate_subject_gt_for_relation_object_pair(data_dicts: List[Dict[str, Any]]):
+    """
+
+    :param data_dicts:
+    :return:
+    """
+    for d in data_dicts:
+        generate_subject_gt_for_relation_object_pair_sample(d)
+    return d
