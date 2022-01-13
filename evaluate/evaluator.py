@@ -9,6 +9,7 @@ import copy
 import torch
 from type_def import *
 import numpy as np
+import math
 
 
 class BaseEvaluator:
@@ -631,4 +632,100 @@ class F1_Evaluator(BaseEvaluator):
             "precision": p,
             "recall": r,
             "f1-measure": f1
+        }
+
+
+"""
+SemEval评价指标
+    皮尔逊系数共有三个实现，
+"""
+
+
+def pearson(vector1, vector2):
+    """
+    皮尔逊系数，xhq同学的实现
+    :param vector1:
+    :param vector2:
+    :return:
+    """
+    n = len(vector1)
+    #simple sums
+    sum1 = sum(float(vector1[i]) for i in range(n))
+    sum2 = sum(float(vector2[i]) for i in range(n))
+    #sum up the squares
+    sum1_pow = sum([pow(v, 2.0) for v in vector1])
+    sum2_pow = sum([pow(v, 2.0) for v in vector2])
+    #sum up the products
+    p_sum = sum([vector1[i]*vector2[i] for i in range(n)])
+    #分子num，分母den
+    num = p_sum - (sum1*sum2/n)
+    den = math.sqrt((sum1_pow-pow(sum1, 2)/n)*(sum2_pow-pow(sum2, 2)/n))
+    if den == 0:
+        return 0.0
+    return num/den
+
+
+def cal_pccs(x, y):
+    """
+    warning: data format must be ndarray
+    :param x: Variable 1
+    :param y: Variable 2
+    :return: pccs
+    """
+    n = len(x)
+    sum_xy = np.sum(np.sum(x*y))
+    sum_x = np.sum(np.sum(x))
+    sum_y = np.sum(np.sum(y))
+    sum_x2 = np.sum(np.sum(x*x))
+    sum_y2 = np.sum(np.sum(y*y))
+    pcc = (n*sum_xy-sum_x*sum_y)/np.sqrt((n*sum_x2-sum_x*sum_x)*(n*sum_y2-sum_y*sum_y))
+    return pcc
+
+
+def cal_pccs_torch(x, y):
+    n = len(x)
+    sum_xy = torch.sum(torch.sum(x * y))
+    sum_x = torch.sum(torch.sum(x))
+    sum_y = torch.sum(torch.sum(y))
+    sum_x2 = torch.sum(torch.sum(x * x))
+    sum_y2 = torch.sum(torch.sum(y * y))
+    pcc = (n * sum_xy - sum_x * sum_y) / torch.sqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y))
+    return pcc
+
+
+def pearson_score(vector1: Sequence[float], vector2: Sequence[float]):
+    """
+    计算vector1和vector2之间的皮尔逊系数
+
+    :param vector1: len(vector1) == len(vector2)
+    :param vector2:
+    :return:
+    """
+    if len(vector1) != len(vector2):
+        raise Exception(f'[pearson_score]vector1的长度与vector2的长度不相等！len(vector1)={len(vector1)}, len(vector2)={len(vector2)}')
+    if len(vector1) == 0:
+        raise Exception('[pearson_score]vector1与vector2的长度不能为0！')
+    np_v1 = np.array(vector1)
+    np_v2 = np.array(vector2)
+    score = cal_pccs(np_v1, np_v2)
+    return score
+
+
+class Pearson_Evaluator(BaseEvaluator):
+    def __init__(self):
+        super(Pearson_Evaluator, self).__init__()
+        self.pred_lst = []
+        self.gt_lst = []
+
+    def eval_single(self, pred: float, gt: float):
+        self.pred_lst.append(pred)
+        self.gt_lst.append(gt)
+
+    def eval_step(self) -> Dict[str, Any]:
+        pearson = pearson_score(self.pred_lst, self.gt_lst)
+        self.pred_lst = []
+        self.gt_lst = []
+
+        return {
+            "pearson": pearson
         }
