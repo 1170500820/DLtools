@@ -123,6 +123,7 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     working_args = working_model.model_registry['args']
     working_params = parseExtraCommand(working_args, model_args)
 
+    # 根据主参数与任务参数，为Template创建模块
     # get model, lossFunc, optimzers, evaluator and train/val dataset factory
     model = get_obj_with_param(working_model.model_registry['model'], param_dict, working_params)
     optimizers = model.get_optimizers()
