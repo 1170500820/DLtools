@@ -4,7 +4,7 @@
 """
 from type_def import *
 
-from transformers import BertTokenizerFast
+from transformers import BertTokenizerFast, AutoTokenizer
 
 OffsetMapping = List[Tuple[int, int]]
 """
@@ -41,6 +41,40 @@ class bert_tokenizer:
                 truncation=True,
                 max_length=self.max_len,
                 return_offsets_mapping=True)
+            token_seq = self.tokenizer.convert_ids_to_tokens(tokenized['input_ids'])
+            tokenized['token'] = token_seq
+            results.append(dict(tokenized))
+        return results
+
+
+class xlmr_tokenizer:
+    def __init__(self, max_len = 256, plm_path: str = 'xlm-roberta-base'):
+        self.max_length = max_len
+        self.tokenizer = AutoTokenizer.from_pretrained(plm_path)
+
+    def __call__(self, input_lst: List[str]):
+        """
+        要注意这里的input_lst与bert_tokenizer中的不同。bert_tokenzer会考虑上下句的问题，而xlmr以及其他与xlmrtokenize方案相似的
+        模型是没有NSP的，所以没有上下句。
+        为了方便处理，xlmr_tokenizer简单的对每一个句子进行tokenize，把上下句的组合方案留给外部
+
+        每个tokenize结果包括
+        - token
+        - input_ids
+        - attention_mask
+        - offset_mapping
+        :param input_lst:
+        :return:
+        """
+        results = []
+        for elem_input in input_lst:
+            tokenized = self.tokenizer(
+                elem_input,
+                padding=False,
+                truncation=True,
+                max_length=self.max_length,
+                return_offsets_mapping=True
+            )
             token_seq = self.tokenizer.convert_ids_to_tokens(tokenized['input_ids'])
             tokenized['token'] = token_seq
             results.append(dict(tokenized))
@@ -124,3 +158,11 @@ def tokenSpan_to_word(sentence: str, token_span: Span, offset_mapping: OffsetMap
     if len(word) == 0:
         raise Exception(f'[tokenSpan_to_word]生成了空的word！token_span:[{token_span}], offset_mapping:[{offset_mapping}]')
     return word
+
+
+def regex_tokenize(sentnece: str):
+    """
+    基于正则的tokenize方法，
+    :param sentnece:
+    :return:
+    """
