@@ -17,3 +17,10 @@ class CRF_Loss(nn.Module):
         return loss
 
 
+class Scalar_Loss(nn.Module):
+    def __init__(self):
+        super(Scalar_Loss, self).__init__()
+
+    def forward(self, output: torch.Tensor, label: torch.Tensor):
+        return output - label
+
