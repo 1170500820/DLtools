@@ -43,4 +43,6 @@ def dir_deepsearch_with_pattern(root_dir, pattern):
     path_found = dir_deepsearch(root_dir)
     for elem_path in path_found:
         path_components = os.path.split(elem_path)
-    raise NotImplementedError
+        if re.match(pattern, path_components[-1]) is not None:
+            correct_path.append(elem_path)
+    return correct_path
