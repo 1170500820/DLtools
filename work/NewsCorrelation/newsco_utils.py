@@ -10,7 +10,7 @@ import json
 from tqdm import tqdm
 import os
 import csv
-import newsco_settings
+from work.NewsCorrelation import newsco_settings
 import numpy as np
 
 
@@ -243,10 +243,32 @@ def xlmr_sentence_concat(pieces: List[IntList]):
     for elem_piece in pieces:
         if elem_piece[0] != 0:
             elem_piece.insert(0, 0)
-        if elem_piece[-1] != 1:
+        if elem_piece[-1] != 2:
             elem_piece.append(2)
         modified_pieces.extend(elem_piece)
     return modified_pieces
+
+
+def xlmr_sentence_concat_cza(pieces: List[IntList]):
+    """
+    使用陈仲安的编码方案
+    <s> title1 <s> text1 </s> </s> title2 <s> text2 </s>
+    :param pieces: len = 4, [title1, text1, title2, text2]
+    :return:
+    """
+    # 先删除首位的<s>和</s>
+    clean_pieces = []
+    for elem_piece in pieces:
+        if elem_piece[0] == 0:
+            elem_piece = elem_piece[1:]
+        if elem_piece[-1] == 2:
+            elem_piece = elem_piece[:-1]
+        clean_pieces.append(elem_piece)
+
+    title1, text1, title2, text2 = clean_pieces
+    concatenated = [0] + title1 + [0] + text1 + [2, 2] + title2 + [0] + text2 + [2]
+    return concatenated
+
 
 
 def xlmr_sentence_concat_ndarray(pieces: List[np.ndarray]):
@@ -258,6 +280,30 @@ def xlmr_sentence_concat_ndarray(pieces: List[np.ndarray]):
     intlist_pieces = list(x.astype(np.int).tolist() for x in pieces)
     result = xlmr_sentence_concat(intlist_pieces)
     return np.array(result, dtype=np.int)
+
+
+
+def generate_attention_mask(input_ids: IntList, length: int = newsco_settings.max_seq_length):
+    """
+    为input_ids(list of int)生成一个attention_mask
+    就是全1后面补0
+    :param input_ids:
+    :param length:
+    :return:
+    """
+    mask = [1] * len(input_ids) + [0] * (length - len(input_ids))
+    return mask
+
+
+def pad_input_ids(input_ids: IntList, length: int = newsco_settings.max_seq_length):
+    """
+    将input_ids补齐到某一长度，空余直接补0
+    :param input_ids:
+    :param length:
+    :return:
+    """
+    input_ids = input_ids + [0] * (length - len(input_ids))
+    return input_ids
 
 
 if __name__ == '__main__':
