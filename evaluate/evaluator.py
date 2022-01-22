@@ -718,6 +718,8 @@ class Pearson_Evaluator(BaseEvaluator):
         self.gt_lst = []
 
     def eval_single(self, pred: float, gt: float):
+        pred = float(pred)
+        gt = float(gt)
         self.pred_lst.append(pred)
         self.gt_lst.append(gt)
 
