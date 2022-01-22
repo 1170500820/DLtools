@@ -52,8 +52,9 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
         model_args = []
 
     # 获取要执行的任务类型
-    task = param_dict['task']
-    task_template = task_registry[task]
+    print('constructing task and model from command line...', end=' ... ')
+    task = param_dict['task']  # ['train', 'ex_train', 'predict', ...]
+    task_template = task_registry[task]  # Trainer class, ex_Trainer class, ...
 
     # 接下来制定具体使用的模型文件，import该文件，该文件要求一定含有model_registry
     working_dir = param_dict['working_dir']
@@ -65,16 +66,21 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     #       -- __init__与__call__中的参数（会递归对子模块进行相同的遍历过程，得到的参数全部视为该template的参数）
     #   - 模型文件registry中的args配置列表
     #   - 模型文件所有注册的模块，都按照与task_template相同的方法进行解析
-    if 'args' in working_model.modole_registry:
+
+    if 'args' in working_model.model_registry:
         working_args = working_model.model_registry['args']  # 模型文件中的args参数配置列表
     else:
         working_args = []
     template_args, init_submodules, call_submodules = run_tools.get_template_params_recursive(task_template, working_model.model_registry)  # runner template的所有参数配置，以及子模块
     working_args.extend(template_args)
-    working_params = run_tools.parse_extra_command(working_args, model_args)
+    working_params = run_tools.parse_extra_command(working_args, model_args)  # Dict[str, param value] 从命令行能够获取的参数所解析而成
+    print('finish')
 
     # 根据主参数与任务参数，为Template创建模块
+    print('instantiating task model...', end=' ... ')
     task_model = instantiate_template_from_param_dict(task_template, working_params, working_model.model_registry)
+    print('finish')
+    print('running...')
     run_template_from_param_dict(task_model, working_params, working_model.model_registry)
 
 

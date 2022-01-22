@@ -64,6 +64,10 @@ def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, Str
         """
         sig是使用inspect.signature获取到的一个模块的方法的参数列表
         本方法将sig转化为参数信息的列表，利用该列表可以创建一个arg parser
+
+        忽略self, kwargs, args
+        其中self是__init__与__call__都具有的参数，不考虑
+        如果submodule没有定义__init__，则会解析出其默认参数args与kwargs，这里也直接去掉。
         :param sig:
         :return:
         """
@@ -73,18 +77,41 @@ def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, Str
             if v.annotation == ...:
                 param_model_lst.append(v.name)
             else:
-                if v.name == 'self':
+                if v.name == 'self' or v.name == 'kwargs' or v.name == 'args':
                     continue
+                if hasattr(v, 'default') and v.default is not inspect._empty:
+                    param_type = type(v.default)
+                elif v.annotation is not inspect._empty:
+                    param_type = str
+                else:
+                    param_type = v.annotation
+
+                default_value = None
+                if hasattr(v, 'default') and v.default is not inspect._empty:
+                    default_value = v.default
+
                 param_value_lst.append({
                     'name': '--' + v.name,
                     'dest': v.name,
-                    'type': v.annotation if v.annotation is not inspect._empty else int
+                    'type': param_type,
+                    'default': default_value,
                 })
         return param_value_lst, param_model_lst
+    # print(f'[get]解析{template_class}', end='==')
+    # 首先判断是不是函数
+    if inspect.isfunction(template_class):
+        func_sig = inspect.signature(template_class)
+        func_param_value_lst, func_param_model_lst = get_function_params_from_sig(func_sig)
+        # print(f'函数')
+        # print(f'[get]获取参数:{list(x["name"] for x in func_param_value_lst)}')
+        # print(f'[get]获取子模块:{func_param_model_lst}')
+        return func_param_value_lst, [], func_param_model_lst
 
+    # print(f'模块')
     # 获取模型的自带参数
     if hasattr(template_class, 'param_dict'):
         inner_arg_lst = getattr(template_class, '_arg_lst')
+        # print(f'[get]获取模型自带参数{list(x["name"] for x in inner_arg_lst)}')
     else:
         inner_arg_lst = []
 
@@ -92,6 +119,8 @@ def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, Str
     if hasattr(template_class, '__call__'):
         init_sig = inspect.signature(template_class.__init__)
         init_param_value_lst, init_param_model_lst = get_function_params_from_sig(init_sig)
+        # print(f'[get]获取模型init参数:{list(x["name"] for x in init_param_value_lst)}')
+        # print(f'[get]获取模型init子模块{init_param_model_lst}')
     else:
         init_param_value_lst, init_param_model_lst = [], []
 
@@ -99,6 +128,8 @@ def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, Str
     if hasattr(template_class, '__call__'):
         call_sig = inspect.signature(template_class.__call__)
         call_param_value_lst, call_param_model_lst = get_function_params_from_sig(call_sig)
+        # print(f'[get]获取模型call参数:{list(x["name"] for x in call_param_value_lst)}')
+        # print(f'[get]获取模型call子模块{call_param_model_lst}')
     else:
         call_param_value_lst, call_param_model_lst = [], []
 
@@ -130,6 +161,10 @@ def _get_template_params_without_repeat(
     """
     # 先获取该template的信息
     param_dicts, init_submodules, call_submodules = get_template_params(template_class)
+    # print(f'从{template_class}获取：')
+    # print(f'params:{list(x["name"] for x in param_dicts)}')
+    # print(f'init submodules:{init_submodules}')
+    # print(f'call submoduels:{call_submodules}')
     param_dicts_dest_set = set(list(x['dest'] for x in param_dicts))
     common_submodules = init_submodules + call_submodules
 
@@ -149,8 +184,8 @@ def _get_template_params_without_repeat(
     #  init
     for elem_module in init_submodules:
         elem_module_class = module_registry[elem_module]
+        # print('按照init submodule进行递归探索\n')
         elem_param_dicts, elem_init_submodules, elem_call_submodules = _get_template_params_without_repeat(elem_module_class, submodule_set, module_registry)
-
         # 加入不重复的param
         for elem_param in elem_param_dicts:
             if elem_param['dest'] not in param_dicts_dest_set:
@@ -163,8 +198,8 @@ def _get_template_params_without_repeat(
     #  call
     for elem_module in call_submodules:
         elem_module_class = module_registry[elem_module]
+        # print('按照call submodules进行递归探索\n')
         elem_param_dicts, elem_init_submodules, elem_call_submodules = _get_template_params_without_repeat(elem_module_class, submodule_set, module_registry)
-
         # 加入不重复的param
         for elem_param in elem_param_dicts:
             if elem_param['dest'] not in param_dicts_dest_set:
@@ -351,6 +386,7 @@ def run_instance_with_dict(instance, param_dict):
     for elem_arg in factory_params:
         if elem_arg in param_dict:
             filtered_param_dict[elem_arg] = param_dict[elem_arg]
+    print('[run_instance_with_dict]finished initializing all params and submodules, running task now')
     instance_of_this_class = instance(**filtered_param_dict)
     return instance_of_this_class
 
@@ -360,14 +396,18 @@ def run_template_from_param_dict(template, param_dict: Dict[str, Any], module_re
     param_lst, init_module_lst, call_module_lst = get_template_params_recursive(template.__class__, module_registry)
 
     # 首先初始化每一个子模块
+    print('initializing running essentials...')
     submodule_dict = {}
-    for elem_submodule_name in init_module_lst:
+    for elem_submodule_name in call_module_lst:
+        print(f'initializing {elem_submodule_name}...', end=' ... ')
         submodule_class = module_registry[elem_submodule_name]
         submodule = instantiate_template_from_param_dict(submodule_class, param_dict, module_registry)
         submodule_dict[elem_submodule_name] = submodule
+        print('finishe')
 
     # 然后用子模块和参数运行当前模型
     param_dict.update(submodule_dict)
+    print('running')
     run_instance_with_dict(template, param_dict)
 
 
