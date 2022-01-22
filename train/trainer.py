@@ -28,17 +28,17 @@ class Trainer:
 
     def __call__(
             self,
+            train_val_data: ...,
+            model: ...,
+            loss: ...,
+            evaluator: ...,
             train_loader: DataLoader = None,
             test_loader: DataLoader = None,
-            model: nn.Module = None,
-            optimizers: list = None,
-            lossFunc: nn.Module = None,
-            evaluator: BaseEvaluator = None,
             recorder: BaseRecorder = None,
             total_epoch=20,
             print_info_freq=40,
-            eval_freq_batch=200,
-            eval_freq_epoch=11,
+            eval_freq_batch=50,
+            eval_freq_epoch=1,
             eval_start_epoch=1,
             eval_start_batch=10,
             model_save_epoch=100,
@@ -46,6 +46,10 @@ class Trainer:
             grad_acc_step=1,
             do_eval=True,
             use_cuda=True):
+        if train_val_data is not None:
+            train_loader, test_loader = train_val_data
+        optimizers = model.get_optimizers()
+        lossFunc = loss
         print(f'Training Settings:'
               f'\n\ttotal_epoch:{total_epoch or "None"}'
               f'\n\tprint_info_freq:{print_info_freq or "None"}'
