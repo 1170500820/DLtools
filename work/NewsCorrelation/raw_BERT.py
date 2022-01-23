@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from transformers import BertModel, AutoTokenizer, AutoModel
+from itertools import chain
+import random
 
 from type_def import *
 from utils.data import SimpleDataset
@@ -11,6 +13,7 @@ from work.NewsCorrelation import newsco_settings
 from work.NewsCorrelation import newsco_utils
 from models.Loss.regular_loss import Scalar_Loss
 from evaluate.evaluator import Pearson_Evaluator
+from analysis.recorder import NaiveRecorder
 from utils import batch_tool, tools, tokenize_tools
 
 
@@ -26,17 +29,24 @@ class BERT_for_Sentence_Similarity(nn.Module):
         self.plm_lr = plm_lr
         self.bert = AutoModel.from_pretrained(pretrain_path)
         self.hidden = self.bert.config.hidden_size
-        self.linear = nn.Linear(self.hidden, 1)
+
+        self.layer_size = 200
+        self.linear1 = nn.Linear(self.hidden, self.layer_size)
+        self.relu = nn.LeakyReLU(inplace=True)
+        self.linear2 = nn.Linear(self.layer_size, 1)
 
     def init_weights(self):
-        torch.nn.init.xavier_uniform_(self.linear.weight)
-        self.linear.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.linear1.weight)
+        self.linear1.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.linear2.weight)
+        self.linear2.bias.data.fill_(0)
 
     def get_optimizers(self):
         bert_params = self.bert.parameters()
-        linear_params = self.linear.parameters()
+        linear1_params = self.linear1.parameters()
+        linear2_params = self.linear2.parameters()
         bert_optimizer = AdamW(params=bert_params, lr=self.plm_lr)
-        linear_optimizer = AdamW(params=linear_params, lr=self.linear_lr)
+        linear_optimizer = AdamW(params=chain(linear1_params, linear2_params), lr=self.linear_lr)
         return [bert_optimizer, linear_optimizer]
 
     def forward(self,
@@ -49,9 +59,11 @@ class BERT_for_Sentence_Similarity(nn.Module):
         :return:
         """
         bert_output = self.bert(input_ids, attention_mask)
-        pooled_output = bert_output[1]  # (bsz, hidden_size)
-        linear_output = self.linear(pooled_output)  # (bsz, 1)
-        relu_output = F.relu(linear_output)  # (bsz, 1)
+        hidden_output = bert_output[0]  # (bsz, seq_l, hidden_size)
+        hidden_mean = torch.mean(hidden_output, dim=1)  # (bsz, hidden_size)
+        linear_output = self.linear1(hidden_mean)  # (bsz, layer)
+        relu_output = self.relu(linear_output)  # (bsz, layer)
+        relu_output = self.linear2(relu_output)  # (bsz, 1)
         if self.training:
             return {
                 "output": relu_output
@@ -63,6 +75,28 @@ class BERT_for_Sentence_Similarity(nn.Module):
             }
 
 
+class Pearson_Loss(nn.Module):
+    """
+    为了pearson系数优化的loss
+    """
+    def __init__(self, var_weight: float = 0.3):
+        super(Pearson_Loss, self).__init__()
+        self.var_weight = var_weight
+        self.scalar_loss = Scalar_Loss()
+
+    def forward(self, output: torch.Tensor, label: torch.Tensor):
+        """
+
+        :param output:
+        :param label:
+        :return:
+        """
+        scalarl = self.scalar_loss(output, label)
+        var_loss = F.mse_loss(torch.var(output), torch.var(label))
+        loss = (1 - self.var_weight) * scalarl + self.var_weight * var_loss
+        return loss
+
+
 def dataset_factory(
         crawl_dir: str = newsco_settings.crawl_file_dir,
         newspair_file: str = newsco_settings.newspair_file,
@@ -70,6 +104,7 @@ def dataset_factory(
         bsz: int = newsco_settings.bsz):
     print('[dataset_factory]building samples...', end=' ... ')
     samples = newsco_utils.build_news_samples(crawl_dir, newspair_file)
+    random.shuffle(samples)
     # language_pair, id1, id2, crawl1, crawl2, Overall, ...
 
     # 划分训练、评价
@@ -192,9 +227,10 @@ def eval_dataset_factory(samples: List[Dict[str, Any]], pretrain_path: str):
 model_registry = {
     "model": BERT_for_Sentence_Similarity,
     "evaluator": Pearson_Evaluator,
-    "loss": Scalar_Loss,
+    "loss": Pearson_Loss,
     "train_data": train_dataset_factory,
     "val_data": eval_dataset_factory,
-    'train_val_data': dataset_factory
+    'train_val_data': dataset_factory,
+    'recorder': NaiveRecorder
 }
 
