@@ -4,12 +4,15 @@ from type_def import *
 import funcy as fc
 import sys
 import importlib
+import torch
+import torch.distributed as dist
 import inspect
 
 from utils import run_tools
 import settings
 from settings import task_registry
 from utils.run_tools import *
+
 
 
 def readCommand(argv) -> Dict[str, Any]:
@@ -30,6 +33,10 @@ def readCommand(argv) -> Dict[str, Any]:
     # 然后指定模块的目录
     parser.add_argument('--model', dest='working_dir', type=str, help='挂载的模型的路径', default='work/model.py')
 
+    # 单机多卡训练所需
+    parser.add_argument('--local_rank', default=-1, type=int,
+                        help='node rank for distributed training')
+
     # 获取参数
     options = parser.parse_args(argv)
     #   options的属性中，不含下划线的都是读取到的
@@ -48,6 +55,13 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     :param model_args: 与模型相关的参数
     :return:
     """
+    # 如果local_rank不为-1，说明使用单机多卡的训练方式。此时先初始化环境
+    if param_dict['local_rank'] != -1:
+        torch.cuda.set_device(param_dict['local_rank'])
+        torch.distributed.init_process_group(
+            'nccl',
+            init_method='env://'
+        )
     if model_args is None:
         model_args = []
 
