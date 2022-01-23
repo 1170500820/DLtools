@@ -317,6 +317,8 @@ def instantiate_class_with_dict(any_class, param_dict):
     :return:
     """
     factory_params = list(inspect.getfullargspec(any_class.__init__)[0])
+    if inspect.isfunction(any_class):
+        factory_params = list(inspect.getfullargspec(any_class)[0])
     if factory_params[0] == 'self':
         factory_params = factory_params[1:]
 
@@ -403,7 +405,7 @@ def run_template_from_param_dict(template, param_dict: Dict[str, Any], module_re
         submodule_class = module_registry[elem_submodule_name]
         submodule = instantiate_template_from_param_dict(submodule_class, param_dict, module_registry)
         submodule_dict[elem_submodule_name] = submodule
-        print('finishe')
+        print('finish')
 
     # 然后用子模块和参数运行当前模型
     param_dict.update(submodule_dict)
