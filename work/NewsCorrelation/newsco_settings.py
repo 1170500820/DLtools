@@ -23,6 +23,6 @@ summary_len = 50
 
 
 # 训练参数
-linear_lr = 1e-4
-plm_lr = 2e-5
+linear_lr = 2e-4
+plm_lr = 1e-5
 
