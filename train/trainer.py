@@ -10,11 +10,14 @@ from torch.utils.data import DataLoader
 import pickle
 
 
-def convert_to_cuda(input_dict: dict):
+def convert_to_cuda(input_dict: dict, multi: bool = False):
     result_dict = {}
     for k, v in input_dict.items():
         if isinstance(v, torch.Tensor):
-            result_dict[k] = v.cuda()
+            if multi:
+                result_dict[k] = v.cuda(non_blocking=True)
+            else:
+                result_dict[k] = v.cuda()
         else:
             result_dict[k] = v
     return result_dict
@@ -32,12 +35,13 @@ class Trainer:
             model: ...,
             loss: ...,
             evaluator: ...,
+            recorder: ...,
+            local_rank: int = -1,
             train_loader: DataLoader = None,
             test_loader: DataLoader = None,
-            recorder: BaseRecorder = None,
-            total_epoch=20,
-            print_info_freq=40,
-            eval_freq_batch=50,
+            total_epoch=40,
+            print_info_freq=50,
+            eval_freq_batch=250,
             eval_freq_epoch=1,
             eval_start_epoch=1,
             eval_start_batch=10,
@@ -81,8 +85,12 @@ class Trainer:
             "model_save_path": str(model_save_path),
             "grad_acc_step": str(grad_acc_step)
         }
-        if use_cuda:
+        if local_rank  != -1:
+            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
+        elif use_cuda:
             model.cuda()
+        else:  # 可能是想用gpu训练吧
+            pass
 
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
