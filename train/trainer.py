@@ -27,7 +27,11 @@ class Trainer:
     """
     一个通用的训练流程
     需要提供训练所需的组件
+
+    加入了对单机多卡的支持：
+    - 所以eval、record与log输出只会在主卡进行
     """
+    main_local_rank = 0
 
     def __call__(
             self,
@@ -68,25 +72,10 @@ class Trainer:
               f'\n\ttrain data cnt:{len(train_loader.dataset)}'
               # f'\n\tval data cnt:{len(test_loader.dataset or [])}'
               )
-        train_param_record = {
-            "train_loader": str(train_loader),
-            "test_loader": str(test_loader),
-            "model": str(model),
-            "optimizers": str(optimizers),
-            "lossFunc": str(lossFunc),
-            "evaluator": str(evaluator),
-            "recorder": str(recorder),
-            "total_epoch": str(total_epoch),
-            "print_info_freq": str(print_info_freq),
-            "eval_freq_batch": str(eval_freq_batch),
-            'eval_freq_epoch': str(eval_start_epoch),
-            "eval_start_epoch": str(eval_start_epoch),
-            "model_save_epoch": str(model_save_epoch),
-            "model_save_path": str(model_save_path),
-            "grad_acc_step": str(grad_acc_step)
-        }
-        if local_rank  != -1:
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
+        if local_rank != -1:
+            device = torch.device('cuda', local_rank)
+            model.to(device)
+            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
         elif use_cuda:
             model.cuda()
         else:  # 可能是想用gpu训练吧
@@ -95,25 +84,25 @@ class Trainer:
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
             for i_batch, train_sample in enumerate(iter(train_loader)):
-                if recorder:
+                if recorder and local_rank in [-1, self.main_local_rank]:
                     recorder.train_checkin((i_epoch, i_batch))
                 train_input, train_gt = train_sample
-                if recorder:
+                if recorder and local_rank in [-1, self.main_local_rank]:
                     recorder.record_before_forward(train_input=train_input, train_gt=train_gt, full_model=model)
                 if use_cuda:
                     train_input, train_gt = convert_to_cuda(train_input), convert_to_cuda(train_gt)
                 model_output = model(**train_input)
-                if recorder:
+                if recorder and local_rank in [-1, self.main_local_rank]:
                     recorder.record_after_forward(model_output=model_output, full_model=model)
                     recorder.record_before_backward(loss_func=lossFunc)
                 loss = lossFunc(**model_output, **train_gt)
                 loss = loss / grad_acc_step
                 loss.backward()
-                if recorder:
+                if recorder and local_rank in [-1, self.main_local_rank]:
                     recorder.record_after_backward(loss_output=loss, loss_func=lossFunc)
                     recorder.train_checkpoint()
                 epoch_avg_loss += float(loss)
-                if (i_batch + 1) % print_info_freq == 0:
+                if (i_batch + 1) % print_info_freq == 0 and local_rank in [-1, self.main_local_rank]:
                     print(
                         f'epoch {i_epoch + 1} |batch {i_batch + 1} |loss:{loss.float():<8.5f} |avg:{epoch_avg_loss / (i_batch + 1):<8.5f}|')
                 if (i_batch + 1) % grad_acc_step == 0:
@@ -125,7 +114,7 @@ class Trainer:
                     if ((i_batch + 1) % eval_freq_batch == 0
                         and (i_epoch + 1) >= eval_start_epoch) \
                             and ((i_epoch + 1) % eval_freq_epoch == 0) \
-                            and (((i_epoch + 1) < eval_start_epoch) or ((i_batch + 1) >= eval_start_batch)):
+                            and (((i_epoch + 1) < eval_start_epoch) or ((i_batch + 1) >= eval_start_batch)) and local_rank in [-1, self.main_local_rank]:
                         # evaluate
                         model.eval()
                         if recorder:
@@ -148,13 +137,13 @@ class Trainer:
                         if recorder:
                             recorder.eval_checkpoint()
             model.zero_grad()
-            if (i_epoch + 1) % model_save_epoch == 0:
+            if (i_epoch + 1) % model_save_epoch == 0 and local_rank in [-1, self.main_local_rank]:
                 print(f'saving model as [{model_save_path}/save-{i_epoch + 1}.pth]...')
                 # torch.save(model.state_dict(), model_save_name)
                 torch.save(model.state_dict(), model_save_path + '/checkpoint/' + f'{model.__class__.__name__}-save-{i_epoch + 1}.pth')
                 pickle.dump(model.init_params, open(model_save_path + '/checkpoint/' + f'{model.__class__.__name__}-init_param.pk', 'wb'))
                 print(f'finished saving')
-        if recorder:
+        if recorder and local_rank in [-1, self.main_local_rank]:
             recorder.checkpoint()
 
 
