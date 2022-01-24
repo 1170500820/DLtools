@@ -121,7 +121,7 @@ class NaiveRecorder(BaseRecorder):
         - 每次直接输出新的覆盖旧的，还是每次在旧的上面增添
 
     """
-    def __init__(self, save_path):
+    def __init__(self, save_path: str = '.'):
         self.filename = '_'.join(list(map(str, list(time.localtime())[:6])))
         self.save_name = save_path + '/' + self.filename
         self.evaluate_cnt = 0
