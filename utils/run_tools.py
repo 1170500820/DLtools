@@ -398,18 +398,18 @@ def run_template_from_param_dict(template, param_dict: Dict[str, Any], module_re
     param_lst, init_module_lst, call_module_lst = get_template_params_recursive(template.__class__, module_registry)
 
     # 首先初始化每一个子模块
-    print('initializing running essentials...')
+    # print('initializing running essentials...')
     submodule_dict = {}
     for elem_submodule_name in call_module_lst:
-        print(f'initializing {elem_submodule_name}...', end=' ... ')
+        # print(f'initializing {elem_submodule_name}...', end=' ... ')
         submodule_class = module_registry[elem_submodule_name]
         submodule = instantiate_template_from_param_dict(submodule_class, param_dict, module_registry)
         submodule_dict[elem_submodule_name] = submodule
-        print('finish')
+        # print('finish')
 
     # 然后用子模块和参数运行当前模型
     param_dict.update(submodule_dict)
-    print('running')
+    # print('running')
     run_instance_with_dict(template, param_dict)
 
 
