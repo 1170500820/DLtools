@@ -66,7 +66,8 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
         model_args = []
 
     # 获取要执行的任务类型
-    print('constructing task and model from command line...', end=' ... ')
+    if param_dict['local_rank'] in [-1, 0]:
+        print('constructing task and model from command line...', end=' ... ')
     task = param_dict['task']  # ['train', 'ex_train', 'predict', ...]
     task_template = task_registry[task]  # Trainer class, ex_Trainer class, ...
 
@@ -88,13 +89,17 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     template_args, init_submodules, call_submodules = run_tools.get_template_params_recursive(task_template, working_model.model_registry)  # runner template的所有参数配置，以及子模块
     working_args.extend(template_args)
     working_params = run_tools.parse_extra_command(working_args, model_args)  # Dict[str, param value] 从命令行能够获取的参数所解析而成
-    print('finish')
+    working_params['local_rank'] = param_dict['local_rank']
+    if param_dict['local_rank'] in [-1, 0]:
+        print('finish')
 
     # 根据主参数与任务参数，为Template创建模块
-    print('instantiating task model...', end=' ... ')
+    if param_dict['local_rank'] in [-1, 0]:
+        print('instantiating task model...', end=' ... ')
     task_model = instantiate_template_from_param_dict(task_template, working_params, working_model.model_registry)
-    print('finish')
-    print('running...')
+    if param_dict['local_rank'] in [-1, 0]:
+        print('finish')
+    print('running...' + (f'{param_dict["local_rank"]}' if param_dict["local_rank"] != -1 else ''))
     run_template_from_param_dict(task_model, working_params, working_model.model_registry)
 
 
