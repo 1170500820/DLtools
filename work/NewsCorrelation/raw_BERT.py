@@ -6,6 +6,8 @@ from torch.optim import AdamW
 from transformers import BertModel, AutoTokenizer, AutoModel
 from itertools import chain
 import random
+from torch.utils.data.distributed import DistributedSampler
+from itertools import permutations, combinations
 
 from type_def import *
 from utils.data import SimpleDataset
@@ -97,11 +99,85 @@ class Pearson_Loss(nn.Module):
         return loss
 
 
+def news_triplet_loss(output_triplet, label_triplet):
+    o_s, o_m, o_e = output_triplet
+    l_s, l_m, l_e = label_triplet
+    start_distance = F.mse_loss(o_m - o_s, l_m - l_s)
+    end_distance = F.mse_loss(o_e - o_m, l_e - l_m)
+    return start_distance + end_distance
+
+
+class NewsTriplet_Loss(nn.Module):
+    """
+    对于传入的batch，在batch之内搜索三元组，并
+
+    - 对于单机多卡模式不兼容，因为需要在batch之内寻找三元组
+    针对于semeval问题的TripletLoss需不需要做一些修改？
+    """
+    def __init__(self, triplet_maximum: int = 5):
+        """
+
+        :param triplet_maximum: 在batch中搜索triplet的最大数目
+        """
+        super(NewsTriplet_Loss, self).__init__()
+        self.triplet_maximum = triplet_maximum
+        pass
+
+    def forward(self, output: torch.Tensor, label: torch.Tensor):
+        """
+
+        :param output: (bsz, 1)
+        :param label: (bsz, 1)
+        :return:
+        """
+        bsz = output.size(0)
+        if bsz < 3:
+            raise Exception(f'[NewsTripletLoss]batch大小必须>=3!输入大小为:{bsz}')
+
+        # 生成所有的三元组排列，打乱，并选取triplet_maximum个
+        triplets = list(combinations(list(range(bsz)), 3))
+        random.shuffle(triplets)
+        triplets = triplets[:self.triplet_maximum]
+
+        triple_loss = 0
+        for triplet in triplets:
+            triplet_index = torch.LongTensor(triplet)  # () of 3 element
+            if output.is_cuda:
+                triplet_index = triplet_index.cuda()
+            o_s, o_m, o_e = output.index_select(0, triplet_index)
+            l_s, l_m, l_e = label.index_select(0, triplet_index)
+            cur_triple_loss = news_triplet_loss((o_s, o_m, o_e), (l_s, l_m, l_e))
+            triple_loss += cur_triple_loss
+        return triple_loss
+
+
+class RawBERT_Loss(nn.Module):
+    def __init__(self, tl_weight: float = 0.2, tl_max: int = 5):
+        super(RawBERT_Loss, self).__init__()
+        self.tl_weight = tl_weight
+        self.scalar_loss = Scalar_Loss()
+        self.triplet_loss = NewsTriplet_Loss(triplet_maximum=tl_max)
+
+    def forward(self, output: torch.Tensor, label: torch.Tensor):
+        """
+
+        :param output: (bsz, 1)
+        :param label: (bsz, 1)
+        :return:
+        """
+        scalarloss = self.scalar_loss(output, label)
+        tripleloss = self.triplet_loss(output, label)
+        loss = (1 - self.tl_weight) * scalarloss + self.tl_weight * tripleloss
+        return loss
+
+
 def dataset_factory(
         crawl_dir: str = newsco_settings.crawl_file_dir,
         newspair_file: str = newsco_settings.newspair_file,
         pretrain_path: str = newsco_settings.pretrain_path,
-        bsz: int = newsco_settings.bsz):
+        bsz: int = newsco_settings.bsz,
+        local_rank: int = -1):
+    print(f'get local rank: {local_rank}')
     print('[dataset_factory]building samples...', end=' ... ')
     samples = newsco_utils.build_news_samples(crawl_dir, newspair_file)
     random.shuffle(samples)
@@ -112,12 +188,15 @@ def dataset_factory(
     print('finish')
 
     print('[dataset_factory]preparing data for training...', end=' ... ')
-    train_dataloader = train_dataset_factory(train_samples, pretrain_path, bsz)
+    train_dataloader = train_dataset_factory(train_samples, pretrain_path, bsz, local_rank=local_rank)
     print('finish')
 
-    print('[dataset_factory]preparing data for evaluating...', end=' ... ')
-    val_dataloader = eval_dataset_factory(val_samples, pretrain_path)
-    print('finish')
+    if local_rank in [-1, 0]:
+        print('[dataset_factory]preparing data for evaluating...', end=' ... ')
+        val_dataloader = eval_dataset_factory(val_samples, pretrain_path)
+        print('finish')
+    else:
+        val_dataloader = None
 
     return train_dataloader, val_dataloader
 
@@ -167,7 +246,7 @@ def convert_parsed_sample_to_model_sample(samples, plm_path) -> List[Dict[str, A
     return train_samples
 
 
-def train_dataset_factory(samples: List[Dict[str, Any]], pretrain_path: str, bsz: int):
+def train_dataset_factory(samples: List[Dict[str, Any]], pretrain_path: str, bsz: int, local_rank: int):
     """
 
     :param samples:
@@ -176,6 +255,8 @@ def train_dataset_factory(samples: List[Dict[str, Any]], pretrain_path: str, bsz
     # 首先提取出train所需的数据
     train_samples = convert_parsed_sample_to_model_sample(samples, pretrain_path)
     train_dataset = SimpleDataset(train_samples)
+    if local_rank != -1:
+        train_dataset_sampler = DistributedSampler(train_dataset, shuffle=True)
 
     def collate_fn(lst):
         """
@@ -197,7 +278,10 @@ def train_dataset_factory(samples: List[Dict[str, Any]], pretrain_path: str, bsz
         }, {
             "label": label
         }
-    train_dataloader = DataLoader(train_dataset, batch_size=bsz, shuffle=True, collate_fn=collate_fn)
+    if local_rank == -1:
+        train_dataloader = DataLoader(train_dataset, batch_size=bsz, shuffle=True, collate_fn=collate_fn)
+    else:
+        train_dataloader = DataLoader(train_dataset, batch_size=bsz, collate_fn=collate_fn, sampler=train_dataset_sampler)
     return train_dataloader
 
 
@@ -227,7 +311,7 @@ def eval_dataset_factory(samples: List[Dict[str, Any]], pretrain_path: str):
 model_registry = {
     "model": BERT_for_Sentence_Similarity,
     "evaluator": Pearson_Evaluator,
-    "loss": Pearson_Loss,
+    "loss": RawBERT_Loss,
     "train_data": train_dataset_factory,
     "val_data": eval_dataset_factory,
     'train_val_data': dataset_factory,
