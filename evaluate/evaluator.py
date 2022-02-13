@@ -672,6 +672,8 @@ def cal_pccs(x, y):
     :param y: Variable 2
     :return: pccs
     """
+    x = np.array(x)
+    y = np.array(y)
     n = len(x)
     sum_xy = np.sum(np.sum(x*y))
     sum_x = np.sum(np.sum(x))
@@ -731,3 +733,86 @@ class Pearson_Evaluator(BaseEvaluator):
         return {
             "pearson": pearson
         }
+
+
+# 正则化方法
+
+def l1_regularizer(model, lambda_l1=5e-5):
+    l1_loss = 0
+    for model_param_name, model_param_value in model.named_parameters():
+        if model_param_name.endswith('weight'):
+            l1_loss += lambda_l1 + model_param_value.abs().sum()
+    return l1_loss
+
+
+def l2_regularizer(model, lambda_l2=5e-5):
+    l2_loss = 0
+    for model_param_name, model_param_value in model.named_parameters():
+        if model_param_name.endswith('weight'):
+            l2_loss += lambda_l2 + torch.sum(model_param_value * model_param_value)
+    return l2_loss
+
+
+def l1_l2_regularizer(model, lambda_l1=5e-5, lambda_l2=5e-5):
+    l1_loss = l1_regularizer(model, lambda_l1)
+    l2_loss = l2_regularizer(model, lambda_l2)
+    return l1_loss + l2_loss
+
+
+def median_relative_square_loss(label: Iterable[float], pred: Iterable[float]):
+    """
+    计算mRSE error
+    :param label:
+    :param pred:
+    :return:
+    """
+    label_np = np.array(label)
+    pred_np = np.array(pred)
+    mean_t = np.median(label_np)
+    agg_label = np.sum((label_np - mean_t) ** 2)
+    agg_pred = np.sum((pred_np - label_np) ** 2)
+    result = float(agg_pred / agg_label)
+    return result
+
+
+def mean_relative_square_loss(label: Iterable[float], pred: Iterable[float]):
+    """
+    计算MRSE error
+    https://towardsdatascience.com/ways-to-evaluate-regression-models-77a3ff45ba70#:~:text=out%20than%20Data%202-,Relative%20Squared%20Error%20(RSE),-The%20relative%20squared
+    :param label:
+    :param pred:
+    :return:
+    """
+    label_np = np.array(label)
+    pred_np = np.array(pred)
+    mean_t = np.mean(label_np)
+    agg_label = np.sum((label_np - mean_t) ** 2)
+    agg_pred = np.sum((pred_np - label_np) ** 2)
+    result = float(agg_pred / agg_label)
+    return result
+
+
+def mean_squared_logarithmic_error(label: Iterable[float], pred: Iterable[float]):
+    """
+    msle loss
+    :param label:
+    :param pred:
+    :return:
+    """
+    label_np = np.array(label)
+    pred_np = np.array(pred)
+    result = np.mean((np.log(label_np + 1) - np.log(pred_np + 1)) ** 2)
+    return result
+
+
+def median_squared_logarithmic_error(label: Iterable[float], pred: Iterable[float]):
+    """
+    msle loss
+    :param label:
+    :param pred:
+    :return:
+    """
+    label_np = np.array(label)
+    pred_np = np.array(pred)
+    result = np.median((np.log(label_np + 1) - np.log(pred_np + 1)) ** 2)
+    return result
