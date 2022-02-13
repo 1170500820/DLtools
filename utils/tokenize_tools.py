@@ -68,6 +68,12 @@ class xlmr_tokenizer:
         """
         results = []
         for elem_input in input_lst:
+            # 一种简单粗暴的方法，对于较长文本，取其中间部分
+            elem_tokens = elem_input.split(' ')
+            if len(elem_tokens) > self.max_length:
+                truncate_length = (len(elem_tokens) - self.max_length) // 2
+                elem_tokens = elem_tokens[2 * truncate_length:]
+                elem_input = ' '.join(elem_tokens)
             tokenized = self.tokenizer(
                 elem_input,
                 padding=False,
@@ -79,6 +85,9 @@ class xlmr_tokenizer:
             tokenized['token'] = token_seq
             results.append(dict(tokenized))
         return results
+
+
+
 
 
 def tokenIndex_to_charIndex(token_index: int, offset_mapping: OffsetMapping, right=False) -> int:
