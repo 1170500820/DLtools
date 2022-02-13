@@ -26,3 +26,5 @@ summary_len = 50
 linear_lr = 2e-4
 plm_lr = 1e-5
 
+# 特殊参数
+two_tower = True

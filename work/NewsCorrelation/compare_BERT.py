@@ -30,10 +30,10 @@ class BERT_compare(nn.Module):
         self.plm_path = pretrain_path
         self.linear_lr = linear_lr
         self.plm_lr = plm_lr
-        self.hidden = self.bert.config.hidden_size
 
         self.bert_embed1 = BERT_for_Sentence_Similarity(self.plm_path, self.linear_lr, self.plm_lr)
         self.bert_embed2 = BERT_for_Sentence_Similarity(self.plm_path, self.linear_lr, self.plm_lr)
+        self.hidden = self.bert_embed1.bert.config.hidden_size
 
     def get_optimizers(self):
         bert1_optimizers = self.bert_embed1.get_optimizers()
@@ -59,11 +59,11 @@ class BERT_compare(nn.Module):
 
         if self.training:
             return {
-                'sim1': sim1,
-                'sim2': sim2
+                'sim1': sim1['output'],
+                'sim2': sim2['output']
             }
         else:
-            pred = float(sim1)  # 默认选第一个的输出
+            pred = float(sim1['pred'])  # 默认选第一个的输出
             return {
                 "pred": pred
             }
@@ -96,20 +96,25 @@ class Compare_Loss(nn.Module):
         sim_loss1 = self.pearsonloss(sim1, label1)
         sim_loss2 = self.pearsonloss(sim2, label2)
 
-        # 如果sim1与sim2的大小关系与label1、label2相同
-        if label1 == label2:
-            gap_loss = F.mse_loss(sim1, sim2)
-        elif (sim1 > sim2 and label1 > label2) or (sim1 < sim2 and label1 < label2):
-            gap_loss = F.mse_loss(sim1 - sim2, self.ref * (label1 - label2))
-        else:  # 否则
-            if sim1 > sim2:
-                gap_loss = 2 * F.mse_loss(sim2 - sim1, self.ref)
-            elif sim1 == sim2:
-                gap_loss = 0
-            else:
-                gap_loss = 2 * F.mse_loss(sim1 - sim2, self.ref)
+        bsz = sim1.size(0)
+        total_gap_loss = 0
+        for elem_batch in range(bsz):
+            bsim1, bsim2, blabel1, blabel2 = sim1[elem_batch], sim2[elem_batch], label1[elem_batch], label2[elem_batch]
+            # 如果sim1与sim2的大小关系与label1、label2相同
+            if blabel1 == blabel2:
+                gap_loss = F.mse_loss(bsim1, bsim2)
+            elif (float(bsim1) > float(bsim2) and blabel1 > blabel2) or (float(bsim1) < float(bsim2) and blabel1 < blabel2):
+                gap_loss = F.mse_loss(bsim1 - bsim2, self.ref * (blabel1 - blabel2))
+            else:  # 否则
+                if float(bsim1) > float(bsim2):
+                    gap_loss = 2 * F.mse_loss(bsim2 - bsim1, self.ref)
+                elif float(bsim1) == float(bsim2):
+                    gap_loss = 0
+                else:
+                    gap_loss = 2 * F.mse_loss(bsim1 - bsim2, self.ref)
+            total_gap_loss += gap_loss
+        loss = (1 - self.gap_weight) * (sim_loss1 + sim_loss2) + self.gap_weight * total_gap_loss
 
-        loss = (1 - self.gap_weight) * (sim_loss1 + sim_loss2) + self.gap_weight * gap_loss
         return loss
 
 
@@ -117,23 +122,32 @@ def dataset_factory(
         crawl_dir: str = newsco_settings.crawl_file_dir,
         newspair_file: str = newsco_settings.newspair_file,
         pretrain_path: str = newsco_settings.pretrain_path,
-        bsz: int = newsco_settings.bsz):
-    print('[dataset_factory]building samples...', end=' ... ')
+        bsz: int = newsco_settings.bsz,
+        local_rank: int = -1):
+    print('get local rank ' + str(local_rank))
+    if local_rank in [0, -1]:
+        print('[dataset_factory]building samples...', end=' ... ')
     samples = newsco_utils.build_news_samples(crawl_dir, newspair_file)
     random.shuffle(samples)
     # language_pair, id1, id2, crawl1, crawl2, Overall, ...
 
     # 划分训练、评价
     train_samples, val_samples = batch_tool.train_val_split(samples, newsco_settings.train_ratio)
-    print('finish')
+    if local_rank in [0, -1]:
+        print('finish')
 
-    print('[dataset_factory]preparing data for training...', end=' ... ')
+    if local_rank in [0, -1]:
+        print('[dataset_factory]preparing data for training...', end=' ... ')
     train_dataloader = train_dataset_factory(train_samples, pretrain_path, bsz)
-    print('finish')
+    if local_rank in [0, -1]:
+        print('finish')
 
-    print('[dataset_factory]preparing data for evaluating...', end=' ... ')
-    val_dataloader = eval_dataset_factory(val_samples, pretrain_path)
-    print('finish')
+    if local_rank in [0, -1]:
+        print('[dataset_factory]preparing data for evaluating...', end=' ... ')
+        val_dataloader = eval_dataset_factory(val_samples, pretrain_path)
+        print('finish')
+    else:  # 非主卡上不需要eval数据
+        val_dataloader = None
 
     return train_dataloader, val_dataloader
 
@@ -168,8 +182,9 @@ def train_dataset_factory(samples: List[Dict[str, Any]], pretrain_path: str = ne
             'label2': label2
         }
 
-    train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=bsz, collate_fn=collate_fn, sampler=train_dataset_sampler)
+    train_dataloader = DataLoader(train_dataset, batch_size=bsz, collate_fn=collate_fn, sampler=train_dataset_sampler)
     return train_dataloader
+
 
 model_registry = {
     "model": BERT_compare,

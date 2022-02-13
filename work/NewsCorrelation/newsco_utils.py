@@ -2,8 +2,11 @@
 SemEval 新闻相似度任务
 通用工具
 """
-
-
+import sys
+sys.path.append('../..')
+sys.path.append('..')
+sys.path.append('../../')
+import random
 from type_def import *
 from utils import tools, dir_tools
 import json
@@ -12,6 +15,7 @@ import os
 import csv
 from work.NewsCorrelation import newsco_settings
 import numpy as np
+from utils.stanza_tools import stanza_ner_multilingual
 
 
 """
@@ -107,6 +111,7 @@ def load_news_pair_csv(newspair_file: str):
     """
     读取新闻配对csv文件，读取其中的id, language, url, scores
     返回一个List of dict
+        - index （数据的位置）
         - lang1
         - lang2
         - id1
@@ -127,9 +132,10 @@ def load_news_pair_csv(newspair_file: str):
     results = []
     with open(newspair_file, newline='') as csvfile:
         reader = csv.DictReader(csvfile)
-        for row in reader:
+        for i, row in enumerate(reader):
             pair_id = row['pair_id'].split('_')
             filtered_row = {
+                "index": i,
                 "lang1": row['url1_lang'],
                 "lang2": row['url2_lang'],
                 'id1': pair_id[0],
@@ -144,6 +150,23 @@ def load_news_pair_csv(newspair_file: str):
     return results
 
 
+def dicts2csv(dicts: List[dict], filename: str):
+    """
+    将一组dict写入到csv文件当中
+    :param dicts: list of dict，key值均相同
+    :param filename: 要写入的文件的名字，不含后缀名
+    :return:
+    """
+    if len(dicts) == 0:
+        return
+    fieldnames = list(dicts[0].keys())
+    with open(filename + '.csv', 'w', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        writer.writerows(dicts)
+
+
 def build_data_samples(id2crawled: Dict[str, Any], newspair: List[Dict[str, Any]]):
     """
     组装出训练sample
@@ -153,25 +176,26 @@ def build_data_samples(id2crawled: Dict[str, Any], newspair: List[Dict[str, Any]
     :return:
     """
     built_lst = []
-    for elem in newspair:
+    for lineidx, elem in enumerate(newspair):
         lang_pair = elem['lang1'] + '-' + elem['lang2']
         id1, id2 = elem['id1'], elem['id2']
         if id1 not in id2crawled or id2 not in id2crawled:
             continue
         crawl1, crawl2 = id2crawled[id1], id2crawled[id2]
         built_dict = {
+            'index': elem['index'],
             'language_pair': lang_pair,
             "id1": id1,
             "id2": id2,
             'crawl1': crawl1,
             "crawl2": crawl2,
-            'Geography': elem['Geography'],
-            'Entities': elem['Entities'],
-            'Time': elem['Time'],
-            'Narrative': elem['Narrative'],
-            'Overall': elem['Overall'],
-            'Style': elem['Style'],
-            'Tone': elem['Tone']
+            'Geography': elem['Geography'] if 'Geography' in elem else None,
+            'Entities': elem['Entities'] if 'Entities' in elem else None,
+            'Time': elem['Time'] if 'Time' in elem else None,
+            'Narrative': elem['Narrative'] if 'Narrative' in elem else None,
+            'Overall': elem['Overall'] if 'Overall' in elem else None,
+            'Style': elem['Style'] if 'Style' in elem else None,
+            'Tone': elem['Tone'] if 'Tone' in elem else None
         }
         built_lst.append(built_dict)
     return built_lst
@@ -270,7 +294,6 @@ def xlmr_sentence_concat_cza(pieces: List[IntList]):
     return concatenated
 
 
-
 def xlmr_sentence_concat_ndarray(pieces: List[np.ndarray]):
     """
     处理ndarray的情形
@@ -280,7 +303,6 @@ def xlmr_sentence_concat_ndarray(pieces: List[np.ndarray]):
     intlist_pieces = list(x.astype(np.int).tolist() for x in pieces)
     result = xlmr_sentence_concat(intlist_pieces)
     return np.array(result, dtype=np.int)
-
 
 
 def generate_attention_mask(input_ids: IntList, length: int = newsco_settings.max_seq_length):
@@ -306,8 +328,90 @@ def pad_input_ids(input_ids: IntList, length: int = newsco_settings.max_seq_leng
     return input_ids
 
 
+def kfold_generator(
+        k: int = 10,
+        news_pair_file_path: str = 'data/NLP/news_sim/data/semeval-2022_task8_train-data_batch.csv',
+        output_dir: str = 'data/NLP/news_sim/kfold/',
+        generate_eval: bool = True):
+    """
+    输入一个
+    :param k: 执行k折交叉验证
+    :param news_pair_file_path:
+    :param output_dir: 输出的路径
+    :param generate_eval: 是否先划分一个评价集
+    :return:
+    """
+    if output_dir[-1] != '/':
+        output_dir = output_dir + '/'
+    # 先读取，并进行随机化
+    with open(news_pair_file_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        pairs = list(reader)
+    random.shuffle(pairs)
+    pairs_size = len(pairs)
+    train_ratio = 0.9
+    train_size = int(pairs_size * train_ratio)
+
+    train_pairs, val_pairs = pairs[: train_size], pairs[train_size:]
+
+    # 开始利用分出来的训练集构建folds
+    folds = []
+    fold_size = train_size // k  # 每一小段的长度
+    fold_dict = {}
+    for i in range(k):
+        if i < k - 1:
+            fold_dict[i] = train_pairs[i * fold_size: (i + 1) * fold_size]
+        else:
+            fold_dict[i] = train_pairs[i * fold_size: ]
+
+    for i in range(k):
+        fold_lst = list(range(k))
+        fold_lst.remove(i)
+        kfold_train = []
+        for fold_index in fold_lst:
+            kfold_train.extend(fold_dict[fold_index])
+        kfold_val = fold_dict[i]
+
+        dicts2csv(kfold_train, output_dir + f'kfold-{i}-train')
+        dicts2csv(kfold_val, output_dir + f'kfold-{i}-val')
+    dicts2csv(val_pairs, output_dir + f'final_valid')
+
+
+
+
+def get_ner(filepath: str = 'data/NLP/news_sim/final_nlp'):
+    try:
+        data = json.load(open('ner_result.json', 'r'))
+    except:
+        json.dump({}, open('ner_result.json', 'w'))
+        data = json.load(open('ner_result.json', 'r'))
+
+    result = load_crawl_results(filepath)
+    stanzaner = stanza_ner_multilingual()
+    for idx, elem in tqdm(enumerate(result)):
+        # 已经生成过的就没必要再生成一次了
+        if elem['article_id'] in data:
+            continue
+        try:
+            elem_ner = stanzaner(elem['text'])
+        except Exception as e:
+            print(e)
+            json.dump(data, open('ner_result.json', 'w'), ensure_ascii=False)
+            return
+        data[elem['article_id']] = elem_ner
+    json.dump(data, open('ner_result.json', 'w'), ensure_ascii=False)
+
+
 if __name__ == '__main__':
-    result = load_crawl_results('../../data/NLP/news_sim/final_transcode_el')
-    id2crawled = build_id2crawled(result)
-    pairs = load_news_pair_csv('../../data/NLP/news_sim/data/semeval-2022_task8_train-data_batch.csv')
-    samples = build_data_samples(id2crawled, pairs)
+    # kfold_generator(10,
+    #                 news_pair_file_path='../../data/NLP/news_sim/data/semeval-2022_task8_train-data_batch.csv',
+    #     output_dir='../../data/NLP/news_sim/kfold/')
+    result = load_crawl_results('../../data/NLP/news_sim/final_nlp')
+    # id2crawled = build_id2crawled(result)
+    # stanzaner = stanza_ner_multilingual()
+    # ner_results = []
+    # for elem in tqdm(result):
+    #     ner_results.append(stanzaner(elem['text']))
+    # json.dump(ner_results, open('new_results.json', 'w'), ensure_ascii=False)
+    # pairs = load_news_pair_csv('../../data/NLP/news_sim/data/semeval-2022_task8_train-data_batch.csv')
+    # samples = build_data_samples(id2crawled, pairs)
