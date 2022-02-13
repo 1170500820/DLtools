@@ -3,9 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from type_def import *
-from work.Cascade import Cascade_settings
-from work.Cascade.Cascade_utils import *
-
+from work.Cascade import cascade_settings
+from work.Cascade.cascade_utils import *
 
 
 

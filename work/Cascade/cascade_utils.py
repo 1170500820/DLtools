@@ -14,7 +14,6 @@ from utils.graph.tools import cascade2edges, get_cascade_idx
 import cascade_settings
 
 
-
 def parse_cascade_line(cascade_line: str) -> Dict[str, Any]:
     """
     解析一个cascade文件中的一行，
@@ -42,11 +41,13 @@ def parse_cascade_line(cascade_line: str) -> Dict[str, Any]:
             edges.append((src_node, tgt_node))
         # node2edges: src node -> (tgt node, tgt degree)
     cascade = {
-        "id": parts[0],
+        "id": int(parts[0]),  # str(int)
         "parts_1": parts[1],
         "parts_2": parts[2],
-        "edge_cnt": int(parts[3]),
-        "edges": edges
+        "edge_cnt": edge_cnt,  # int
+        "edges": edges,  # List[Tuple[int, int]]
+        'label': int(parts[5]),  # int
+        "time": list(map(int, parts[6].split(' ')))  # List[int]
     }
     return cascade
 
