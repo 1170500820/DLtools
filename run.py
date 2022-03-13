@@ -52,9 +52,17 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     """
 
     :param param_dict:
+        用于指明要运行的任务类型，使用的模型文件等信息。
+        param_dict可以包括:
+            - task    代表所要执行的任务类型。具体执行该任务的启动函数/启动类会在settings.py中定义
+            - working_dir(model)    代表执行该任务所要用的各种子模型的文件。runCommand会import该文件，task读取的启动函数/类会用上。
+            - *local_rank    对于单机多卡训练的情形，local_rank这个参数会附带在sys arg中，所以只能在这里捕获
     :param model_args: 与模型相关的参数
     :return:
     """
+    if param_dict['local_rank'] in [-1, 0]:
+        print('[构建任务]从命令行读取任务以及模型...')
+
     # 如果local_rank不为-1，说明使用单机多卡的训练方式。此时先初始化环境
     if param_dict['local_rank'] != -1:
         torch.cuda.set_device(param_dict['local_rank'])
@@ -62,18 +70,23 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
             'nccl',
             init_method='env://'
         )
+
+    # 初始化model_args
     if model_args is None:
         model_args = []
 
     # 获取要执行的任务类型
-    if param_dict['local_rank'] in [-1, 0]:
-        print('constructing task and model from command line...', end=' ... ')
     task = param_dict['task']  # ['train', 'ex_train', 'predict', ...]
+    if param_dict['local_rank'] in [-1, 0]:
+        print(f'[构建任务]任务类型：{task}')
     task_template = task_registry[task]  # Trainer class, ex_Trainer class, ...
 
     # 接下来制定具体使用的模型文件，import该文件，该文件要求一定含有model_registry
     working_dir = param_dict['working_dir']
     working_model = importlib.import_module(working_dir)
+    if param_dict['local_rank'] in [-1, 0]:
+        print(f'[构建任务]模型文件：{working_dir}')
+
 
     # 获取所有可能用到的参数，生成一个argparser，参数来源包括
     #   - task_template
