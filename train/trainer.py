@@ -2,6 +2,8 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from contextlib import nullcontext
+import numpy as np
 
 from type_def import *
 from evaluate.evaluator import dict2fstring, BaseEvaluator
@@ -18,6 +20,16 @@ def convert_to_cuda(input_dict: dict, multi: bool = False):
                 result_dict[k] = v.cuda(non_blocking=True)
             else:
                 result_dict[k] = v.cuda()
+        else:
+            result_dict[k] = v
+    return result_dict
+
+
+def convert_to_cuda_multigpu(input_dict: dict):
+    result_dict = {}
+    for k, v in input_dict.items():
+        if isinstance(v, torch.Tensor):
+            result_dict[k] = v.cuda(non_blocking=True)
         else:
             result_dict[k] = v
     return result_dict
@@ -53,33 +65,48 @@ class Trainer:
             model_save_path='.',
             grad_acc_step=1,
             do_eval=True,
-            use_cuda=True):
+            use_cuda=True,
+            save_best=False,
+            control_name: str = 'default'):
         if train_val_data is not None:
             train_loader, test_loader = train_val_data
-        optimizers = model.get_optimizers()
         lossFunc = loss
-        print(f'Training Settings:'
-              f'\n\ttotal_epoch:{total_epoch or "None"}'
-              f'\n\tprint_info_freq:{print_info_freq or "None"}'
-              f'\n\teval_freq_epoch:{eval_freq_epoch or "None"}'
-              f'\n\teval_freq_batch:{eval_freq_batch or "None"}'
-              f'\n\teval_start_epoch:{eval_start_epoch or "None"}'
-              f'\n\tmodel_save_epoch:{model_save_epoch or "None"}'
-              f'\n\tmodel_save_name:{model_save_path or "None"}'
-              f'\n\tgrad_acc_step:{grad_acc_step or "None"}'
-              f'\n')
-        print(f'Data Info:'
-              f'\n\ttrain data cnt:{len(train_loader.dataset)}'
-              # f'\n\tval data cnt:{len(test_loader.dataset or [])}'
-              )
+        if local_rank in [-1, 0]:
+            print(f'Training Settings:'
+                  f'\n\ttotal_epoch:{total_epoch or "None"}'
+                  f'\n\tprint_info_freq:{print_info_freq or "None"}'
+                  f'\n\teval_freq_epoch:{eval_freq_epoch or "None"}'
+                  f'\n\teval_freq_batch:{eval_freq_batch or "None"}'
+                  f'\n\teval_start_epoch:{eval_start_epoch or "None"}'
+                  f'\n\tmodel_save_epoch:{model_save_epoch or "None"}'
+                  f'\n\tmodel_save_name:{model_save_path or "None"}'
+                  f'\n\tgrad_acc_step:{grad_acc_step or "None"}'
+                  f'\n')
+            print(f'Data Info:'
+                  f'\n\ttrain data cnt:{len(train_loader.dataset)}'
+                  # f'\n\tval data cnt:{len(test_loader.dataset or [])}'
+                  )
+        print(f'模型参数:{sum([np.prod(list(p.size())) for p in model.parameters()])}')
         if local_rank != -1:
             device = torch.device('cuda', local_rank)
             model.to(device)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
+            optimizers = model.module.get_optimizers()
         elif use_cuda:
             model.cuda()
+            optimizers = model.get_optimizers()
         else:  # 可能是想用gpu训练吧
-            pass
+            optimizers = model.get_optimizers()
+
+
+        avg_score = 0.0
+        recent_cnt = 10
+        eval_cnt = 0
+        score_lst = []
+        high_score = 0.0
+        new_high_score = False
+        recent_MSLE = []
+        recent_mSLE = []
 
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
@@ -130,18 +157,48 @@ class Trainer:
                         if recorder:
                             recorder.record_before_evaluate(evaluator)
                         eval_info = evaluator.eval_step()
+                        recent_MSLE.append(eval_info['MSLE'])
+                        recent_mSLE.append(eval_info['mSLE'])
+                        if len(recent_MSLE) == 10:
+                            print(f'最近10次MSLE的平均值:{sum(recent_MSLE) / 10}')
+                            recent_MSLE = []
+                        if len(recent_mSLE) == 10:
+                            print(f'最近10次的mSLE的平均值:{sum(recent_mSLE) / 10}')
+                            recent_mSLE = []
                         if recorder:
                             recorder.record_after_evaluate(model, evaluator, eval_info)
+                        # 粗糙的实现，默认取第一个作为统计的指标
+                        eval_cnt += 1
+                        default_score = list(eval_info.values())[0]
+                        default_key = list(eval_info.keys())[0]
+                        score_lst.append(default_score)
+                        if default_score > high_score:
+                            high_score = default_score
+                            new_high_score = True
+                        else:
+                            new_high_score = False
+                        avg_score = sum(score_lst[-recent_cnt:]) / len(score_lst[-recent_cnt:])
+                        eval_info.update({
+                            'highest_' + default_key: high_score,
+                            'avg_' + default_key: avg_score
+                        })
                         print(dict2fstring(eval_info))
+
+                        if new_high_score and save_best:
+                            print('reaching new high score, saving...')
+                            torch.save(model.state_dict(),
+                                   model_save_path + '/checkpoint/' + f'{control_name}-save-best.pth')
+                            pickle.dump(model.init_params,
+                                    open(model_save_path + '/checkpoint/' + f'{control_name}-init_param-best.pk', 'wb'))
                         model.train()
                         if recorder:
                             recorder.eval_checkpoint()
             model.zero_grad()
-            if (i_epoch + 1) % model_save_epoch == 0 and local_rank in [-1, self.main_local_rank]:
+            if (i_epoch + 1) % model_save_epoch == 0 and local_rank in [-1, self.main_local_rank] and save_best:
                 print(f'saving model as [{model_save_path}/save-{i_epoch + 1}.pth]...')
                 # torch.save(model.state_dict(), model_save_name)
-                torch.save(model.state_dict(), model_save_path + '/checkpoint/' + f'{model.__class__.__name__}-save-{i_epoch + 1}.pth')
-                pickle.dump(model.init_params, open(model_save_path + '/checkpoint/' + f'{model.__class__.__name__}-init_param.pk', 'wb'))
+                torch.save(model.state_dict(), model_save_path + '/checkpoint/' + f'{control_name}-save-{i_epoch + 1}-final.pth')
+                pickle.dump(model.init_params, open(model_save_path + '/checkpoint/' + f'{control_name}-init_param-final.pk', 'wb'))
                 print(f'finished saving')
         if recorder and local_rank in [-1, self.main_local_rank]:
             recorder.checkpoint()
@@ -277,4 +334,117 @@ class ExpandedTrainer:
                 pickle.dump(model.init_params, open(model_save_path + '/checkpoint/' + f'{model.__class__.__name__}-init_param.pk', 'wb'))
                 print(f'finished saving')
         if recorder:
+            recorder.checkpoint()
+
+
+class MultiGPUTrainer:
+    """
+    支持多GPU运行的Trainer
+    """
+    main_local_rank = 0  # 默认以序号为0作为主进程卡
+
+    def __call__(
+            self,
+            train_val_data: ...,
+            model: ...,
+            loss: ...,
+            evaluator: ...,
+            recorder: ...,
+            local_rank: int = -1,
+            train_loader: DataLoader = None,
+            test_loader: DataLoader = None,
+            total_epoch=40,
+            print_info_freq=50,
+            eval_freq_batch=250,
+            eval_freq_epoch=1,
+            eval_start_epoch=1,
+            eval_start_batch=10,
+            model_save_epoch=100,
+            model_save_path='.',
+            grad_acc_step=1,
+            do_eval=True):
+        if train_val_data is not None:
+            train_loader, test_loader = train_val_data
+        lossFunc = loss
+        if local_rank == self.main_local_rank:
+            print(f'训练基础参数:'
+                  f'\n\ttotal_epoch:{total_epoch or "None"}'
+                  f'\n\tprint_info_freq:{print_info_freq or "None"}'
+                  f'\n\teval_freq_epoch:{eval_freq_epoch or "None"}'
+                  f'\n\teval_freq_batch:{eval_freq_batch or "None"}'
+                  f'\n\teval_start_epoch:{eval_start_epoch or "None"}'
+                  f'\n\tmodel_save_epoch:{model_save_epoch or "None"}'
+                  f'\n\tmodel_save_name:{model_save_path or "None"}'
+                  f'\n\tgrad_acc_step:{grad_acc_step or "None"}'
+                  f'\n')
+            print(f'Data Info:'
+                  f'\n\ttrain data cnt:{len(train_loader.dataset)}'
+                  # f'\n\tval data cnt:{len(test_loader.dataset or [])}'
+                  )
+        device = torch.device('cuda', local_rank)
+        model.to(device)
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
+        optimizers = model.module.get_optimizers()
+
+        for i_epoch in range(total_epoch):
+            epoch_avg_loss = 0.0
+            for i_batch, train_sample in enumerate(iter(train_loader)):
+                if recorder and local_rank == self.main_local_rank:
+                    recorder.train_checkin((i_epoch, i_batch))
+                train_input, train_gt = train_sample
+                if recorder and local_rank == self.main_local_rank:
+                    recorder.record_before_forward(train_input=train_input, train_gt=train_gt, full_model=model)
+                train_input, train_gt = convert_to_cuda_multigpu(train_input), convert_to_cuda_multigpu(train_gt)
+                model_output = model(**train_input)
+                if recorder and local_rank == self.main_local_rank:
+                    recorder.record_after_forward(model_output=model_output, full_model=model)
+                    recorder.record_before_backward(loss_func=lossFunc)
+                loss = lossFunc(**model_output, **train_gt)
+                loss = loss / grad_acc_step
+                loss.backward()
+                if recorder and local_rank == self.main_local_rank:
+                    recorder.record_after_backward(loss_output=loss, loss_func=lossFunc)
+                    recorder.train_checkpoint()
+                epoch_avg_loss += float(loss)
+                if (i_batch + 1) % print_info_freq == 0 and local_rank == self.main_local_rank:
+                    print(
+                        f'epoch {i_epoch + 1} |batch {i_batch + 1} |loss:{loss.float():<8.5f} |avg:{epoch_avg_loss / (i_batch + 1):<8.5f}|')
+                if (i_batch + 1) % grad_acc_step == 0:
+                    # 只有在一次梯度累积完成之后，才可以进行step与evaluate
+                    # 否则会浪费梯度
+                    for opt in optimizers:
+                        opt.step()
+                    model.zero_grad()
+                    if ((i_batch + 1) % eval_freq_batch == 0
+                        and (i_epoch + 1) >= eval_start_epoch) \
+                            and ((i_epoch + 1) % eval_freq_epoch == 0) \
+                            and (((i_epoch + 1) < eval_start_epoch) or ((i_batch + 1) >= eval_start_batch)) and local_rank in [-1, self.main_local_rank]:
+                        # evaluate
+                        model.eval()
+                        if recorder:
+                            recorder.eval_checkin()
+                        for test_sample in tqdm(iter(test_loader)):
+                            inputs, gts = test_sample
+                            inputs, gts = convert_to_cuda_multigpu(inputs), convert_to_cuda_multigpu(gts)
+                            model_output = model(**inputs)
+                            evaluator.eval_single(**model_output, **gts)
+                            del model_output
+                            del gts
+                        if recorder:
+                            recorder.record_before_evaluate(evaluator)
+                        eval_info = evaluator.eval_step()
+                        if recorder:
+                            recorder.record_after_evaluate(model, evaluator, eval_info)
+                        print(dict2fstring(eval_info))
+                        model.train()
+                        if recorder:
+                            recorder.eval_checkpoint()
+            model.zero_grad()
+            if (i_epoch + 1) % model_save_epoch == 0 and local_rank == self.main_local_rank:
+                print(f'saving model as [{model_save_path}/save-{i_epoch + 1}.pth]...')
+                # torch.save(model.state_dict(), model_save_name)
+                torch.save(model.state_dict(), model_save_path + '/checkpoint/' + f'{model.__class__.__name__}-save-{i_epoch + 1}.pth')
+                pickle.dump(model.init_params, open(model_save_path + '/checkpoint/' + f'{model.__class__.__name__}-init_param.pk', 'wb'))
+                print(f'finished saving')
+        if recorder and local_rank == self.main_local_rank:
             recorder.checkpoint()
