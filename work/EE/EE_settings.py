@@ -20,6 +20,27 @@ role_types = [
     'institution',  # 17
     'money'     # 18
 ]
+role_types_translate = {
+ 'obj-per': '目标任务',  # 0
+ 'amount': '总数',  # 1
+ 'title': '标题',  # 2
+ 'sub-org': '发起组织',  # 3
+ 'number': '数字',  # 4
+ 'way': '方式',  # 5
+ 'collateral': '质押品',  # 6
+ 'obj': '客体',  # 7
+ 'target-company': '目标公司',  # 8
+ 'share-org': '股份组织',  # 9
+ 'sub-per': '发起人',  # 10
+ 'sub': '主体',  # 11
+ 'data': '数据',  # 12
+ 'obj-org': '目标组织',  # 13
+ 'proportion': '比例',  # 14
+ 'date': '日期',  # 15
+ 'share-per': '股份人',  # 16
+ 'institution': '机构',  # 17
+ 'money': '金钱',  # 18
+}
 role_index = {v: i for i, v in enumerate(role_types)}
 event_types_initial = [
     '质押',
@@ -330,3 +351,9 @@ default_bsz = 8
 default_shuffle = True
 
 event_detection_threshold = 0.5
+
+
+"""数据预处理参数
+"""
+
+max_sentence_length = 256
