@@ -35,3 +35,10 @@ plm_path = 'bert-base-chinese'
 # learning rate
 plm_lr = 2e-5
 others_lr = 1e-4
+
+
+"""
+数据预处理参数
+"""
+
+max_sentence_length = 255

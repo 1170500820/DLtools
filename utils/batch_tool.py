@@ -94,6 +94,25 @@ def batchify_iterable(lst: [], bsz=None, keep_tail=False):
     return lst_batches
 
 
+def batchify_ndarray1d(lst: List[np.ndarray]):
+    """
+    将一个均为一维的np.ndarray的list batch化
+    :param lst:
+    :param bsz:
+    :param keep_tail:
+    :return:
+    """
+    max_length = max(list(len(x) for x in lst))
+    new_lst = []
+    for elem in lst:
+        add_length = len(elem) - max_length
+        if add_length != 0:
+            add_array = np.zeros(add_length)
+            new_lst.append(np.concatenate([elem, add_array]))
+    final_array = np.stack(new_lst)  # (bsz, max_length)
+    return final_array
+
+
 def batchify_dict_of_tensors(lst: [dict, ], bsz=None, keep_tail=False):
     """
     返回的仍然是dict的list

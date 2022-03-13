@@ -8,18 +8,21 @@ from itertools import chain
 from torch.optim import AdamW
 import pickle
 import numpy as np
+from tqdm import tqdm
 
 from .attention_model import StepWeight, GeoWeight
+from analysis.recorder import BaseRecorder
 from utils import tools
 from utils.batch_tool import simple_collate_fn
 from work.Cascade import cascade_settings, cascade_utils
 from utils.data import SimpleDataset
+from models.model_utils import get_init_params
 from evaluate.evaluator import BaseEvaluator, \
     l1_l2_regularizer, \
     mean_relative_square_loss, \
     mean_squared_logarithmic_error, \
     median_relative_square_loss, \
-    median_squared_logarithmic_error
+    median_squared_logarithmic_error, mean_squared_error, median_squared_error
 
 
 class DeepCas(nn.Module):
@@ -41,8 +44,8 @@ class DeepCas(nn.Module):
         - others_lr
     """
     def __init__(self,
-                 sequence_batch_size: int = cascade_settings.sequence_batch_size,
-                 seq_l: int = cascade_settings.walk_length,
+                 bsz: int = cascade_settings.sequence_batch_size,
+                 walk_length: int = cascade_settings.walk_length,
                  embedding_size: int = cascade_settings.embedding_size,
                  embedding_word2vec_path: str = cascade_settings.word2vec_file,
                  embedding_word2vec_dir: str = cascade_settings.output_directory,
@@ -53,15 +56,16 @@ class DeepCas(nn.Module):
                  embedding_lr: float = cascade_settings.embedding_lr,
                  others_lr: float = cascade_settings.others_lr):
         super(DeepCas, self).__init__()
+        self.init_params = get_init_params(locals())
         if embedding_word2vec_dir[-1] != '/':
             embedding_word2vec_dir += '/'
         word2vec_file = embedding_word2vec_dir + embedding_word2vec_path
 
         # 初始化参数
         #   网络中集成随机游走序列的batch大小
-        self.sequence_batch_size = sequence_batch_size
+        self.sequence_batch_size = bsz
         #   每一个序列的长度
-        self.seq_l = seq_l
+        self.seq_l = walk_length
         #   word2vec的维度与文件的路径。此处embedding_size是模型的embedding大小，因此word2vec也需要是这个大小
         self.embedding_size = embedding_size
         self.embedding_vec_path = word2vec_file
@@ -74,8 +78,9 @@ class DeepCas(nn.Module):
         self.others_lr = others_lr
 
         # 加载word2vec嵌入
-        wordvec = pickle.load(open(self.embedding_vec_path, 'rb'))  # np array (node cnt, embed dim)
+        wordvec = np.array(pickle.load(open(self.embedding_vec_path, 'rb')))  # np array (node cnt, embed dim)
         node_cnt = wordvec.shape[0]
+        print(f'wordvec\'s shape:{wordvec.shape}')
         wordvec_tensor = torch.tensor(wordvec)
 
         # 初始化网络结构
@@ -183,9 +188,7 @@ class DeepCasLoss(nn.Module):
         reduce_mean = torch.mean((output - label) ** 2)
         regular = l1_l2_regularizer(model, lambda_l1=l1, lambda_l2=l2)
         regularized_loss = reduce_mean + l1l2 * regular
-        return {
-            "loss": regularized_loss
-        }
+        return regularized_loss
 
 
 class DeepCasEvaluator(BaseEvaluator):
@@ -202,8 +205,10 @@ class DeepCasEvaluator(BaseEvaluator):
                     model):
         self.cnt += 1
         self.errors.append(float(torch.mean((output - label) ** 2)))
-        self.origin_outputs.append(2 ** float(output) - 1)
-        self.origin_labels.append(2 ** float(label) - 1)
+        # self.origin_outputs.append(2 ** float(output) - 1)
+        # self.origin_labels.append(2 ** float(label) - 1)
+        self.origin_outputs.append(float(output))
+        self.origin_labels.append(float(label))
         self.model = model
 
     def eval_step(self) -> str:
@@ -219,8 +224,8 @@ class DeepCasEvaluator(BaseEvaluator):
 
         origin_MRSE = mean_relative_square_loss(origin_tgt, origin_out)
         origin_mRSE = median_relative_square_loss(origin_tgt, origin_out)
-        origin_MSLE = mean_squared_logarithmic_error(origin_tgt, origin_out)
-        origin_mSLE = median_squared_logarithmic_error(origin_tgt, origin_out)
+        origin_MSLE = mean_squared_error(origin_tgt, origin_out)
+        origin_mSLE = median_squared_error(origin_tgt, origin_out)
 
         step_weight = self.model.step_weight.step_weight.tolist()
         geo_weight = float(self.model.geo_weight.geo_weight)
@@ -237,7 +242,7 @@ class DeepCasEvaluator(BaseEvaluator):
 
 def dataset_factory(cascade_directory: str = cascade_settings.cascade_directory,
                     globalgraph_directory: str = cascade_settings.globalgraph_directory,
-                    output_directrory: str = cascade_settings.output_directory,
+                    output_directory: str = cascade_settings.output_directory,
                     bsz: int = cascade_settings.sequence_batch_size):
     """
     需要读取的文件：
@@ -249,25 +254,28 @@ def dataset_factory(cascade_directory: str = cascade_settings.cascade_directory,
     :param output_directrory:
     :return:
     """
-    if output_directrory[-1] != '/':
-        output_directrory += '/'
+    if output_directory[-1] != '/':
+        output_directory += '/'
     if cascade_directory[-1] != '/':
         cascade_directory += '/'
     if globalgraph_directory[-1] != '/':
         globalgraph_directory += '/'
     # 首先读取vocab_index。vocab_index用于将cascade与random_walk中的id转换为word2vec用到的id
-
-    vocab_index = pickle.load(open(output_directrory + cascade_settings.vocab_index_file, 'rb'))
+    print('loading vocab index')
+    vocab_index = pickle.load(open(output_directory + cascade_settings.vocab_index_file, 'rb'))
 
     # 接下来分别处理train、val、test的数据
-    random_walk_train = cascade_utils.load_random_walks_txt(output_directrory + cascade_settings.random_walks_train_file)
-    random_walk_test = cascade_utils.load_random_walks_txt(output_directrory + cascade_settings.random_walks_test_file)
-    random_walk_val = cascade_utils.load_random_walks_txt(output_directrory + cascade_settings.random_walks_val_file)
+    print('loading random walk and cascade file')
+    random_walk_train = cascade_utils.load_random_walks_txt(output_directory + cascade_settings.random_walks_train_file)
+    random_walk_test = cascade_utils.load_random_walks_txt(output_directory + cascade_settings.random_walks_test_file)
+    random_walk_val = cascade_utils.load_random_walks_txt(output_directory + cascade_settings.random_walks_val_file)
     cascade_train = cascade_utils.read_cascade(cascade_directory + cascade_settings.cascade_train_file)
     cascade_test = cascade_utils.read_cascade(cascade_directory + cascade_settings.cascade_test_file)
     cascade_val = cascade_utils.read_cascade(cascade_directory + cascade_settings.cascade_val_file)
 
+    print('generating train_dataloader')
     train_dataloader = train_dataset_function(cascade_train, random_walk_train, vocab_index, bsz=bsz, shuffle=cascade_settings.shuffle)
+    print('generating val_dataloader')
     val_dataloader = val_dataset_function(cascade_val, random_walk_val, vocab_index)
 
     return train_dataloader, val_dataloader
@@ -294,16 +302,16 @@ def train_dataset_function(train_cascades: List[dict], train_random_walks: Dict[
     y = []  # 每一个cascade的增长数值，也就是要预测的值
     sizes = train_cascade['edge_cnt']  # 每一个cascade的节点数目
     times = train_cascade['time']  # 每一个cascade中的时间
-    for elem_id, elem_label in zip(train_cascade['id'], train_cascade['label']):
+    for elem_id, elem_label in tqdm(list(zip(train_cascade['id'], train_cascade['label']))):
         walk = train_random_walks[str(elem_id)]  # List[list]
         padded_walk = []
         for elem_walk in walk:
             if len(elem_walk) < cascade_settings.walk_length:
                 for i in range(cascade_settings.walk_length - len(elem_walk)):
                     elem_walk.append(-1)
-            padded_walk.append(vocab_index.new(walk))
+            padded_walk.append(vocab_index.new(elem_walk))
         x.append(padded_walk)
-        y.append(np.log(elem_label + 1.0) / np.log(2.0))
+        y.append(np.log2(elem_label + 1.0))
 
     data_dict = {
         "x": x,
@@ -320,7 +328,7 @@ def train_dataset_function(train_cascades: List[dict], train_random_walks: Dict[
         # y - [bsz] of int
         # sz - [bsz] of int
         x_vector = torch.tensor(rst['x'], dtype=torch.int)
-        cascade_sizes = torch.tensor(rst['sz'], dtype=torch.int)
+        cascade_sizes = torch.tensor(rst['sizes'], dtype=torch.int)
         label = torch.tensor(rst['y'])
         return {
             "x_vector": x_vector,  # (bsz, n_seq, seq_l)
@@ -349,5 +357,6 @@ model_registry = {
     "model": DeepCas,
     "loss": DeepCasLoss,
     "evaluator": DeepCasEvaluator,
-    "train_val_data": dataset_factory
+    "train_val_data": dataset_factory,
+    'recorder': BaseRecorder
 }

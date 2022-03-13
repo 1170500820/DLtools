@@ -121,8 +121,9 @@ class NaiveRecorder(BaseRecorder):
         - 每次直接输出新的覆盖旧的，还是每次在旧的上面增添
 
     """
-    def __init__(self, save_path: str = '.'):
+    def __init__(self, save_path: str = '.', control_name: str = 'default'):
         self.filename = '_'.join(list(map(str, list(time.localtime())[:6])))
+        self.filename = control_name + '-' + 'EvalResults.pk'
         self.save_name = save_path + '/' + self.filename
         self.evaluate_cnt = 0
         self.record['preds'], self.record['gts'], self.record['scores'] = [], [], []
@@ -200,7 +201,7 @@ class AutoRecorder(BaseRecorder):
 
 
     """
-    def __init__(self, save_path, train_record_freq=50, eval_record_freq=1):
+    def __init__(self, save_path: str = '.', train_record_freq=50, eval_record_freq=1):
         """
 
         :param save_path:

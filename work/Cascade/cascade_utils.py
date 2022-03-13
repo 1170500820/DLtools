@@ -1,17 +1,21 @@
-import pickle
+import sys
+sys.path.append('../..')
+sys.path.append('..')
+sys.path.append('../../')
 
 from type_def import *
 
 from tqdm import tqdm
 import networkx as nx
 import numpy as np
+import pickle
 from gensim.models import Word2Vec
 
 from utils import tools, dir_tools
 from utils.graph import node2vec
 from utils.graph.index_edit import IndexDict
 from utils.graph.tools import cascade2edges, get_cascade_idx
-import cascade_settings
+from work.Cascade import cascade_settings
 
 
 def parse_cascade_line(cascade_line: str) -> Dict[str, Any]:
@@ -173,8 +177,8 @@ def generate_random_walk(
         # exclude?
 
         str_list = list()
-        str_list.append(cascade_id)
-        random_walk_dict[cascade_id] = []
+        str_list.append(str(cascade_id))
+        random_walk_dict[str(cascade_id)] = []
 
         probs = list()
         probs_noleaf = list()
@@ -222,7 +226,10 @@ def generate_random_walk(
 
             sampled_nodes = np.random.choice(node_list, n_sample, replace=False, p=prob_list)
             walks = G.simulate_walks(len(sampled_nodes), walk_length, sampled_nodes)
-            random_walk_dict[cascade_id].extend(walks)
+            for idx in range(len(walks)):
+                if len(walks[idx]) <= walk_length:
+                    walks[idx] = walks[idx] + [-1] * (walk_length - len(walks[idx]))
+            random_walk_dict[str(cascade_id)].extend(walks)
             for walk in walks:
                 str_list.append(' '.join(str(k) for k in walk))
         result = '\t'.join(str_list)
@@ -240,7 +247,7 @@ def output_random_walks_txt(random_walks: dict, filename: str):
     """
     lines = []
     for key, value in random_walks.items():
-        walk = [key]
+        walk = [str(key)]
         for elem_walk in value:
             walk.append(' '.join(list(str(x) for x in elem_walk)))
         lines.append('\t'.join(walk))
@@ -384,7 +391,7 @@ def resemble_word2vec(word2vec_model, vocab_index):
         if vec_idx not in vocab_index.vocab_set:
             continue
         node_vec[vocab_index.new(vec_idx)] = vec
-    return node_vec
+    return np.array(node_vec)
 
 
 def generate_deepcas_data(
@@ -408,7 +415,7 @@ def generate_deepcas_data(
     if cascade_directory[-1] != '/':
         cascade_directory += '/'
     if globalgraph_directory[-1] != '/':
-        cascade_directory += '/'
+        globalgraph_directory += '/'
     if output_directory[-1] != '/':
         output_directory += '/'
 
@@ -448,4 +455,8 @@ def generate_deepcas_data(
 
 
 if __name__ == '__main__':
-    generate_deepcas_data()
+    generate_deepcas_data(
+        cascade_directory='../../../DeepCas/data/other/weibo_data/预测T之后的增长/T_3_h',
+        globalgraph_directory='../../../DeepCas/data/other/weibo_data/预测T之后的增长',
+        output_directory='../../../DeepCas/data/other/weibo_data/预测T之后的增长/T_3_h_new'
+    )

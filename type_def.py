@@ -1,3 +1,5 @@
+import sys
+sys.path.append('.')
 from typing import List, Dict, TypedDict, Union, Any, Set, Iterable, Callable, Literal, Tuple, Sequence, Hashable
 from collections import namedtuple
 

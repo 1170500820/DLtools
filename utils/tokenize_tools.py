@@ -105,6 +105,7 @@ def tokenIndex_to_charIndex(token_index: int, offset_mapping: OffsetMapping, rig
 
 def charIndex_to_tokenIndex(char_index: int, offset_mapping: OffsetMapping, left=False) -> int:
     """
+    todo 这段代码有bug，调用下面的charSpan_to_tokenSpan，结果是不对的。
     计算sentence中某个character的index在token sequence中的对应index
     如果char_index不在任何token span当中，一般来说该char位置是空格/制表符。应该是不影响结果的。
     :param char_index:
@@ -121,7 +122,7 @@ def charIndex_to_tokenIndex(char_index: int, offset_mapping: OffsetMapping, left
                 return i - 1
             else:
                 return i
-        elif token_span[0] <= char_index <=  token_span[1]:
+        elif token_span[0] <= char_index <= token_span[1]:
             return i
         else:  # char_index > token_span[1]，继续向后面找
             last_end = token_span[1]

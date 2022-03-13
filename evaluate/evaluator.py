@@ -816,3 +816,29 @@ def median_squared_logarithmic_error(label: Iterable[float], pred: Iterable[floa
     pred_np = np.array(pred)
     result = np.median((np.log(label_np + 1) - np.log(pred_np + 1)) ** 2)
     return result
+
+
+def mean_squared_error(label: Iterable[float], pred: Iterable[float]):
+    """
+
+    :param label:
+    :param pred:
+    :return:
+    """
+    label_np = np.array(label)
+    pred_np = np.array(pred)
+    result = np.mean((label_np - pred_np) ** 2)
+    return result
+
+
+def median_squared_error(label: Iterable[float], pred: Iterable[float]):
+    """
+
+    :param label:
+    :param pred:
+    :return:
+    """
+    label_np = np.array(label)
+    pred_np = np.array(pred)
+    result = np.median((label_np - pred_np) ** 2)
+    return result
