@@ -136,6 +136,8 @@ fewfc_dicts_sample = {
         }]
 }
 
+
+# 用于加载FewFC
 def load_FewFC_ee(file_dir: str, splitted=True):
     if file_dir[-1] != '/':
         file_dir += '/'
@@ -229,6 +231,18 @@ def convert_Duee_to_FewFC_format(duee_dicts: Dict[str, List[Dict[str, Any]]]):
             new_data_dicts.append(convert_Duee_to_FewFC_format_sample(elem_dict))
         new_duee_dicts[elem_dataset_type] = new_data_dicts
     return new_duee_dicts
+
+
+def load_Duee_ee_formated(file_dir: str):
+    """
+    先用load_Duee_ee加载Duee数据集
+    然后转换为FewFC的格式
+    :param file_dir:
+    :return:
+    """
+    duee_dicts = load_Duee_ee(file_dir)
+    converted_duee = convert_Duee_to_FewFC_format(duee_dicts)
+    return converted_duee
 
 
 def preprocess_modify_sample(data_dict: Dict[str, Any]):
@@ -351,7 +365,6 @@ def add_event_type_label_to_ee_dataset(data_dicts: List[Dict[str, Any]], type_in
     return data_dicts
 
 
-
 def building_event_detection_dataset(data_dir: str, data_type: str, tokenizer_path: str):
     if data_type == 'duee':
         data_dicts = load_Duee_ee(data_dir)
@@ -377,6 +390,8 @@ def building_event_detection_dataset(data_dir: str, data_type: str, tokenizer_pa
         "train": train_data_dicts,
         "valid": valid_data_dicts
     }
+
+
 
 
 if __name__ == '__main__':
