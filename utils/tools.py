@@ -108,7 +108,7 @@ def modify_key_of_dict(d: Dict[str, Any], modify_func: Callable[[str], str]):
     :return:
     """
     new_dict = {}
-    for key, value in d:
+    for key, value in d.items():
         new_dict[modify_func(key)] = value
     return new_dict
 
