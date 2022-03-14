@@ -105,10 +105,12 @@ def batchify_ndarray1d(lst: List[np.ndarray]):
     max_length = max(list(len(x) for x in lst))
     new_lst = []
     for elem in lst:
-        add_length = len(elem) - max_length
+        add_length = max_length - len(elem)
         if add_length != 0:
             add_array = np.zeros(add_length)
             new_lst.append(np.concatenate([elem, add_array]))
+        else:
+            new_lst.append(elem)
     final_array = np.stack(new_lst)  # (bsz, max_length)
     return final_array
 
