@@ -30,7 +30,7 @@ ProcUnit = Callable[[dict], dict]
 
 # 自定模块中的参数格式
 class MyArgs(TypedDict):
-    name: StrList
+    name: str
     dest: str
     type: type
     help: str

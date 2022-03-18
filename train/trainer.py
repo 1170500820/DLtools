@@ -99,18 +99,12 @@ class Trainer:
             optimizers = model.get_optimizers()
 
 
-        avg_score = 0.0
-        recent_cnt = 10
-        eval_cnt = 0
-        score_lst = []
-        high_score = 0.0
         new_high_score = False
-        recent_MSLE = []
-        recent_mSLE = []
 
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
             for i_batch, train_sample in enumerate(iter(train_loader)):
+                model.train()
                 if recorder and local_rank in [-1, self.main_local_rank]:
                     recorder.train_checkin((i_epoch, i_batch))
                 train_input, train_gt = train_sample
@@ -125,13 +119,14 @@ class Trainer:
                 loss = lossFunc(**model_output, **train_gt)
                 loss = loss / grad_acc_step
                 loss.backward()
+                norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 500)
                 if recorder and local_rank in [-1, self.main_local_rank]:
                     recorder.record_after_backward(loss_output=loss, loss_func=lossFunc)
                     recorder.train_checkpoint()
                 epoch_avg_loss += float(loss)
                 if (i_batch + 1) % print_info_freq == 0 and local_rank in [-1, self.main_local_rank]:
                     print(
-                        f'epoch {i_epoch + 1} |batch {i_batch + 1} |loss:{loss.float():<8.5f} |avg:{epoch_avg_loss / (i_batch + 1):<8.5f}|')
+                        f'epoch {i_epoch + 1} |batch {i_batch + 1} |loss:{loss.float():<8.5f} |avg:{epoch_avg_loss / (i_batch + 1):<8.5f}| norm: {norm.cpu().item()}')
                 if (i_batch + 1) % grad_acc_step == 0:
                     # 只有在一次梯度累积完成之后，才可以进行step与evaluate
                     # 否则会浪费梯度
@@ -157,31 +152,6 @@ class Trainer:
                         if recorder:
                             recorder.record_before_evaluate(evaluator)
                         eval_info = evaluator.eval_step()
-                        recent_MSLE.append(eval_info['MSLE'])
-                        recent_mSLE.append(eval_info['mSLE'])
-                        if len(recent_MSLE) == 10:
-                            print(f'最近10次MSLE的平均值:{sum(recent_MSLE) / 10}')
-                            recent_MSLE = []
-                        if len(recent_mSLE) == 10:
-                            print(f'最近10次的mSLE的平均值:{sum(recent_mSLE) / 10}')
-                            recent_mSLE = []
-                        if recorder:
-                            recorder.record_after_evaluate(model, evaluator, eval_info)
-                        # 粗糙的实现，默认取第一个作为统计的指标
-                        eval_cnt += 1
-                        default_score = list(eval_info.values())[0]
-                        default_key = list(eval_info.keys())[0]
-                        score_lst.append(default_score)
-                        if default_score > high_score:
-                            high_score = default_score
-                            new_high_score = True
-                        else:
-                            new_high_score = False
-                        avg_score = sum(score_lst[-recent_cnt:]) / len(score_lst[-recent_cnt:])
-                        eval_info.update({
-                            'highest_' + default_key: high_score,
-                            'avg_' + default_key: avg_score
-                        })
                         print(dict2fstring(eval_info))
 
                         if new_high_score and save_best:

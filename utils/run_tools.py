@@ -5,7 +5,7 @@ from type_def import *
 import inspect
 import argparse
 import funcy as fc
-
+from loguru import logger
 
 default_usage_str = """
 使用自动构建的参数parser
@@ -39,7 +39,7 @@ class ExpandedTrainer:
 
 
 """
-get param information
+从函数/模块中获取参数信息
 自动从template中获取该template所需的参数
 
 get_template_params只对template的__init__, __call__, 和内置参数配置列表进行读取，
@@ -49,22 +49,28 @@ get_template_params只对template的__init__, __call__, 和内置参数配置列
 
 def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, StrList]:
     """
-    对于一个template，该函数获取其所有参数（忽略self）
-    包括__init__与__call__的参数。（默认实现了二者）
-        其中annotation为Ellipsis，则为一个模块，需要进一步使用参数初始化
-        而annotation不为Ellipsis的，根据其notation，为其默认构建参数解析器
-    template也可以将参数写在类定义内，按args格式写。这一切都是为了能够从命令行获取他们需要的参数
+    该函数获取template_class的参数。
+    如果template_class是一个class（正常用法），则返回该class的自带参数定义、__init__参数定义与__call__参数定义。
+        对于__init__与__call__的参数，有如下规则
+            其中annotation为Ellipsis，则为一个模块，需要对该模块递归地调用本函数，[[进一步使用参数初始化]]
+            而annotation不为Ellipsis的，根据其notation，为其默认构建参数解析器
+        对于自带参数
+            自带参数是按照argparser的args格式构建的list
+            list中每个dict都包含用argparser构建该参数所需要的信息
+
+    如果template_class是一个function，todo
     :param template_class:
     :return: Tuple[List[MyArgs], StrList, StrList]
         - 第一个list是参数的list
-        - 第二个list是子模块的class的__init__调用的子模块的参数的list
-        - 第三个list是子模块的class的__call__调用的子模块的参数的list
+        - 第二个list是子模块的class的__init__调用的子模块的list
+        - 第三个list是子模块的class的__call__调用的子模块的list
     """
     def get_function_params_from_sig(sig) -> Tuple[List[MyArgs], StrList]:
         """
-        sig是使用inspect.signature获取到的一个模块的方法的参数列表
         本方法将sig转化为参数信息的列表，利用该列表可以创建一个arg parser
+        sig是使用inspect.signature获取到的一个模块的方法的参数列表
 
+        细节：
         忽略self, kwargs, args
         其中self是__init__与__call__都具有的参数，不考虑
         如果submodule没有定义__init__，则会解析出其默认参数args与kwargs，这里也直接去掉。
@@ -97,21 +103,17 @@ def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, Str
                     'default': default_value,
                 })
         return param_value_lst, param_model_lst
-    # print(f'[get]解析{template_class}', end='==')
+
     # 首先判断是不是函数
     if inspect.isfunction(template_class):
+        # 如果是函数，则直接解析signature，然后获得参数与子模块
         func_sig = inspect.signature(template_class)
         func_param_value_lst, func_param_model_lst = get_function_params_from_sig(func_sig)
-        # print(f'函数')
-        # print(f'[get]获取参数:{list(x["name"] for x in func_param_value_lst)}')
-        # print(f'[get]获取子模块:{func_param_model_lst}')
         return func_param_value_lst, [], func_param_model_lst
 
-    # print(f'模块')
-    # 获取模型的自带参数
-    if hasattr(template_class, 'param_dict'):
+    # 不是函数，那么接下来按模型处理
+    if hasattr(template_class, '_arg_lst'):
         inner_arg_lst = getattr(template_class, '_arg_lst')
-        # print(f'[get]获取模型自带参数{list(x["name"] for x in inner_arg_lst)}')
     else:
         inner_arg_lst = []
 
@@ -119,8 +121,6 @@ def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, Str
     if hasattr(template_class, '__call__'):
         init_sig = inspect.signature(template_class.__init__)
         init_param_value_lst, init_param_model_lst = get_function_params_from_sig(init_sig)
-        # print(f'[get]获取模型init参数:{list(x["name"] for x in init_param_value_lst)}')
-        # print(f'[get]获取模型init子模块{init_param_model_lst}')
     else:
         init_param_value_lst, init_param_model_lst = [], []
 
@@ -128,8 +128,6 @@ def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, Str
     if hasattr(template_class, '__call__'):
         call_sig = inspect.signature(template_class.__call__)
         call_param_value_lst, call_param_model_lst = get_function_params_from_sig(call_sig)
-        # print(f'[get]获取模型call参数:{list(x["name"] for x in call_param_value_lst)}')
-        # print(f'[get]获取模型call子模块{call_param_model_lst}')
     else:
         call_param_value_lst, call_param_model_lst = [], []
 
@@ -140,7 +138,7 @@ def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, Str
         if elem['dest'] not in param_dest_set:  # 去除已经包含在内置参数中的
             param_dicts.append(elem)
             param_dest_set.add(elem['dest'])
-    for elem in call_param_value_lst:
+    for elem in call_param_value_lst:  # 先加入init，再加入call
         if elem['dest'] not in param_dest_set:
             param_dicts.append(elem)
             param_dest_set.add(elem['dest'])
@@ -153,6 +151,9 @@ def _get_template_params_without_repeat(
         module_registry: Dict[str, Any]) \
         -> Tuple[List[MyArgs], StrList, StrList]:
     """
+    本函数执行递归查询，对一个template中出现的子模块继续查询参数，直到所有会被用到的模块的参数都已经找到
+
+    细节：
     对于template_class中找到的子模块，首先判断其是否已经出现过。只会对没出现过的进行递归搜索
     :param template_class: 需要解析参数的template
     :param submodule_set: 所有已经出现过的子模块的名字
@@ -161,30 +162,24 @@ def _get_template_params_without_repeat(
     """
     # 先获取该template的信息
     param_dicts, init_submodules, call_submodules = get_template_params(template_class)
-    # print(f'从{template_class}获取：')
-    # print(f'params:{list(x["name"] for x in param_dicts)}')
-    # print(f'init submodules:{init_submodules}')
-    # print(f'call submoduels:{call_submodules}')
+
     param_dicts_dest_set = set(list(x['dest'] for x in param_dicts))
     common_submodules = init_submodules + call_submodules
 
     # 删除submodule list中已经出现过的子模块
-    common_submodule_set = set(common_submodules) - submodule_set
-    common_submodules = list(common_submodule_set)
-    init_submodule_set = set(init_submodules) - submodule_set
-    call_submodule_set = set(call_submodules) - submodule_set
-
+    # common_submodule_set = set(common_submodules) - submodule_set
+    # common_submodule_list = list(common_submodule_set)
+    init_submodules = list(set(init_submodules) - submodule_set)
+    call_submodules = list(set(call_submodules) - submodule_set)
 
     # 更新submodule_set
     submodule_set.update(init_submodules)
     submodule_set.update(call_submodules)
-    # submodule_set = submodule_set.update(set(common_submodules))
 
     # 接下来递归的读取submodule的信息，先init再call
     #  init
     for elem_module in init_submodules:
         elem_module_class = module_registry[elem_module]
-        # print('按照init submodule进行递归探索\n')
         elem_param_dicts, elem_init_submodules, elem_call_submodules = _get_template_params_without_repeat(elem_module_class, submodule_set, module_registry)
         # 加入不重复的param
         for elem_param in elem_param_dicts:
@@ -198,7 +193,6 @@ def _get_template_params_without_repeat(
     #  call
     for elem_module in call_submodules:
         elem_module_class = module_registry[elem_module]
-        # print('按照call submodules进行递归探索\n')
         elem_param_dicts, elem_init_submodules, elem_call_submodules = _get_template_params_without_repeat(elem_module_class, submodule_set, module_registry)
         # 加入不重复的param
         for elem_param in elem_param_dicts:
@@ -233,7 +227,7 @@ def get_template_params_recursive(template_class: ..., module_registry: Dict[str
 
 
 """
-extract param from command line string
+命令行参数处理
 """
 
 
@@ -257,13 +251,13 @@ def extract_command(parser, command_str_lst: StrList):
 
 def parse_extra_command(arg_list: List[MyArgs], model_args: StrList):
     """
-    为额外参数创建parser，并读取参数
+    为参数创建parser，并读取参数
     :param arg_list: 参数配置列表
         list of dict
             {
-                name:
+                name: 默认前面已经有'--'了，这里直接用
                 dest:
-                type:
+                type: 是类型，而不是str
                 help
             }
     :param model_args: 从命令行读取到的参数
@@ -273,15 +267,23 @@ def parse_extra_command(arg_list: List[MyArgs], model_args: StrList):
         return {}
     extra_parser = argparse.ArgumentParser('extra')
     for elem_arg in arg_list:
-        name = elem_arg.pop('name')
-        # elem_arg['name_or_flags'] = elem_arg.pop('name')
-        extra_parser.add_argument(*[name], **elem_arg)
+        name, dest, atype = elem_arg['name'], elem_arg['dest'], elem_arg['type']
+        helpstr = '' if 'help' not in elem_arg else elem_arg['help']
+        default_v = None if 'default' not in elem_arg else elem_arg['default']
+        if atype == bool:
+            # 布尔类型变量是不需要default的，因为他们不出现就是默认为False
+            extra_parser.add_argument(name, dest=dest, type=bool, action='store_true')
+        else:
+            if default_v:
+                extra_parser.add_argument(name, dest=dest, type=type, help=helpstr, default=default_v)
+            else:
+                extra_parser.add_argument(name, dest=dest, type=type, help=helpstr)
 
     return extract_command(extra_parser, model_args)
 
 
 """
-instantiate 相关
+将一个template实例化
 """
 
 
@@ -312,7 +314,7 @@ def instantiate_class_with_dict(any_class, param_dict):
     """
     对于一个实现了__init__方法的class，利用param_dict作为参数，对其进行实例化
     是get_obj_with_param的一个更好的实现，get_obj_with_param可以算是历史遗产了
-    :param any_class:
+    :param any_class:  class
     :param param_dict: 所有参数，包括submodule和普通参数
     :return:
     """

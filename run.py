@@ -7,6 +7,7 @@ import importlib
 import torch
 import torch.distributed as dist
 import inspect
+from loguru import logger
 
 from utils import run_tools
 import settings
@@ -60,8 +61,7 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     :param model_args: 与模型相关的参数
     :return:
     """
-    if param_dict['local_rank'] in [-1, 0]:
-        print('[构建任务]从命令行读取任务以及模型...')
+    logger.info('从命令行获取任务以及模型...')
 
     # 如果local_rank不为-1，说明使用单机多卡的训练方式。此时先初始化环境
     if param_dict['local_rank'] != -1:
@@ -77,15 +77,18 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
 
     # 获取要执行的任务类型
     task = param_dict['task']  # ['train', 'ex_train', 'predict', ...]
-    if param_dict['local_rank'] in [-1, 0]:
-        print(f'[构建任务]任务类型：{task}')
+    # if param_dict['local_rank'] in [-1, 0]:
+    #     logger.info(f'[构建任务]任务类型：{task}')
+    logger.info(f'[构建任务]任务类型：{task}')
+
     task_template = task_registry[task]  # Trainer class, ex_Trainer class, ...
+    logger.trace('读取到任务{}所对应的template', task)
 
     # 接下来制定具体使用的模型文件，import该文件，该文件要求一定含有model_registry
     working_dir = param_dict['working_dir']
     working_model = importlib.import_module(working_dir)
     if param_dict['local_rank'] in [-1, 0]:
-        print(f'[构建任务]模型文件：{working_dir}')
+        logger.info(f'[构建任务]模型文件：{working_dir}')
 
 
     # 获取所有可能用到的参数，生成一个argparser，参数来源包括
@@ -96,33 +99,35 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     #   - 模型文件所有注册的模块，都按照与task_template相同的方法进行解析
 
     if 'args' in working_model.model_registry:
-        working_args = working_model.model_registry['args']  # 模型文件中的args参数配置列表
+        working_args = working_model.model_registry['args']  # 模型文件中自带的args参数配置列表
     else:
         working_args = []
+    logger.trace(f'读取到模型[{working_model}]的自带参数{working_args}')
+
     template_args, init_submodules, call_submodules = run_tools.get_template_params_recursive(task_template, working_model.model_registry)  # runner template的所有参数配置，以及子模块
     working_args.extend(template_args)
     working_params = run_tools.parse_extra_command(working_args, model_args)  # Dict[str, param value] 从命令行能够获取的参数所解析而成
     working_params['local_rank'] = param_dict['local_rank']
-    if param_dict['local_rank'] in [-1, 0]:
-        print('finish')
 
     # 根据主参数与任务参数，为Template创建模块
-    if param_dict['local_rank'] in [-1, 0]:
-        print('instantiating task model...', end=' ... ')
     task_model = instantiate_template_from_param_dict(task_template, working_params, working_model.model_registry)
-    if param_dict['local_rank'] in [-1, 0]:
-        print('finish')
     print('running...' + (f'{param_dict["local_rank"]}' if param_dict["local_rank"] != -1 else ''))
     run_template_from_param_dict(task_model, working_params, working_model.model_registry)
 
 
 if __name__ == '__main__':
     sys_arg = sys.argv[1:]
+    logger.trace('读取到来自命令行的输入:{}', sys_arg)
     if '+' in sys_arg:
+        logger.trace('存在额外参数')
         delim_idx = sys_arg.index('+')
         config_arg, model_arg = sys_arg[:delim_idx], sys_arg[delim_idx + 1:]
         args = readCommand(config_arg)
+        logger.trace('获取基本参数:{}', args)
+        logger.trace('开始处理基本参数与额外参数')
         runCommand(args, model_arg)
     else:
         args = readCommand(sys_arg)
+        logger.trace('获取基本参数:{}', args)
+        logger.trace('开始处理基本参数')
         runCommand(args)

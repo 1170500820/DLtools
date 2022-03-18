@@ -1,18 +1,22 @@
+import json
+import pickle
+import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.optim import AdamW
 from transformers import BertModel
+import numpy as np
+from torch.utils.data import DataLoader
+from transformers import BertTokenizer
+from itertools import chain
+
 from utils import tools, tokenize_tools, batch_tool
 from utils.data import SimpleDataset
 from work.EE.EE_utils import *
-from work.EE import EE_settings
-import numpy as np
-from torch.utils.data import DataLoader
 from evaluate.evaluator import BaseEvaluator, KappaEvaluator, PrecisionEvaluator
 from dataset.ee_dataset import load_FewFC_ee, load_Duee_ee_formated
-import jieba
-import stanza
-import random
+from analysis.recorder import NaiveRecorder
 from work.EE.DualQA import dualqa_utils, dualqa_settings
 
 """
@@ -67,48 +71,55 @@ class SimilarityModel(nn.Module):
         C, Q = h.shape[1], u.shape[1]
         h1 = h.unsqueeze(dim=2)  # (bsz, |C|, 1, hidden)
         u1 = u.unsqueeze(dim=1)  # (bsz, 1, |Q|, hidden)
-
         h2 = h1.expand(-1, -1, Q, -1)  # (bsz, |C|, |Q|, hidden)
         u2 = u1.expand(-1, C, -1, -1)  # (bsz, |C|, |Q|, hidden)
-        concatenated = torch.cat([h2, u2, h2 * u2], dim=-1)  # (bsz, |C|, |Q|, 3 * hidden)
-        l1_output = nn.ReLU(self.l1_sim(concatenated))  # (bsz, |C|, |Q|, hidden)
-        l2_output = nn.ReLU(self.l2_sim(l1_output))  # (bsz, |C|, |Q|, 1)
-        l2_output = l2_output.squeeze()  # (bsz, |C|, |Q|) or (|C|, |Q|) if bsz == 1
-        if len(l2_output.shape) == 2:
-            l2_output = l2_output.unsqueeze(dim=0)  # (1, |C|, |Q|)
-        return l2_output  # (bsz, |C|, |Q|)
+        elm_wise_mul = torch.mul(h2, u2)  # (bsz, |C|, |Q|, hidden)
+        concatenated = torch.cat([h2, u2, elm_wise_mul], dim=-1)  # (bsz, |C|, |Q|, 3 * hidden)
+        l1_output = self.l1_sim(concatenated)  # (bsz, |C|, |Q|, hidden)
+        l2_output = F.leaky_relu(self.l2_sim(l1_output))  # (bsz, |C|, |Q|, 1)
+        S = l2_output.squeeze(dim=-1)  # (bsz, |C|, |Q|)
+        return S  # (bsz, |C|, |Q|)
 
 
 class FlowAttention(nn.Module):
     def __init__(self, hidden: int):
         super(FlowAttention, self).__init__()
         self.hidden = hidden
-        self.similarity_A = SimilarityModel(hidden)
-        self.similarity_R = SimilarityModel(hidden)
+        # self.similarity_A = SimilarityModel(hidden)
+        # self.similarity_R = SimilarityModel(hidden)
+        self.similarity_common = SimilarityModel(hidden)
         self.softmax1 = nn.Softmax(dim=1)
         self.softmax2 = nn.Softmax(dim=2)
 
-    def forward(self, H: torch.Tensor, U: torch.Tensor):
+    def forward(self, H: torch.Tensor, U: torch.Tensor, context_attention_mask: torch.Tensor, question_attention_mask: torch.Tensor):
         """
         计算句子嵌入H，与问句嵌入U的flow attention表示H_hat与U_hat
         其中H_hat与U_hat的维度均为(C, hidden)
 
         :param H: (bsz, C, hidden)
-        :param UA: (bsz, Q, hidden)
+        :param U: (bsz, Q, hidden)
+        :param context_attention_mask: (bsz, C)
+        :param question_attention_mask: (bsz, Q)
         :return:
         """
         C, Q = H.shape[1], U.shape[1]
-        S = self.similarity_A(H, U)  # (bsz, C, Q)
+        S = self.similarity_common(H, U)  # (bsz, C, Q)
+
+        # mask S
+        context_bool_mask = (1 - context_attention_mask.unsqueeze(2)).bool()
+        question_bool_mask = (1 - question_attention_mask.unsqueeze(1)).bool()
+        S.masked_fill_(mask=context_bool_mask, value=torch.tensor(-1e9))
+        S.masked_fill_(mask=question_bool_mask, value=torch.tensor(-1e9))
 
         # C2Q attention
-        a = self.softmax2(S)  # (bsz, C, Q)
-        U_hat = torch.matmul(a, U)  # (bsz, C, hidden)
+        A = F.softmax(S, dim=-1)  # (bsz, C, Q)
+        U_hat = torch.bmm(A, U)  # (bsz, C, hidden)
 
         # Q2C attention
-        S_max, _ = torch.max(S, dim=2)  # (bsz, C)
-        b = self.softmax1(S_max)  # (bsz, C)
-        b = b.unsqueeze(dim=-1)  # (bsz, C, 1)
-        H_hat = b * H  # (bsz, C, hidden)
+        S = torch.max(S, 2)[0]  # (bsz, C)
+        b = F.softmax(S, dim=-1)  # (bsz, C)
+        q2c = torch.bmm(b.unsqueeze(1), H)  # (bsz, 1, hidden) = bmm( (bsz, 1, C), (bsz, C, hidden) )
+        H_hat = q2c.repeat(1, C, 1)  # (bsz, C, hidden), tiled T times
 
         return H_hat, U_hat
 
@@ -140,9 +151,10 @@ class SharedProjection(nn.Module):
         :return:
         """
         # combining
-        G = torch.cat([H, U_hat, H_hat * U_hat, H * H_hat], dim=-1)  # (bsz, C, hidden * 4)
-        G = F.relu(self.l1(G))  # (bsz, C, hidden * 2)
-        G = F.relu(self.l2(G))  # (bsz, C, hidden)
+        G = torch.cat([H, U_hat, H.mul(U_hat), H.mul(H_hat)], dim=-1)  # (bsz, C, hidden * 4)
+
+        G = self.l1(G)  # (bsz, C, hidden * 2)
+        G = F.leaky_relu(self.l2(G))  # (bsz, C, hidden)
 
         return G  # (bsz, C, hidden)
 
@@ -150,27 +162,42 @@ class SharedProjection(nn.Module):
 class ArgumentClassifier(nn.Module):
     """EAR part
     """
-
     def __init__(self, hidden: int):
         super(ArgumentClassifier, self).__init__()
         self.hidden = hidden
         self.start_classifier = nn.Linear(hidden, 1, bias=False)
         self.end_classifier = nn.Linear(hidden, 1, bias=False)
         self.softmax1 = nn.Softmax(dim=1)
+        self.init_weights()
 
-    def forward(self, G: torch.Tensor):
+    def init_weights(self):
+        torch.nn.init.xavier_uniform_(self.start_classifier.weight)
+        torch.nn.init.xavier_uniform_(self.end_classifier.weight)
+
+    def forward(self, G: torch.Tensor, context_mask: torch.Tensor):
         """
 
         :param G: (bsz, C, hidden)
+        :param context_mask: (bsz, C) bool tensor
         :return:
         """
         start_digit = self.start_classifier(G)  # (bsz, C, 1)
         end_digit = self.end_classifier(G)  # (bsz, C, 1)
 
-        start_prob = self.softmax1(start_digit)  # (bsz, C, 1)
-        end_prob = self.softmax1(end_digit)  # (bsz, C, 1)
+        start_digit = F.leaky_relu(start_digit)  # (bsz, C, 1)
+        end_digit = F.leaky_relu(end_digit)  # (bsz, C, 1)
 
-        start_prob, end_prob = start_prob.squeeze(), end_prob.squeeze()  # both (bsz, C) or (C) if bsz == 1
+        start_digit = start_digit.squeeze(dim=-1)  # (bsz, C)
+        end_digit = end_digit.squeeze(dim=-1)  # (bsz, C)
+
+        start_digit = start_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
+        end_digit = end_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
+
+        start_prob = self.softmax1(start_digit)  # (bsz, C)
+        end_prob = self.softmax1(end_digit)  # (bsz, C)
+        # print(start_prob)
+
+        # start_prob, end_prob = start_prob.squeeze(), end_prob.squeeze()  # both (bsz, C) or (C) if bsz == 1
         if len(start_prob.shape) == 1:
             start_prob = start_prob.unsqueeze(dim=0)
             end_prob = end_prob.unsqueeze(dim=0)
@@ -198,7 +225,7 @@ class RoleClassifier(nn.Module):
         self.conv5 = nn.Conv2d(1, 32, (5, hidden))
         self.conv6 = nn.Conv2d(1, 32, (6, hidden))
 
-        self.classifier = nn.Linear(128, label_cnt)
+        self.classifier = nn.Linear(128, label_cnt + 1)
 
         self.init_weights()
 
@@ -233,7 +260,7 @@ class RoleClassifier(nn.Module):
 
 
 class DualQA(nn.Module):
-    def __init__(self, plm_path: str):
+    def __init__(self, plm_path: str = dualqa_settings.plm_path, plm_lr: float = dualqa_settings.plm_lr, linear_lr: float = dualqa_settings.linear_lr):
         super(DualQA, self).__init__()
         self.plm_path = plm_path
         self.shared_encoder = SharedEncoder(plm_path)
@@ -243,6 +270,9 @@ class DualQA(nn.Module):
         self.shared_projection = SharedProjection(self.hidden)
         self.arg_classifier = ArgumentClassifier(self.hidden)
         self.role_classifier = RoleClassifier(self.hidden)
+
+        self.linear_lr = linear_lr
+        self.plm_lr = plm_lr
 
     def forward(self,
                 context_input_ids: torch.Tensor,
@@ -279,35 +309,152 @@ class DualQA(nn.Module):
             input_ids=context_input_ids,
             token_type_ids=context_token_type_ids,
             attention_mask=context_attention_mask)
+
         # (bsz, C, hidden)
+        # if self.training:
+        #     if random.choice([0, 1]) == 0:
+        #         EAR_input_ids = None
+        #     else:
+        #         ERR_input_ids = None
+
         if EAR_input_ids is not None:
             UA = self.shared_encoder(
                 input_ids=EAR_input_ids,
                 token_type_ids=EAR_token_type_ids,
                 attention_mask=EAR_attention_mask)
             # (bsz, QA, hidden)
-            H_A_hat, UA_hat = self.flow_attention(H, UA)  # both (bsz, C, hidden)
+            H_A_hat, UA_hat = self.flow_attention(H, UA, context_attention_mask, EAR_attention_mask)  # both (bsz, C, hidden)
             GA = self.shared_projection(H, H_A_hat, UA_hat)  # (bsz, C, hidden)
-            start_probs, end_probs = self.arg_classifier(GA)  # both (bsz, C)
+            probs_mask = (1 - context_attention_mask).bool()
+            start_probs, end_probs = self.arg_classifier(GA, probs_mask)  # both (bsz, C)
         if ERR_input_ids is not None:
             UR = self.shared_encoder(
                 input_ids=ERR_input_ids,
                 token_type_ids=ERR_token_type_ids,
                 attention_mask=ERR_attention_mask)
             # (QR, hidden)
-            H_R_hat, UR_hat = self.flow_attention(H, UR)  # both (bsz, C, hidden)
+            # bsz, QR, h = UR.shape
+            # UR = torch.zeros((bsz, QR, h)).cuda()
+            H_R_hat, UR_hat = self.flow_attention(H, UR, context_attention_mask, ERR_attention_mask)  # both (bsz, C, hidden)
             GR = self.shared_projection(H, H_R_hat, UR_hat)  # (bsz, C, hidden)
             role_pred = self.role_classifier(GR)  # (bsz, role_cnt)
 
-        if EAR_input_ids is None:
-            return {
-                "start_probs": start_probs,
-                'end_probs': end_probs,
-                "role_pred": role_pred
-            }
+        return {
+            "start_probs": start_probs,
+            'end_probs': end_probs,
+            "role_pred": role_pred,
+        }
+
+    def get_optimizers(self):
+        # plm_params = self.shared_encoder.bert.parameters()
+        # flow_params = self.flow_attention.parameters()
+        # projection_params = self.shared_projection.parameters()
+        # arg_cls_params = self.arg_classifier.parameters()
+        # role_cls_params = self.role_classifier.parameters()
+        # plm_optimizer = AdamW(params=plm_params, lr=self.plm_lr)
+        # linear_optimizer = AdamW(params=chain(flow_params, projection_params, arg_cls_params, role_cls_params), lr=self.linear_lr)
+        optimizer = AdamW(params=self.parameters(), lr=self.plm_lr)
+
+        # return [plm_optimizer, linear_optimizer]
+        return [optimizer]
+
+
+class NaiveBERT(nn.Module):
+    """
+    用于定位模型问题
+    """
+    def __init__(self, plm_path: str = dualqa_settings.plm_path, plm_lr: float = dualqa_settings.plm_lr, linear_lr: float = dualqa_settings.linear_lr):
+        super(NaiveBERT, self).__init__()
+        self.plm_path = plm_path
+        self.linear_lr = linear_lr
+        self.plm_lr = plm_lr
+        self.bert = BertModel.from_pretrained(plm_path)
+
+        self.hidden = self.bert.config.hidden_size
+        self.arg_linear_start = nn.Linear(self.hidden, 1)
+        self.arg_linear_end = nn.Linear(self.hidden, 1)
+        # self.role_linear = nn.Linear(self.hidden, len(EE_settings.role_types) + 1)
+
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
+
+    def forward(self,
+                context_input_ids: torch.Tensor,
+                context_token_type_ids: torch.Tensor,
+                context_attention_mask: torch.Tensor,
+                EAR_input_ids: torch.Tensor = None,
+                EAR_token_type_ids: torch.Tensor = None,
+                EAR_attention_mask: torch.Tensor = None,
+                ERR_input_ids: torch.Tensor = None,
+                ERR_token_type_ids: torch.Tensor = None,
+                ERR_attention_mask: torch.Tensor = None):
+        """
+        仅仅使用BERT
+        :param context_input_ids:
+        :param context_token_type_ids:
+        :param context_attention_mask:
+        :param EAR_input_ids:
+        :param EAR_token_type_ids:
+        :param EAR_attention_mask:
+        :param ERR_input_ids:
+        :param ERR_token_type_ids:
+        :param ERR_attention_mask:
+        :return:
+        """
+        input_strs = list(''.join(self.tokenizer.convert_ids_to_tokens(x)) for x in context_input_ids)
+        question_strs = list(''.join(self.tokenizer.convert_ids_to_tokens(x)) for x in EAR_input_ids)
+        if not self.training:
+            print(f'input_strs:{input_strs}\nquesiton_strs:{question_strs}')
+        com_input_ids = torch.cat([context_input_ids, EAR_input_ids], dim=1)  # (bsz, C + U, hidden)
+        com_token_type_ids = torch.cat([context_token_type_ids, EAR_token_type_ids], dim=1)  # (bsz, C + U, hidden)
+        com_attention_mask = torch.cat([context_attention_mask, EAR_attention_mask], dim=1)  # (bsz, C + U, hidden
+        result = self.bert(input_ids=com_input_ids, token_type_ids=com_token_type_ids, attention_mask=com_attention_mask)
+        # (bsz, |C|, hidden)
+
+        embeds = result[0]  # (bsz, |C| + |Q|, hidden)
+        start_output = self.arg_linear_start(embeds).squeeze(-1)  # (bsz, |C| + |Q|)
+        end_output = self.arg_linear_end(embeds).squeeze(-1)  # (bsz, |C| + |Q|)
+        return {
+            'start_probs': start_output,
+            'end_probs': end_output,
+            'role_pred': torch.zeros(end_output.shape[0], 19).cuda()
+        }
+
+    def get_optimizers(self):
+        plm_params = self.bert.parameters()
+        linear1_param = self.arg_linear_end.parameters()
+        linear2_param = self.arg_linear_start.parameters()
+        plm_optim = AdamW(params=plm_params, lr=self.plm_lr)
+        linear_optim = AdamW(params=chain(linear1_param, linear2_param), lr=self.linear_lr)
+        return [plm_optim, linear_optim]
+
+
+class FocalLoss(nn.Module):
+    '''
+    Multi-class Focal Loss
+    '''
+    def __init__(self, gamma=2, weight=None):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+        self.weight = weight
+        # self.reduction = reduction
+
+    def forward(self, input, target):
+        """
+        input: [N, C], float32
+        target: [N, ], int64
+        """
+        logpt = F.log_softmax(input, dim=1)
+        pt = torch.exp(logpt)
+        logpt = (1-pt)**self.gamma * logpt
+        loss = F.nll_loss(logpt, target, self.weight)
+        return loss
 
 
 class DualQA_Loss(nn.Module):
+    def __init__(self):
+        super(DualQA_Loss, self).__init__()
+        self.focal_loss = FocalLoss()
+
     def forward(self,
                 start_probs: torch.Tensor,
                 end_probs: torch.Tensor,
@@ -325,12 +472,27 @@ class DualQA_Loss(nn.Module):
         :param role_label: (bsz, 1)
         :return:
         """
-        start_loss = F.cross_entropy(start_probs, argument_start_label)
-        end_loss = F.cross_entropy(end_probs, argument_end_label)
-        role_loss = F.cross_entropy(role_pred, role_label)
-        argument_loss = start_loss + end_loss
-        loss = role_loss + argument_loss
-        return loss
+        if start_probs is None:
+            return F.nll_loss(torch.log(role_pred), role_label)
+            # return self.focal_loss(role_pred, role_label)
+        elif role_pred is None:
+            # start_focal = self.focal_loss(start_probs, argument_start_label)
+            # end_focal = self.focal_loss(end_probs, argument_end_label)
+            start_loss = F.nll_loss(torch.log(start_probs), argument_start_label)
+            end_loss = F.nll_loss(torch.log(end_probs), argument_end_label)
+            return start_loss + end_loss
+            # return start_focal + end_focal
+        start_loss = F.nll_loss(torch.log(start_probs), argument_start_label)
+        end_loss = F.nll_loss(torch.log(end_probs), argument_end_label)
+        role_loss = F.nll_loss(torch.log(role_pred), role_label)
+        # start_loss = F.cross_entropy(start_probs, argument_start_label)
+        # end_loss = F.cross_entropy(end_probs, argument_end_label)
+        # role_loss = F.cross_entropy(role_pred, role_label)
+        # argument_loss = start_loss + end_loss
+        # loss = role_loss + argument_loss
+        # # breakpoint()
+        # return loss
+        return start_loss + end_loss + role_loss
 
 
 class DualQA_Evaluator(BaseEvaluator):
@@ -340,6 +502,8 @@ class DualQA_Evaluator(BaseEvaluator):
         self.arg_precision_evaluator = PrecisionEvaluator()
         self.role_kappa_evaluator = KappaEvaluator()
         self.role_precision_evaluator = PrecisionEvaluator()
+        self.pred_lst = []
+        self.gt_lst = []
 
     def eval_single(
             self,
@@ -361,40 +525,54 @@ class DualQA_Evaluator(BaseEvaluator):
         :param threshold:
         :return:
         """
-        start_probs = start_probs.squeeze()
+        start_probs = start_probs.squeeze().clone().detach().cpu()
         start_digits = (start_probs > threshold).int().tolist()
         start_probs = np.array(start_probs)  # (C)
-        end_probs = end_probs.squeeze()
+        end_probs = end_probs.squeeze().clone().detach().cpu()
         end_digits = (end_probs > threshold).int().tolist()
         end_probs = np.array(end_probs)  # (C)
-        spans = tools.argument_span_determination(start_digits, end_digits, start_probs, end_probs)
-        span = tuple(spans[0])  # 默认取第一个
+        start_position = int(np.argsort(start_probs)[-1])
+        end_position = int(np.argsort(end_probs)[-1])
+        # spans = tools.argument_span_determination(start_digits, end_digits, start_probs, end_probs)
+        # span = tuple(spans[0])  # 默认取第一个
+        span = (start_position, end_position)
         argument_pred = ''.join(tokens[span[0]: span[1] + 1])
 
-        role_pred = role_pred.squeeze()
+        role_pred = role_pred.squeeze().clone().detach().cpu()
         max_position = int(np.argsort(role_pred)[-1])
 
-        self.arg_kappa_evaluator.eval_single(argument_pred, argument_gt)
+        # self.arg_kappa_evaluator.eval_single(argument_pred, argument_gt)
         self.arg_precision_evaluator.eval_single(argument_pred, argument_gt)
-        self.role_kappa_evaluator.eval_single(max_position, role_idx_gt)
+        # self.role_kappa_evaluator.eval_single(max_position, role_idx_gt)
         self.role_precision_evaluator.eval_single(max_position, role_idx_gt)
+        self.pred_lst.append({
+            'argument_pred': argument_pred,
+            'role_pred': max_position
+        })
+        self.gt_lst.append({
+            'argument_gt': argument_gt,
+            'role_gt': role_idx_gt
+        })
 
     def eval_step(self) -> Dict[str, Any]:
-        arg_kappa = self.arg_kappa_evaluator.eval_step()
+        # arg_kappa = self.arg_kappa_evaluator.eval_step()
         arg_p = self.arg_precision_evaluator.eval_step()
-        role_kappa = self.role_kappa_evaluator.eval_step()
+        # role_kappa = self.role_kappa_evaluator.eval_step()
         role_p = self.role_precision_evaluator.eval_step()
 
-        arg_kappa = tools.modify_key_of_dict(arg_kappa, lambda x: 'argument_' + x)
+        # arg_kappa = tools.modify_key_of_dict(arg_kappa, lambda x: 'argument_' + x)
         arg_p = tools.modify_key_of_dict(arg_p, lambda x: 'argument_' + x)
-        role_kappa = tools.modify_key_of_dict(role_kappa, lambda x: 'role_' + x)
+        # role_kappa = tools.modify_key_of_dict(role_kappa, lambda x: 'role_' + x)
         role_p = tools.modify_key_of_dict(role_p, lambda x: 'role_' + x)
 
         result = {}
         result.update(arg_p)
-        result.update(arg_kappa)
+        # result.update(arg_kappa)
         result.update(role_p)
-        result.update(role_kappa)
+        # result.update(role_kappa)
+
+        self.pred_lst = []
+        self.gt_lst = []
         return result
 
 """
@@ -402,37 +580,6 @@ class DualQA_Evaluator(BaseEvaluator):
 """
 
 
-def split_by_content_type_trigger(data_dict: Dict[str, Any]):
-    content = data_dict['content']
-    events = data_dict['events']
-
-    result_dicts = []
-
-    for elem_event in events:
-        event_type = elem_event['type']
-        event_mentions = elem_event['mentions']
-
-        # 分离trigger与argument
-        triggers = []
-        other_mentions = []
-        for elem_mention in event_mentions:
-            if elem_event['role'] == 'trigger':
-                triggers.append(elem_mention)
-            else:
-                other_mentions.append(elem_mention)
-        if len(triggers) != 1:
-            raise Exception(f'[split_by_content_type_trigger]不合法的mentions！包含的trigger个数错误。应当为1，实际为{len(triggers)}')
-
-        cur_sample = {
-            "content": content,
-            "events": events,
-            "event_type": event_type,
-            "trigger_info": triggers[0],
-            "other_mentions": other_mentions
-        }
-        result_dicts.append(cur_sample)
-
-    return result_dicts
 
 
 def split_by_content_type_mention(data_dict: Dict[str, Any]):
@@ -481,126 +628,6 @@ def split_by_content_type(data_dicts: Dict[str, Any]):
     return result_dicts
 
 
-def construct_EAR_ERR_context(data_dict: Dict[str, Any], dataset_type: str, stanza_nlp):
-    """
-    同时构建EAR,ERR与context
-
-    :param data_dict: [content, event_type, trigger_info, other_mentions]
-    :param dataset_type:
-    :param stanza_nlp:
-    :return:
-    """
-    content, event_type, trigger_info, mentions = \
-        data_dict['content'], data_dict['event_type'], data_dict['trigger_info'], data_dict['other_mentions']
-
-    trigger_span = trigger_info['span']
-    # 首先构建context
-    context_sentence = f"{event_type}[SEP]{content[:trigger_span[0]]}[SEP]{content[trigger_span[0]:trigger_span[1]]}[SEP]{content[trigger_span[1]:]}"
-
-    # 先构建EAR
-    EAR_questions = []
-    if dataset_type == 'FewFC':
-        schema = EE_settings.event_available_roles
-        for key, value in schema.items():
-            schema[key] = list(EE_settings.role_types_translate[x] for x in value)
-        role_types = list(EE_settings.role_types_translate[x] for x in EE_settings.role_types)
-    elif dataset_type == 'Duee':
-        schema = EE_settings.duee_event_available_roles
-        role_types = EE_settings.duee_role_types
-    else:
-        raise Exception(f'数据集{dataset_type}不存在！')
-    role_index = {v: i for i, v in enumerate(role_types)}
-    EAR_results = []
-    exist_role = set()
-    for elem_mention in event_type['mentions']:
-        exist_role.add(elem_mention['role'])
-        role, span, word = elem_mention['role'], tuple(elem_mention['span']), elem_mention['word']
-        cur_sample = {
-            'content': content,
-            'event_type': event_type,
-            'role': role,
-            'span': span,
-            'word': word
-        }
-        EAR_results.append(cur_sample)
-    for elem_role in schema[event_type]:
-        if elem_role not in exist_role:
-            cur_sample = {
-                'content': content,
-                'event_type': event_type,
-                'role': elem_role,
-                'span': (0, 0),
-                'word': None
-            }
-            EAR_results.append(cur_sample)
-    for elem_info in EAR_results:
-        role, word = elem_info['role'], elem_info['word']
-        question = f'词语{word}在事件{event_type}中作为什么角色？'
-        EAR_questions.append({
-            'question': question,
-            'label': role,
-            'EAR_gt': word if word is not None else ''  # 如果为负例，把None切换成空字符串
-        })
-
-    # 然后构建ERR
-    ERR_questions = []
-    words = list(jieba.cut(content))
-    entities = list(x['text'] for x in stanza_nlp(content).ents)
-    ERR_results = []
-    exist_words = set(x['word'] for x in data_dict['mentions'])
-    for elem in exist_words:
-        if elem in entities:
-            entities.remove(elem)
-        if elem in words:
-            words.remove(elem)
-    for elem_mention in data_dict['mentions']:
-        # pos
-        role, span, word = elem_mention['role'], tuple(elem_mention['span']), elem_mention['word']
-        ERR_results.append({
-            'content': content,
-            'event_type': event_type,
-            "word": word,
-            'role': role
-        })
-    # ERR的数量需要与EAR相同，所以构建剩余的
-    pos_cnt = len(ERR_results)
-    for elem_result in EAR_results[pos_cnt:]:
-        # neg
-        random_word = random.choice(entities) if len(entities) != 0 else None
-        if random_word is None or random_word in exist_words:
-            entities.remove(random_word)
-            random_word = random.choice(words)  # words的长度应该不会为0吧
-            words.remove(random_word)
-        ERR_results.append({
-            'content': content,
-            'event_type': event_type,
-            "word": random_word,
-            'role': None
-        })
-    for elem_info in ERR_results:
-        role, word = elem_info['role'], elem_info['word']
-        question = f'词语{word}在事件{event_type}中作为什么角色？'
-        ERR_questions.append({
-            'question': question,
-            'label': role,
-            'ERR_gt': role_index[role] if role is not None else len(role_index)  # 负例在末尾
-        })
-
-    results = []
-    for idx, (elem_a, elem_r) in enumerate(zip(EAR_questions, ERR_questions)):
-        results.append({
-            "context": context_sentence,
-            "EAR_question": elem_a['question'],
-            "EAR_label": elem_a['label'],
-            'ERR_question': elem_r['question'],
-            'ERR_label': elem_r['label'],
-            'content': content,
-            'EAR_gt': elem_a['EAR_gt'],
-            'ERR_gt': elem_r['ERR_gt']
-        })
-    return results
-
-
 def split_by_questions(data_dict: Dict[str, Any]):
     content = data_dict['content']
     event_type = data_dict['event_type']
@@ -638,220 +665,7 @@ def split_by_questions(data_dict: Dict[str, Any]):
 """
 
 
-def wrapped_find_matches(data_dict: Dict[str, Any]):
-    content = data_dict['content']
-    tokens = data_dict['token']
-    token2origin, origin2token = tools.find_matches(content, tokens)
-    data_dict['token2origin'] = token2origin
-    data_dict['origin2token'] = origin2token
-    return [data_dict]
-
-
-def generate_EAR_target(data_dict: Dict[str, Any]):
-    """
-    也就是生成argument的结果的label
-    :param data_dict:
-    :return:
-    """
-    argument_label = data_dict['argument_label']  # origin span
-    tokens = data_dict['tokens']
-    token2origin, origin2token = data_dict['token2origin'], data_dict['origin2token']
-    argument_target_start, argument_target_end = np.zeros(len(tokens)), np.zeros(len(tokens))  # (role_cnt)
-    token_start, token_end = origin2token[argument_label[0]] - 1, origin2token[argument_label[0] - 1] - 1
-    argument_target_start[token_start] = 1
-    argument_target_end[token_end] = 1
-    data_dict['argument_target_start'] = argument_target_start
-    data_dict['argument_target_end'] = argument_target_end
-    return [data_dict]
-
-
-def new_generate_EAR_target(data_dict: Dict[str, Any]):
-    """
-
-    :param data_dict:
-    :return:
-    """
-    input_ids = data_dict['input_ids']
-    offset_mapping = data_dict['offset_mapping']
-    input_ids_length = len(input_ids)
-    argument_start_target, argument_end_target = np.zeros(input_ids_length), np.zeros(input_ids_length)
-    span = data_dict['EAR_label']
-    if span == (0, 0):
-        token_span = (0, 0)
-    else:
-        token_span = (-1, -1)
-        for elem in offset_mapping:
-            if elem[0] == span[0] + 1:
-                token_span = (elem[1], token_span[1])
-            if elem[0] == span[1]:
-                token_span = (token_span[0], elem[1])
-    argument_start_target[token_span[0]] = 1
-    argument_end_target[token_span[1]] = 1
-    data_dict['argument_target_start'] = argument_start_target
-    data_dict['argument_target_end'] = argument_end_target
-    return [data_dict]
-
-
-def generate_ERR_target(data_dict: Dict[str, Any]):
-    """
-    生成role的结果
-    :param data_dict:
-    :return:
-    """
-    role_label = data_dict['role_label']
-    role_target = np.zeros(len(EE_settings.role_types))
-    role_target[EE_settings.role_index[role_label]] = 1
-
-    data_dict['role_target'] = role_target  # (role_cnt)
-    return [data_dict]
-
-
-def new_generate_ERR_target(data_dict: Dict[str, Any], dataset_type: str):
-    if dataset_type == 'FewFC':
-        role_types = list(EE_settings.role_types_translate[x] for x in EE_settings.role_types)
-    elif dataset_type == 'Duee':
-        role_types = EE_settings.duee_role_types
-    else:
-        raise Exception(f'不存在{dataset_type}数据集!')
-    role_index = {v: i for i, v in enumerate(role_types)}
-    role_label = data_dict['ERR_label']
-    role_target = np.zeros(len(role_types) + 1)  # 在最后面加上一个负例label
-    if role_label is None:
-        role_target[-1] = 1
-    else:
-        role_target[role_index[role_label]] = 1
-    data_dict['role_target'] = role_target  # (role_cnt)
-    return [data_dict]
-
-
-def generate_EAR_gt(data_dict: Dict[str, Any]):
-    data_dict['start_gt']
-
-
-def generate_ERR_gt(data_dict: Dict[str, Any]):
-    pass
-
-
-def train_dataset_factory(train_filename: str, bsz=4):
-    json_lines = tools.read_json_lines(train_filename)
-    json_dict_lines = [{'content': x['content'], 'events': x['events']} for x in json_lines]
-    # [content, events]
-
-    # 过滤长度非法的content，替换非法字符
-    data_dicts = tools.map_operation_to_list_elem(remove_function, json_dict_lines)
-    data_dicts = tools.map_operation_to_list_elem(remove_illegal_length, data_dicts)
-    # get [content, events]
-
-    # 按content-事件类型-触发词-进行划分
-    data_dicts = tools.map_operation_to_list_elem(split_by_content_type_trigger, data_dicts)
-    # [content, event_type, trigger_info, other_mentions]
-
-    # 生成问句对与label
-    # *需要进一步划分问题则在此部分之前插入
-    # data_dicts = tools.map_operation_to_list_elem(generate_EAR_questions_and_labels, data_dicts)
-    # data_dicts = tools.map_operation_to_list_elem(generate_ERR_questions_and_labels, data_dicts)
-    # [content, event_type, trigger_info, other_mentions, argument_questions, argument_labels, role_questions, role_labels]
-
-    # 按照问句划分
-    data_dicts = tools.map_operation_to_list_elem(split_by_questions, data_dicts)
-    # [content, event_type, trigger_info, argument_info, argument_question, argument_label, role_question, role_label]
-
-    # tokenize
-    data_dict = tools.transpose_list_of_dict(data_dicts)
-    lst_tokenizer = tools.bert_tokenizer()
-    content_result = lst_tokenizer(data_dict['content'])
-    content_result = tools.transpose_list_of_dict(content_result)
-    content_result = tools.modify_key_of_dict(content_result, lambda x: x)
-    arg_q_result = lst_tokenizer(data_dict['argument_question'])
-    arg_q_result = tools.transpose_list_of_dict(arg_q_result)
-    arg_q_result = tools.modify_key_of_dict(arg_q_result, lambda x: 'argument_' + x)
-    role_q_result = lst_tokenizer(data_dict['role_question'])
-    role_q_result = tools.transpose_list_of_dict(role_q_result)
-    role_q_result = tools.modify_key_of_dict(role_q_result, lambda x: 'role_' + x)
-    data_dict.update(content_result)
-    data_dict.update(arg_q_result)
-    data_dict.update(role_q_result)
-    data_dicts = tools.transpose_dict_of_list(data_dict)
-    # [
-    # content, event_type, trigger_info, other_mentions,
-    # input_ids, token_type_ids, attention_mask,
-    # argument_question, argument_label, argument_input_ids, argument_token_type_ids, argument_attention_mask,
-    # role_question, role_label, role_input_ids, role_token_type_ids, role_attention_mask]
-
-    # 计算match
-    data_dicts = tools.map_operation_to_list_elem(wrapped_find_matches, data_dicts)
-    # [
-    # content, event_type, trigger_info, other_mentions, match
-    # input_ids, token_type_ids, attention_mask,
-    # argument_question, argument_label, argument_input_ids, argument_token_type_ids, argument_attention_mask,
-    # role_question, role_label, role_input_ids, role_token_type_ids, role_attention_mask]
-
-    # 将label进行tensor化
-    data_dicts = tools.map_operation_to_list_elem(generate_EAR_target, data_dicts)
-    data_dicts = tools.map_operation_to_list_elem(generate_ERR_target, data_dicts)
-    # [
-    # content, event_type, trigger_info, other_mentions, match
-    # input_ids, token_type_ids, attention_mask,
-    # argument_question, argument_label, argument_target,
-    # argument_input_ids, argument_token_type_ids, argument_attention_mask,
-    # role_question, role_label, role_target,
-    # role_input_ids, role_token_type_ids, role_attention_mask]
-
-    # produce dataset
-    train_dataset = SimpleDataset(data_dicts)
-
-    def collate_fn(lst):
-        dict_of_data = tools.transpose_list_of_dict(lst)
-
-        input_ids = [np.array(x) for x in dict_of_data['input_ids']]
-        token_type_ids = [np.array(x) for x in dict_of_data['token_type_ids']]
-        attention_mask = [np.array(x) for x in dict_of_data['attention_mask']]
-        argument_input_ids = [np.array(x) for x in dict_of_data['argument_input_ids']]
-        argument_token_type_ids = [np.array(x) for x in dict_of_data['argument_token_type_ids']]
-        argument_attention_mask = [np.array(x) for x in dict_of_data['argument_attention_mask']]
-        role_input_ids = [np.array(x) for x in dict_of_data['role_input_ids']]
-        role_token_type_ids = [np.array(x) for x in dict_of_data['role_token_type_ids']]
-        role_attention_mask = [np.array(x) for x in dict_of_data['role_attention_mask']]
-
-        input_ids = torch.tensor(tools.batchify_ndarray(input_ids))
-        token_type_ids = torch.tensor(tools.batchify_ndarray(token_type_ids))
-        attention_mask = torch.tensor(tools.batchify_ndarray(attention_mask))
-        argument_input_ids = torch.tensor(tools.batchify_ndarray(argument_input_ids))
-        argument_token_type_ids = torch.tensor(tools.batchify_ndarray(argument_token_type_ids))
-        argument_attention_mask = torch.tensor(tools.batchify_ndarray(argument_attention_mask))
-        role_input_ids = torch.tensor(tools.batchify_ndarray(role_input_ids))
-        role_token_type_ids = torch.tensor(tools.batchify_ndarray(role_token_type_ids))
-        role_attention_mask = torch.tensor(tools.batchify_ndarray(role_attention_mask))
-
-        argument_target_start = torch.tensor(tools.batchify_ndarray(dict_of_data['argument_target_start']))
-        argument_target_end = torch.tensor(tools.batchify_ndarray(dict_of_data['argument_target_end']))
-        role_target = torch.tensor(tools.batchify_ndarray(dict_of_data['role_target']))
-
-        return {
-                   'input_ids': input_ids,  # (bsz, seq_l)
-                   'token_type_ids': token_type_ids,  # (bsz, seq_l)
-                   'attention_mask': attention_mask,  # (bsz, seq_l)
-                   'argument_input_ids': argument_input_ids,  # (bsz, seq_l)
-                   'argument_token_type_ids': argument_token_type_ids,  # (bsz, seq_l)
-                   'argument_attention_mask': argument_attention_mask,  # (bsz, seq_l)
-                   'role_input_ids': role_input_ids,  # (bsz, seq_l)
-                   'role_token_type_ids': role_token_type_ids,  # (bsz, seq_l)
-                   'role_attention_mask': role_attention_mask,  # (bsz, seq_l)
-               }, {
-                   'argument_target_start': argument_target_start,  # (bsz, seq_l)
-                   'argument_target_end': argument_target_end,  # (bsz, seq_l)
-                   'role_target': role_target  # (bsz, role_cnt)
-               }
-
-    train_dataloader = DataLoader(train_dataset, batch_size=bsz, shuffle=True, collate_fn=collate_fn)
-    return train_dataloader
-
-
-def val_dataset_factory(val_filename: str):
-    pass
-
-
-def new_train_dataset_factory(data_dicts: List[dict], dataset_type: str, stanza_nlp, bsz: int = dualqa_settings, shuffle: bool = True):
+def new_train_dataset_factory(data_dicts: List[dict], bsz: int = dualqa_settings, shuffle: bool = True):
     """
     对FewFC格式的数据进行预处理，包括以下步骤：
 
@@ -863,47 +677,7 @@ def new_train_dataset_factory(data_dicts: List[dict], dataset_type: str, stanza_
     :param data_dicts:
     :return:
     """
-    # 去除content过长的sample
-    data_dicts = tools.map_operation_to_list_elem(remove_illegal_length, data_dicts)
-    # [content, events]
-
-    # 按content-事件类型-触发词-进行划分
-    data_dicts = tools.map_operation_to_list_elem(split_by_content_type_trigger, data_dicts)
-    # [content, event_type, trigger_info, other_mentions]
-
-    # 同时构造context，EAR问题与ERR问题。
-    results = []
-    for elem in data_dicts:
-        results.extend(construct_EAR_ERR_context(elem, dataset_type, stanza_nlp))
-    # [context, content, EAR_question, EAR_label, ERR_question, ERR_label]
-
-    # tokenize
-    data_dict = tools.transpose_list_of_dict(results)
-    lst_tokenizer = tokenize_tools.bert_tokenizer()
-    context_result = lst_tokenizer(data_dict['context'])
-    context_result = tools.transpose_list_of_dict(context_result)
-    context_result = tools.modify_key_of_dict(context_result, lambda x: x)
-    EAR_result = lst_tokenizer(data_dict['EAR_question'])
-    EAR_result = tools.transpose_list_of_dict(EAR_result)
-    EAR_result = tools.modify_key_of_dict(EAR_result, lambda x: 'EAR_' + x)
-    ERR_result = lst_tokenizer(data_dict['ERR_question'])
-    ERR_result = tools.transpose_list_of_dict(ERR_result)
-    ERR_result = tools.modify_key_of_dict(ERR_result, lambda x: 'ERR_' + x)
-    data_dict.update(context_result)
-    data_dict.update(EAR_result)
-    data_dict.update(ERR_result)
-    data_dicts = tools.transpose_dict_of_list(data_dict)
-
-    # 为label生成nparray
-    data_dicts = tools.map_operation_to_list_elem(new_generate_EAR_target, data_dicts)
-    data_dicts = tools.map_operation_to_list_elem(new_generate_ERR_target, data_dicts)
-
-
-    # 最后，整理一下data_dicts中的数据，把不要的删掉
-    # data_dict = tools.transpose_list_of_dict(data_dicts)
-    # data_dicts = tools.transpose_dict_of_list(data_dict)
-
-    cur_dataset = SimpleDataset(data_dict)
+    cur_dataset = SimpleDataset(data_dicts)
     def collate_fn(lst):
         """
         需要context, QA, QR的input_ids, token_type_ids, attention_mask
@@ -922,8 +696,8 @@ def new_train_dataset_factory(data_dicts: List[dict], dataset_type: str, stanza_
         ERR_token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['ERR_token_type_ids']), dtype=torch.long)
         ERR_attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['ERR_attention_mask']), dtype=torch.long)
         role_label = torch.tensor(data_dict['role_target'], dtype=torch.long)
-        argument_start_label, argument_end_label = torch.tensor(data_dict['argument_target_start'], dtype=torch.long), \
-                                                   torch.tensor(data_dict['argument_target_end'], dtype=torch.long)
+        argument_start_label, argument_end_label = torch.tensor(np.array(data_dict['argument_target_start']), dtype=torch.long), \
+                                                   torch.tensor(np.array(data_dict['argument_target_end']), dtype=torch.long)
         return {
             'context_input_ids': context_input_ids,
             'context_token_type_ids': context_token_type_ids,
@@ -945,7 +719,7 @@ def new_train_dataset_factory(data_dicts: List[dict], dataset_type: str, stanza_
     return cur_dataloader
 
 
-def new_val_dataset_factory(data_dicts: List[dict], dataset_type: str, stanza_nlp):
+def new_val_dataset_factory(data_dicts: List[dict]):
     """
     构造valid数据。包括以下步骤：
 
@@ -960,38 +734,8 @@ def new_val_dataset_factory(data_dicts: List[dict], dataset_type: str, stanza_nl
     :param stanza_nlp:
     :return:
     """
-    # 去除content过长的sample
-    data_dicts = tools.map_operation_to_list_elem(remove_illegal_length, data_dicts)
-    # [content, events]
 
-    # 按content-事件类型-触发词-进行划分
-    data_dicts = tools.map_operation_to_list_elem(split_by_content_type_trigger, data_dicts)
-    # [content, event_type, trigger_info, other_mentions]
-
-    # 同时构造context，EAR问题与ERR问题。
-    results = []
-    for elem in data_dicts:
-        results.extend(construct_EAR_ERR_context(elem, dataset_type, stanza_nlp))
-    # [context, content, EAR_question, EAR_label, ERR_question, ERR_label, EAR_gt, ERR_gt]
-
-    # tokenize
-    data_dict = tools.transpose_list_of_dict(results)
-    lst_tokenizer = tokenize_tools.bert_tokenizer()
-    context_result = lst_tokenizer(data_dict['context'])
-    context_result = tools.transpose_list_of_dict(context_result)
-    context_result = tools.modify_key_of_dict(context_result, lambda x: x)
-    EAR_result = lst_tokenizer(data_dict['EAR_question'])
-    EAR_result = tools.transpose_list_of_dict(EAR_result)
-    EAR_result = tools.modify_key_of_dict(EAR_result, lambda x: 'EAR_' + x)
-    ERR_result = lst_tokenizer(data_dict['ERR_question'])
-    ERR_result = tools.transpose_list_of_dict(ERR_result)
-    ERR_result = tools.modify_key_of_dict(ERR_result, lambda x: 'ERR_' + x)
-    data_dict.update(context_result)
-    data_dict.update(EAR_result)
-    data_dict.update(ERR_result)
-    data_dicts = tools.transpose_dict_of_list(data_dict)
-
-    cur_dataset = SimpleDataset(data_dict)
+    cur_dataset = SimpleDataset(data_dicts)
     def collate_fn(lst):
         """
         这次生成的是用于评价的数据
@@ -1020,30 +764,37 @@ def new_val_dataset_factory(data_dicts: List[dict], dataset_type: str, stanza_nl
            'ERR_token_type_ids': ERR_token_type_ids,
            'ERR_attention_mask': ERR_attention_mask
                }, {
-            'argument_gt': data_dict['EAR_gt'],
-            'role_idx_gt': data_dict['ERR_gt']
+            'argument_gt': data_dict['EAR_gt'][0],
+            'role_idx_gt': data_dict['ERR_gt'][0],
+            'tokens': data_dict['token'][0] if data_dict['token'][0] != '' else '[SEP]'
         }
     val_dataloader = DataLoader(cur_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
     return val_dataloader
 
 
-def dataset_factory(dataset_type: str):
-    if dataset_type == 'FewFC':
-        loaded = load_FewFC_ee('../../../data/NLP/EventExtraction/FewFC-main')
-    elif dataset_type == 'Duee':
-        loaded = load_Duee_ee_formated('../../../data/NLP/EventExtraction/duee')
-    else:
-        raise Exception(f'[dual_qa:dataset_factory]不存在{dataset_type}数据集！')
+def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int):
+    bsz = int(bsz)
+    train_data_dicts = pickle.load(open(train_file, 'rb'))
+    valid_data_dicts = list(json.loads(x) for x in open(valid_file, 'r').read().strip().split('\n'))
 
-    stanza_nlp = stanza.Pipeline(lang='zh', processors='tokenize,ner')
-    train_dataloader = new_train_dataset_factory(loaded['train'], dataset_type, stanza_nlp)
-    val_dataloader = new_val_dataset_factory(loaded['val'], dataset_type)
+    train_dataloader = new_train_dataset_factory(train_data_dicts, bsz=bsz)
+    val_dataloader = new_val_dataset_factory(valid_data_dicts)
     return train_dataloader, val_dataloader
 
 
 model_registry = {
     "model": DualQA,
     'loss': DualQA_Loss,
-    'Evaluator': DualQA_Evaluator,
-    'train_val_data': dataset_factory
+    'evaluator': DualQA_Evaluator,
+    'train_val_data': dataset_factory,
+    'recorder': NaiveRecorder
 }
+
+
+if __name__ == '__main__':
+    train_loader, val_loader = dataset_factory('FewFC', 'temp_data/train.FewFC.labeled.25.single.pk', 'temp_data/train.FewFC.tokenized.25.single.jsonl', bsz=1)
+    train_samples, valid_samples = [], []
+    for elem in train_loader:
+        train_samples.append(elem)
+    for elem in val_loader:
+        valid_samples.append(elem)

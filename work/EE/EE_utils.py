@@ -2,7 +2,7 @@ from type_def import *
 from utils import tools
 import functools
 from dataset.ee_dataset import load_FewFC_ee, load_Duee_ee_formated
-import EE_settings
+from work.EE import EE_settings
 
 
 # 未改造的函数，完全通用，不针对特定结构
