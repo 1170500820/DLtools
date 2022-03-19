@@ -95,13 +95,14 @@ def construct_EAR_ERR_context(data_dict: Dict[str, Any], dataset_type: str, stan
             new_schema[key] = list(EE_settings.role_types_translate[x] for x in value)
         schema = new_schema
         role_types = list(EE_settings.role_types_translate[x] for x in EE_settings.role_types)
+        for idx in range(len(mentions)):
+            mentions[idx]['role'] = EE_settings.role_types_translate[mentions[idx]['role']]
     elif dataset_type == 'Duee':
         schema = EE_settings.duee_event_available_roles
         role_types = EE_settings.duee_role_types
     else:
         raise Exception(f'数据集{dataset_type}不存在！')
-    for idx in range(len(mentions)):
-        mentions[idx]['role'] = EE_settings.role_types_translate[mentions[idx]['role']]
+
     role_index = {v: i for i, v in enumerate(role_types)}
     # 构建EAR-构建正例
     EAR_results = []
@@ -299,7 +300,7 @@ def data_filter(data_path: str = initial_dataset_path, dataset_type: str = datas
     data_dicts = tools.map_operation_to_list_elem(remove_illegal_length, data_dicts)
     # [content, events]
 
-    f = open(temp_path + output_name, 'w')
+    f = open(temp_path + output_name, 'w', encoding='utf-8')
     for elem in data_dicts:
         s = json.dumps(elem, ensure_ascii=False)
         f.write(s + '\n')
@@ -314,13 +315,13 @@ def divide_by_event_type(last_output_name: str, output_name: str, dataset_type: 
     :param output_name:
     :return:
     """
-    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r').read().strip().split('\n'))
+    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r', encoding='utf-8').read().strip().split('\n'))
 
     # 按content-事件类型-触发词-进行划分
     data_dicts = tools.map_operation_to_list_elem(split_by_content_type_trigger, data_dicts)
     # [content, event_type, trigger_info, other_mentions]
 
-    f = open(temp_path + output_name, 'w')
+    f = open(temp_path + output_name, 'w', encoding='utf-8')
     for elem in data_dicts:
         s = json.dumps(elem, ensure_ascii=False)
         f.write(s + '\n')
@@ -336,9 +337,9 @@ def construct_context_and_questions(last_output_name: str, output_name: str, dat
     :return:
     """
     if from_cache:
-        results = list(json.loads(x) for x in open(temp_path + output_name, 'r').read().strip().split('\n'))
+        results = list(json.loads(x) for x in open(temp_path + output_name, 'r', encoding='utf-8').read().strip().split('\n'))
     else:
-        data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r').read().strip().split('\n'))
+        data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r', encoding='utf-8').read().strip().split('\n'))
         data_dicts = data_dicts
 
         # 同时构造context，EAR问题与ERR问题。
@@ -363,7 +364,7 @@ def construct_context_and_questions(last_output_name: str, output_name: str, dat
             neg_results.pop(random.randrange(0, i + 1))
     results = pos_results + neg_results
 
-    f = open(temp_path + output_name, 'w')
+    f = open(temp_path + output_name, 'w', encoding='utf-8')
     for elem in results:
         s = json.dumps(elem, ensure_ascii=False)
         f.write(s + '\n')
@@ -378,7 +379,7 @@ def tokenize_context_and_questions(last_output_name: str, output_name: str, data
     :param dataset_type:
     :return:
     """
-    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r').read().strip().split('\n'))
+    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r', encoding='utf-8').read().strip().split('\n'))
 
     # tokenize
     data_dict = tools.transpose_list_of_dict(data_dicts)
@@ -397,7 +398,7 @@ def tokenize_context_and_questions(last_output_name: str, output_name: str, data
     data_dict.update(ERR_result)
     data_dicts = tools.transpose_dict_of_list(data_dict)
 
-    f = open(temp_path + output_name, 'w')
+    f = open(temp_path + output_name, 'w', encoding='utf-8')
     for elem in data_dicts:
         s = json.dumps(elem, ensure_ascii=False)
         f.write(s + '\n')
@@ -412,7 +413,7 @@ def generate_label(last_output_name: str, output_name: str, dataset_type: str = 
     :param dataset_type:
     :return:
     """
-    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r').read().strip().split('\n'))
+    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r', encoding='utf-8').read().strip().split('\n'))
 
     data_dicts = tools.map_operation_to_list_elem(new_generate_EAR_target, data_dicts)
     results = []
@@ -429,27 +430,27 @@ if __name__ == '__main__':
     print(f'初始路径：{initial_dataset_path}')
     # 首先对train和val进行筛选
     print('正在去除过长句子')
-    data_filter(initial_dataset_path, 'FewFC', 'train', 'train.FewFC.filtered_length.balanced.jsonl')
-    # data_filter(initial_dataset_path, 'FewFC', 'valid', 'valid.FewFC.filtered_length.jsonl')
+    # data_filter(initial_dataset_path, dataset_type, 'train', f'train.{dataset_type}.filtered_length.balanced.jsonl')
+    # data_filter(initial_dataset_path, dataset_type, 'valid', f'valid.{dataset_type}.filtered_length.balanced.jsonl')
 
     # 然后按照事件类型进行切分
     print('正在按事件类型拆分数据')
-    divide_by_event_type('train.FewFC.filtered_length.balanced.jsonl', 'train.FewFC.divided.balanced.jsonl')
-    # divide_by_event_type('valid.FewFC.filtered_length.jsonl', 'valid.FewFC.divided.jsonl')
+    # divide_by_event_type(f'train.{dataset_type}.filtered_length.balanced.jsonl', f'train.{dataset_type}.divided.balanced.jsonl')
+    # divide_by_event_type(f'valid.{dataset_type}.filtered_length.balanced.jsonl', f'valid.{dataset_type}.divided.balanced.jsonl')
 
     # 然后构造EAR question, ERR question, context
     print('正在生成context与question')
-    construct_context_and_questions('train.FewFC.divided.balanced.jsonl', 'train.FewFC.questioned.balanced.jsonl')
-    # construct_context_and_questions('valid.FewFC.divided.jsonl', 'valid.FewFC.questioned.jsonl')
+    # construct_context_and_questions(f'train.{dataset_type}.divided.balanced.jsonl', f'train.{dataset_type}.questioned.balanced.jsonl')
+    # construct_context_and_questions(f'valid.{dataset_type}.divided.balanced.jsonl', f'valid.{dataset_type}.questioned.balanced.jsonl')
 
     # 对context和question进行tokenize
     print('正在tokenize')
-    tokenize_context_and_questions('train.FewFC.questioned.balanced.jsonl', 'train.FewFC.tokenized.balanced.jsonl')
-    # tokenize_context_and_questions('valid.FewFC.questioned.jsonl', 'valid.FewFC.tokenized.jsonl')
+    # tokenize_context_and_questions(f'train.{dataset_type}.questioned.balanced.jsonl', f'train.{dataset_type}.tokenized.balanced.jsonl')
+    tokenize_context_and_questions(f'valid.{dataset_type}.questioned.balanced.jsonl', f'valid.{dataset_type}.tokenized.balanced.jsonl')
 
     # 然后为训练集生成label
     print('正在生成label')
-    generate_label('train.FewFC.tokenized.balanced.jsonl', 'train.FewFC.labeled.balanced.pk')
+    # generate_label(f'train.{dataset_type}.tokenized.balanced.jsonl', f'train.{dataset_type}.labeled.balanced.pk')
 
     # 为评价集生成gt
     print('正在生成gt')
