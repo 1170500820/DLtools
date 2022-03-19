@@ -71,8 +71,6 @@ def construct_EAR_ERR_context(data_dict: Dict[str, Any], dataset_type: str, stan
     # 首先构建context
     context_sentence = f"{event_type}[SEP]{content[:trigger_span[0]]}[SEP]{content[trigger_span[0]:trigger_span[1]]}[SEP]{content[trigger_span[1]:]}"
     trigger_append_length = len(event_type) + len('[SEP]')
-    trigger_append_start = trigger_span[0] + trigger_append_length
-    trigger_append_end = trigger_span[1] + trigger_append_length
     def index_convert(old_idx: int):
         if old_idx < trigger_span[0]:
             return old_idx + trigger_append_length
@@ -88,6 +86,7 @@ def construct_EAR_ERR_context(data_dict: Dict[str, Any], dataset_type: str, stan
 
     # 先构建EAR
     EAR_questions = []
+    # 构建EAR-获取schema
     if dataset_type == 'FewFC':
         schema = EE_settings.event_available_roles
         new_schema = {}
@@ -104,6 +103,7 @@ def construct_EAR_ERR_context(data_dict: Dict[str, Any], dataset_type: str, stan
     for idx in range(len(mentions)):
         mentions[idx]['role'] = EE_settings.role_types_translate[mentions[idx]['role']]
     role_index = {v: i for i, v in enumerate(role_types)}
+    # 构建EAR-构建正例
     EAR_results = []
     exist_role = set()  # 所有在该事件中出现过的论元角色
     for elem_mention in mentions:
@@ -114,10 +114,12 @@ def construct_EAR_ERR_context(data_dict: Dict[str, Any], dataset_type: str, stan
             'event_type': event_type,
             'role': role,
             'span': span,
-            'word': word
+            'word': word,
+            'neg': False
         }
         EAR_results.append(cur_sample)
     pos_cnt = len(EAR_results)
+    # 构建EAR-构建负例
     for elem_role in schema[event_type]:  # 对schema中该事件类型所具有对论元角色进行遍历
         if elem_role not in exist_role:  # 如果某个论元没有出现过
             cur_sample = {
@@ -125,17 +127,21 @@ def construct_EAR_ERR_context(data_dict: Dict[str, Any], dataset_type: str, stan
                 'event_type': event_type,
                 'role': elem_role,
                 'span': (0, 0),  # 该论元对应的span为开头
-                'word': None  # 对应的词语则为None
+                'word': None,  # 对应的词语则为None
+                'neg': True
             }
             EAR_results.append(cur_sample)
+    # 构建EAR-提取必要信息
     for elem_info in EAR_results:
         role, word, span = elem_info['role'], elem_info['word'], elem_info['span']
+        is_neg = elem_info['neg']
         # question = f'词语{word}在事件{event_type}中作为什么角色？'
         question = f'在该句子的"{event_type}"事件中作为"{role}"的是哪一个词？'
         EAR_questions.append({
             'question': question,
             'label': span,
-            'EAR_gt': word if word is not None else ''  # 如果为负例，把None切换成空字符串
+            'EAR_gt': word if word is not None else '',  # 如果为负例，把None切换成空字符串
+            'neg': is_neg
         })
 
     # 然后构建ERR
@@ -195,9 +201,10 @@ def construct_EAR_ERR_context(data_dict: Dict[str, Any], dataset_type: str, stan
             'ERR_label': elem_r['label'],
             'content': content,
             'EAR_gt': elem_a['EAR_gt'],
-            'ERR_gt': elem_r['ERR_gt']
+            'ERR_gt': elem_r['ERR_gt'],
+            'neg': elem_a['neg']
         })
-    return results[:1]
+    return results
 
 
 def new_generate_EAR_target(data_dict: Dict[str, Any]):
@@ -286,7 +293,7 @@ def data_filter(data_path: str = initial_dataset_path, dataset_type: str = datas
         loaded = load_Duee_ee_formated(data_path)
     else:
         raise Exception(f'[dual_qa:dataset_factory]不存在{dataset_type}数据集！')
-    data_dicts = loaded[subset_name][:5]
+    data_dicts = loaded[subset_name]
 
     # 去除content过长的sample
     data_dicts = tools.map_operation_to_list_elem(remove_illegal_length, data_dicts)
@@ -320,7 +327,7 @@ def divide_by_event_type(last_output_name: str, output_name: str, dataset_type: 
     f.close()
 
 
-def construct_context_and_questions(last_output_name: str, output_name: str, dataset_type: str = dataset_type):
+def construct_context_and_questions(last_output_name: str, output_name: str, dataset_type: str = dataset_type, from_cache: bool = False):
     """
 
     :param last_output_name:
@@ -328,15 +335,33 @@ def construct_context_and_questions(last_output_name: str, output_name: str, dat
     :param dataset_type:
     :return:
     """
-    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r').read().strip().split('\n'))
-    data_dicts = data_dicts
+    if from_cache:
+        results = list(json.loads(x) for x in open(temp_path + output_name, 'r').read().strip().split('\n'))
+    else:
+        data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r').read().strip().split('\n'))
+        data_dicts = data_dicts
 
-    # 同时构造context，EAR问题与ERR问题。
-    stanza_nlp = stanza.Pipeline(lang='zh', processors='tokenize,ner')
-    results = []
-    for elem in tqdm(data_dicts):
-        results.extend(construct_EAR_ERR_context(elem, dataset_type, stanza_nlp))
-    # [context, content, EAR_question, EAR_label, ERR_question, ERR_label]
+        # 同时构造context，EAR问题与ERR问题。
+        stanza_nlp = stanza.Pipeline(lang='zh', processors='tokenize,ner')
+        results = []
+        for elem in tqdm(data_dicts):
+            results.extend(construct_EAR_ERR_context(elem, dataset_type, stanza_nlp))
+        # [context, content, EAR_question, EAR_label, ERR_question, ERR_label]
+
+
+    # 平衡results中的正负例个数
+    neg_results, pos_results = [], []
+    for elem in results:
+        if elem['neg']:
+            neg_results.append(elem)
+        else:
+            pos_results.append(elem)
+    neg_cnt, pos_cnt = len(neg_results), len(pos_results)
+    if neg_cnt > pos_cnt:
+        to_delete_cnt = neg_cnt - pos_cnt
+        for i in range(to_delete_cnt):
+            neg_results.pop(random.randrange(0, i + 1))
+    results = pos_results + neg_results
 
     f = open(temp_path + output_name, 'w')
     for elem in results:
@@ -404,27 +429,27 @@ if __name__ == '__main__':
     print(f'初始路径：{initial_dataset_path}')
     # 首先对train和val进行筛选
     print('正在去除过长句子')
-    data_filter(initial_dataset_path, 'FewFC', 'train', 'train.FewFC.filtered_length.5.single.jsonl')
+    data_filter(initial_dataset_path, 'FewFC', 'train', 'train.FewFC.filtered_length.balanced.jsonl')
     # data_filter(initial_dataset_path, 'FewFC', 'valid', 'valid.FewFC.filtered_length.jsonl')
 
     # 然后按照事件类型进行切分
     print('正在按事件类型拆分数据')
-    divide_by_event_type('train.FewFC.filtered_length.5.single.jsonl', 'train.FewFC.divided.5.single.jsonl')
+    divide_by_event_type('train.FewFC.filtered_length.balanced.jsonl', 'train.FewFC.divided.balanced.jsonl')
     # divide_by_event_type('valid.FewFC.filtered_length.jsonl', 'valid.FewFC.divided.jsonl')
 
     # 然后构造EAR question, ERR question, context
     print('正在生成context与question')
-    construct_context_and_questions('train.FewFC.divided.5.single.jsonl', 'train.FewFC.questioned.5.single.jsonl')
+    construct_context_and_questions('train.FewFC.divided.balanced.jsonl', 'train.FewFC.questioned.balanced.jsonl')
     # construct_context_and_questions('valid.FewFC.divided.jsonl', 'valid.FewFC.questioned.jsonl')
 
     # 对context和question进行tokenize
     print('正在tokenize')
-    tokenize_context_and_questions('train.FewFC.questioned.5.single.jsonl', 'train.FewFC.tokenized.5.single.jsonl')
+    tokenize_context_and_questions('train.FewFC.questioned.balanced.jsonl', 'train.FewFC.tokenized.balanced.jsonl')
     # tokenize_context_and_questions('valid.FewFC.questioned.jsonl', 'valid.FewFC.tokenized.jsonl')
 
     # 然后为训练集生成label
     print('正在生成label')
-    generate_label('train.FewFC.tokenized.5.single.jsonl', 'train.FewFC.labeled.5.single.pk')
+    generate_label('train.FewFC.tokenized.balanced.jsonl', 'train.FewFC.labeled.balanced.pk')
 
     # 为评价集生成gt
     print('正在生成gt')
