@@ -75,7 +75,7 @@ class SimilarityModel(nn.Module):
         u2 = u1.expand(-1, C, -1, -1)  # (bsz, |C|, |Q|, hidden)
         elm_wise_mul = torch.mul(h2, u2)  # (bsz, |C|, |Q|, hidden)
         concatenated = torch.cat([h2, u2, elm_wise_mul], dim=-1)  # (bsz, |C|, |Q|, 3 * hidden)
-        l1_output = self.l1_sim(concatenated)  # (bsz, |C|, |Q|, hidden)
+        l1_output = F.leaky_relu(self.l1_sim(concatenated))  # (bsz, |C|, |Q|, hidden)
         l2_output = F.leaky_relu(self.l2_sim(l1_output))  # (bsz, |C|, |Q|, 1)
         S = l2_output.squeeze(dim=-1)  # (bsz, |C|, |Q|)
         return S  # (bsz, |C|, |Q|)
@@ -495,6 +495,23 @@ class DualQA_Loss(nn.Module):
         return start_loss + end_loss + role_loss
 
 
+def concat_token_for_evaluate(tokens: List[str], span: Tuple[int, int]):
+    """
+    利用预测的span从输入模型的input_ids所对应的token序列中抽取出所需要的词语
+
+    - 删除"##"
+    - 对于(0, 0)会直接输出''
+    :param tokens:
+    :param span:
+    :return:
+    """
+    if span == (0, 0):
+        return ''
+    result = ''.join(tokens[span[0]: span[1] + 1])
+    result.replace('##', '')
+    return result
+
+
 class DualQA_Evaluator(BaseEvaluator):
     def __init__(self):
         super(DualQA_Evaluator, self).__init__()
@@ -536,7 +553,7 @@ class DualQA_Evaluator(BaseEvaluator):
         # spans = tools.argument_span_determination(start_digits, end_digits, start_probs, end_probs)
         # span = tuple(spans[0])  # 默认取第一个
         span = (start_position, end_position)
-        argument_pred = ''.join(tokens[span[0]: span[1] + 1])
+        argument_pred = concat_token_for_evaluate(tokens, span)
 
         role_pred = role_pred.squeeze().clone().detach().cpu()
         max_position = int(np.argsort(role_pred)[-1])
