@@ -190,12 +190,15 @@ class ArgumentClassifier(nn.Module):
         start_digit = start_digit.squeeze(dim=-1)  # (bsz, C)
         end_digit = end_digit.squeeze(dim=-1)  # (bsz, C)
 
-        start_digit = start_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
-        end_digit = end_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
+        # start_digit = start_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
+        # end_digit = end_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
 
         start_prob = self.softmax1(start_digit)  # (bsz, C)
         end_prob = self.softmax1(end_digit)  # (bsz, C)
         # print(start_prob)
+
+        start_prob = start_prob.masked_fill(mask=context_mask, value=torch.tensor(1e-10))
+        end_prob = end_prob.masked_fill(mask=context_mask, value=torch.tensor(1e-10))
 
         # start_prob, end_prob = start_prob.squeeze(), end_prob.squeeze()  # both (bsz, C) or (C) if bsz == 1
         if len(start_prob.shape) == 1:
@@ -508,7 +511,7 @@ def concat_token_for_evaluate(tokens: List[str], span: Tuple[int, int]):
     if span == (0, 0):
         return ''
     result = ''.join(tokens[span[0]: span[1] + 1])
-    result.replace('##', '')
+    result = result.replace('##', '')
     return result
 
 
@@ -792,7 +795,7 @@ def new_val_dataset_factory(data_dicts: List[dict]):
 def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int):
     bsz = int(bsz)
     train_data_dicts = pickle.load(open(train_file, 'rb'))
-    valid_data_dicts = list(json.loads(x) for x in open(valid_file, 'r').read().strip().split('\n'))
+    valid_data_dicts = list(json.loads(x) for x in open(valid_file, 'r', encoding='utf-8').read().strip().split('\n'))
 
     train_dataloader = new_train_dataset_factory(train_data_dicts, bsz=bsz)
     val_dataloader = new_val_dataset_factory(valid_data_dicts)
@@ -809,7 +812,7 @@ model_registry = {
 
 
 if __name__ == '__main__':
-    train_loader, val_loader = dataset_factory('FewFC', 'temp_data/train.FewFC.labeled.25.single.pk', 'temp_data/train.FewFC.tokenized.25.single.jsonl', bsz=1)
+    train_loader, val_loader = dataset_factory('FewFC', 'temp_data/train.FewFC.labeled.balanced.pk', 'temp_data/valid.FewFC.tokenized.balanced.jsonl', bsz=1)
     train_samples, valid_samples = [], []
     for elem in train_loader:
         train_samples.append(elem)
