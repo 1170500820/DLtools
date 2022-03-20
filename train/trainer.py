@@ -98,7 +98,6 @@ class Trainer:
         else:  # 可能是想用gpu训练吧
             optimizers = model.get_optimizers()
 
-
         new_high_score = False
 
         for i_epoch in range(total_epoch):  # todo 加入梯度累积

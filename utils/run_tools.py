@@ -272,12 +272,12 @@ def parse_extra_command(arg_list: List[MyArgs], model_args: StrList):
         default_v = None if 'default' not in elem_arg else elem_arg['default']
         if atype == bool:
             # 布尔类型变量是不需要default的，因为他们不出现就是默认为False
-            extra_parser.add_argument(name, dest=dest, type=bool, action='store_true')
+            extra_parser.add_argument(name, dest=dest, action='store_true')
         else:
             if default_v:
-                extra_parser.add_argument(name, dest=dest, type=type, help=helpstr, default=default_v)
+                extra_parser.add_argument(name, dest=dest, type=atype, help=helpstr, default=default_v)
             else:
-                extra_parser.add_argument(name, dest=dest, type=type, help=helpstr)
+                extra_parser.add_argument(name, dest=dest, type=atype, help=helpstr)
 
     return extract_command(extra_parser, model_args)
 

@@ -10,6 +10,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer
 from itertools import chain
+from loguru import logger
 
 from utils import tools, tokenize_tools, batch_tool
 from utils.data import SimpleDataset
@@ -190,12 +191,15 @@ class ArgumentClassifier(nn.Module):
         start_digit = start_digit.squeeze(dim=-1)  # (bsz, C)
         end_digit = end_digit.squeeze(dim=-1)  # (bsz, C)
 
-        start_digit = start_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
-        end_digit = end_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
+        # start_digit = start_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
+        # end_digit = end_digit.masked_fill(mask=context_mask, value=torch.tensor(-1e10))
 
         start_prob = self.softmax1(start_digit)  # (bsz, C)
         end_prob = self.softmax1(end_digit)  # (bsz, C)
         # print(start_prob)
+
+        start_prob = start_prob.masked_fill(mask=context_mask, value=torch.tensor(1e-10))
+        end_prob = end_prob.masked_fill(mask=context_mask, value=torch.tensor(1e-10))
 
         # start_prob, end_prob = start_prob.squeeze(), end_prob.squeeze()  # both (bsz, C) or (C) if bsz == 1
         if len(start_prob.shape) == 1:
@@ -482,6 +486,19 @@ class DualQA_Loss(nn.Module):
             end_loss = F.nll_loss(torch.log(end_probs), argument_end_label)
             return start_loss + end_loss
             # return start_focal + end_focal
+        # 排查label超出边界的情况
+        C = start_probs.shape[1]
+        role_cnt = role_pred.shape[1]
+        start_label_list, end_label_list, role_label_list = argument_start_label.tolist(), argument_end_label.tolist(), role_label.tolist()
+        for idx in range(len(start_label_list)):
+            if start_label_list[idx] >= C:
+                argument_start_label[idx] = 0
+                print('label out of border observed')
+            if end_label_list[idx] >= C:
+                argument_end_label[idx] = 0
+        for idx in range(len(role_label_list)):
+            if role_label_list[idx] >= role_cnt:
+                role_label[idx] = role_cnt - 1
         start_loss = F.nll_loss(torch.log(start_probs), argument_start_label)
         end_loss = F.nll_loss(torch.log(end_probs), argument_end_label)
         role_loss = F.nll_loss(torch.log(role_pred), role_label)
@@ -508,7 +525,7 @@ def concat_token_for_evaluate(tokens: List[str], span: Tuple[int, int]):
     if span == (0, 0):
         return ''
     result = ''.join(tokens[span[0]: span[1] + 1])
-    result.replace('##', '')
+    result = result.replace('##', '')
     return result
 
 
@@ -792,7 +809,7 @@ def new_val_dataset_factory(data_dicts: List[dict]):
 def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int):
     bsz = int(bsz)
     train_data_dicts = pickle.load(open(train_file, 'rb'))
-    valid_data_dicts = list(json.loads(x) for x in open(valid_file, 'r').read().strip().split('\n'))
+    valid_data_dicts = list(json.loads(x) for x in open(valid_file, 'r', encoding='utf-8').read().strip().split('\n'))
 
     train_dataloader = new_train_dataset_factory(train_data_dicts, bsz=bsz)
     val_dataloader = new_val_dataset_factory(valid_data_dicts)
@@ -809,7 +826,7 @@ model_registry = {
 
 
 if __name__ == '__main__':
-    train_loader, val_loader = dataset_factory('FewFC', 'temp_data/train.FewFC.labeled.25.single.pk', 'temp_data/train.FewFC.tokenized.25.single.jsonl', bsz=1)
+    train_loader, val_loader = dataset_factory('FewFC', 'temp_data/train.FewFC.labeled.balanced.pk', 'temp_data/valid.FewFC.tokenized.balanced.jsonl', bsz=1)
     train_samples, valid_samples = [], []
     for elem in train_loader:
         train_samples.append(elem)
