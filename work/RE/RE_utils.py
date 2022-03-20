@@ -251,8 +251,8 @@ def add_index_to_re_data(d: dict, find_all=False) -> dict:
     text = d['text']
     triplets = d['triplets']
     for elem_triplet in triplets:
-        sub_occur = get_word_occurrences_in_sentence(text, elem_triplet['subject'])
-        obj_occur = get_word_occurrences_in_sentence(text, elem_triplet['object'])
+        sub_occur = tools.get_word_occurrences_in_sentence(text, elem_triplet['subject'])
+        obj_occur = tools.get_word_occurrences_in_sentence(text, elem_triplet['object'])
         if find_all:
             elem_triplet['subject_occur'] = sub_occur
             elem_triplet['object_occur'] = obj_occur
@@ -261,7 +261,7 @@ def add_index_to_re_data(d: dict, find_all=False) -> dict:
             elem_triplet['object_occur'] = obj_occur[0]
         if 'other_objects' in elem_triplet:
             for k, v in elem_triplet['other_objects']:
-                v_occur = get_word_occurrences_in_sentence(text, v)
+                v_occur = tools.get_word_occurrences_in_sentence(text, v)
                 if find_all:
                     elem_triplet['other_objects'][k + '_occur'] = v_occur
                 else:
@@ -312,16 +312,18 @@ def count_multi_occurrences(data_type: str, data_dir: str):
             relations = triplet_dict['triplets']
             for elem_rel in relations:
                 entity += 2
-                if len(get_word_occurrences_in_sentence(text, elem_rel['subject'])) > 1:
+                if len(tools.get_word_occurrences_in_sentence(text, elem_rel['subject'])) > 1:
                     entity_multi += 1
-                if len(get_word_occurrences_in_sentence(text, elem_rel['object'])) > 1:
+                if len(tools.get_word_occurrences_in_sentence(text, elem_rel['object'])) > 1:
                     entity_multi += 1
         print(f'total entity: {entity}\nentity with multi occur: {entity_multi}\nratio: {entity_multi / entity if entity != 0 else 0}')
         print('_' * 20)
 
 
 if __name__ == '__main__':
-    d = load_NYT_re('../../data/NLP/InformationExtraction/NYT/generated/')
+    nyt = load_NYT_re('../../data/NLP/InformationExtraction/NYT/generated/')
+    webnlg = load_WebNLG_re('../../data/NLP/InformationExtraction/WebNLG/generated/')
+    duie = load_duie_re('../../data/NLP/InformationExtraction/duie/')
     # count_multi_occurrences('duie', '../../data/NLP/InformationExtraction/duie/')
     # count_multi_occurrences('NYT', '../../data/NLP/InformationExtraction/NYT/generated/')
     # count_multi_occurrences('WebNLG', '../../data/NLP/InformationExtraction/WebNLG/generated')
