@@ -19,6 +19,7 @@ from evaluate.evaluator import BaseEvaluator, KappaEvaluator, PrecisionEvaluator
 from dataset.ee_dataset import load_FewFC_ee, load_Duee_ee_formated
 from analysis.recorder import NaiveRecorder
 from work.EE.DualQA import dualqa_utils, dualqa_settings
+from models.model_utils import get_init_params
 
 """
 模型部分
@@ -266,6 +267,7 @@ class RoleClassifier(nn.Module):
 class DualQA(nn.Module):
     def __init__(self, plm_path: str = dualqa_settings.plm_path, plm_lr: float = dualqa_settings.plm_lr, linear_lr: float = dualqa_settings.linear_lr):
         super(DualQA, self).__init__()
+        self.init_params = get_init_params(locals())
         self.plm_path = plm_path
         self.shared_encoder = SharedEncoder(plm_path)
         self.hidden = self.shared_encoder.bert.config.hidden_size
