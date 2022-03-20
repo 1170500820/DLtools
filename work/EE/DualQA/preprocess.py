@@ -215,6 +215,7 @@ def new_generate_EAR_target(data_dict: Dict[str, Any]):
     :return:
     """
     input_ids = data_dict['input_ids']
+    input_length = len(input_ids)
     offset_mapping = data_dict['offset_mapping']
     input_ids_length = len(input_ids)
     # argument_start_target, argument_end_target = np.zeros(input_ids_length), np.zeros(input_ids_length)
@@ -245,6 +246,12 @@ def new_generate_EAR_target(data_dict: Dict[str, Any]):
             token_span = (token_span[0], token_span[0])
     if token_span[0] == -1 or token_span[1] == -1:
         print('糟了')
+    if token_span[0] >= input_length or token_span[1] >= input_length:
+        print('出现token span越界情况')
+        if token_span[0] >= input_length:
+            token_span = (input_length - 1, token_span[1])
+        if token_span[1] >= input_length:
+            token_span = (token_span[0], input_length - 1)
     # assert ''.join(data_dict['token'][token_span[0]: token_span[1] + 1]) == data_dict['EAR_gt'] if span != (0, 0) else True, data_dict
     # argument_start_target[token_span[0]] = 1
     # argument_end_target[token_span[1]] = 1
@@ -440,13 +447,13 @@ if __name__ == '__main__':
 
     # 然后构造EAR question, ERR question, context
     print('正在生成context与question')
-    # construct_context_and_questions(f'train.{dataset_type}.divided.balanced.jsonl', f'train.{dataset_type}.questioned.balanced.jsonl')
-    # construct_context_and_questions(f'valid.{dataset_type}.divided.balanced.jsonl', f'valid.{dataset_type}.questioned.balanced.jsonl')
+    construct_context_and_questions(f'train.{dataset_type}.divided.balanced.jsonl', f'train.{dataset_type}.questioned.balanced.test.jsonl')
+    construct_context_and_questions(f'valid.{dataset_type}.divided.balanced.jsonl', f'valid.{dataset_type}.questioned.balanced.test.jsonl')
 
     # 对context和question进行tokenize
     print('正在tokenize')
     # tokenize_context_and_questions(f'train.{dataset_type}.questioned.balanced.jsonl', f'train.{dataset_type}.tokenized.balanced.jsonl')
-    tokenize_context_and_questions(f'valid.{dataset_type}.questioned.balanced.jsonl', f'valid.{dataset_type}.tokenized.balanced.jsonl')
+    # tokenize_context_and_questions(f'valid.{dataset_type}.questioned.balanced.jsonl', f'valid.{dataset_type}.tokenized.balanced.jsonl')
 
     # 然后为训练集生成label
     print('正在生成label')
