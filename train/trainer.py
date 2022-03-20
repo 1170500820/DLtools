@@ -4,6 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from contextlib import nullcontext
 import numpy as np
+from loguru import logger
+from rich.console import Console
+from rich.table import Table
 
 from type_def import *
 from evaluate.evaluator import dict2fstring, BaseEvaluator
@@ -33,6 +36,20 @@ def convert_to_cuda_multigpu(input_dict: dict):
         else:
             result_dict[k] = v
     return result_dict
+
+
+def print_dict_as_table(data_dict: Dict[str, Any]):
+    """
+    利用rich工具，将一个dict的信息用表格的方式打印在终端。
+    rich系列的包装函数，以及其他用于在终端输出信息的工具函数，最后都应该集成到utils的一个tools当中
+    """
+    console = Console()
+    table = Table(show_header=True, header_style='bold magenta')
+    table.add_column('属性')
+    table.add_column('值')
+    for key, value in data_dict.items():
+        table.add_row(key, str(value))
+    console.print(table)
 
 
 class Trainer:
@@ -66,27 +83,41 @@ class Trainer:
             grad_acc_step=1,
             do_eval=True,
             use_cuda=True,
-            save_best=False,
             control_name: str = 'default'):
         if train_val_data is not None:
             train_loader, test_loader = train_val_data
         lossFunc = loss
+
         if local_rank in [-1, 0]:
-            print(f'Training Settings:'
-                  f'\n\ttotal_epoch:{total_epoch or "None"}'
-                  f'\n\tprint_info_freq:{print_info_freq or "None"}'
-                  f'\n\teval_freq_epoch:{eval_freq_epoch or "None"}'
-                  f'\n\teval_freq_batch:{eval_freq_batch or "None"}'
-                  f'\n\teval_start_epoch:{eval_start_epoch or "None"}'
-                  f'\n\tmodel_save_epoch:{model_save_epoch or "None"}'
-                  f'\n\tmodel_save_name:{model_save_path or "None"}'
-                  f'\n\tgrad_acc_step:{grad_acc_step or "None"}'
-                  f'\n')
-            print(f'Data Info:'
-                  f'\n\ttrain data cnt:{len(train_loader.dataset)}'
-                  # f'\n\tval data cnt:{len(test_loader.dataset or [])}'
-                  )
-        print(f'模型参数:{sum([np.prod(list(p.size())) for p in model.parameters()])}')
+            # 总结一下该次训练的信息，然后打印在终端。
+            train_data_cnt = len(train_loader.dataset)
+            batch_size = train_loader.batch_size
+            batch_cnt = train_data_cnt // train_loader.batch_size
+            eval_data_cnt = len(test_loader.dataset) if test_loader is not None else 0
+            model_param_cnt = sum([np.prod(list(p.size())) for p in model.parameters()])
+            show_info_dict = {
+                # 训练参数相关
+                '运行epoch数': total_epoch,
+                '保存模型的频次/epoch': model_save_epoch,
+                'Batch Size': batch_size,
+                '训练样本个数': train_data_cnt,
+                'Batch个数': batch_cnt,
+                '评测样本个数': eval_data_cnt,
+                '模型参数个数': model_param_cnt,
+                '梯度累积数': grad_acc_step,
+                # 信息输出相关
+                '输出训练信息的频次/batch': print_info_freq,
+                # 模型评价相关
+                '开始评测模型的epoch': eval_start_epoch,
+                '开始评测模型的batch': eval_start_batch,
+                '评测模型的频次/epoch': eval_freq_epoch,
+                '评测模型的频次/batch': eval_freq_batch,
+                # 训练相关
+                '是否使用CUDA': use_cuda,
+                '模型保存路径': model_save_path,
+                'control_name': control_name
+            }
+            print_dict_as_table(show_info_dict)
         if local_rank != -1:
             device = torch.device('cuda', local_rank)
             model.to(device)
@@ -97,8 +128,6 @@ class Trainer:
             optimizers = model.get_optimizers()
         else:  # 可能是想用gpu训练吧
             optimizers = model.get_optimizers()
-
-        new_high_score = False
 
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
@@ -124,7 +153,7 @@ class Trainer:
                     recorder.train_checkpoint()
                 epoch_avg_loss += float(loss)
                 if (i_batch + 1) % print_info_freq == 0 and local_rank in [-1, self.main_local_rank]:
-                    print(
+                    logger.info(
                         f'epoch {i_epoch + 1} |batch {i_batch + 1} |loss:{loss.float():<8.5f} |avg:{epoch_avg_loss / (i_batch + 1):<8.5f}| norm: {norm.cpu().item()}')
                 if (i_batch + 1) % grad_acc_step == 0:
                     # 只有在一次梯度累积完成之后，才可以进行step与evaluate
@@ -151,24 +180,19 @@ class Trainer:
                         if recorder:
                             recorder.record_before_evaluate(evaluator)
                         eval_info = evaluator.eval_step()
-                        print(dict2fstring(eval_info))
+                        logger.info('\n' + dict2fstring(eval_info))
 
-                        if new_high_score and save_best:
-                            print('reaching new high score, saving...')
-                            torch.save(model.state_dict(),
-                                   model_save_path + '/checkpoint/' + f'{control_name}-save-best.pth')
-                            pickle.dump(model.init_params,
-                                    open(model_save_path + '/checkpoint/' + f'{control_name}-init_param-best.pk', 'wb'))
                         model.train()
                         if recorder:
                             recorder.eval_checkpoint()
             model.zero_grad()
-            if (i_epoch + 1) % model_save_epoch == 0 and local_rank in [-1, self.main_local_rank] and save_best:
-                print(f'saving model as [{model_save_path}/save-{i_epoch + 1}.pth]...')
-                # torch.save(model.state_dict(), model_save_name)
-                torch.save(model.state_dict(), model_save_path + '/checkpoint/' + f'{control_name}-save-{i_epoch + 1}-final.pth')
-                pickle.dump(model.init_params, open(model_save_path + '/checkpoint/' + f'{control_name}-init_param-final.pk', 'wb'))
-                print(f'finished saving')
+            if (i_epoch + 1) % model_save_epoch == 0 and local_rank in [-1, self.main_local_rank]:
+                model_state_dict_save_name = model_save_path + '/checkpoint/' + f'save.state_dict.{control_name}.epoch-{i_epoch+1}.pth'
+                init_params_save_name = model_save_path + '/checkpoint/' + f'save.init_params.{control_name}.pk'
+                logger.info(f'[保存模型]正在保存模型中，将state_dict保存为{model_state_dict_save_name}, 将init_params保存为{init_params_save_name}')
+                torch.save(model.state_dict(), model_state_dict_save_name)
+                pickle.dump(model.init_params, open(init_params_save_name, 'wb'))
+                logger.info(f'[保存模型]保存已完成')
         if recorder and local_rank in [-1, self.main_local_rank]:
             recorder.checkpoint()
 
