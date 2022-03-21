@@ -297,9 +297,6 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = RE_settings.default
         dicts = tools.transpose_list_of_dict(lst)
 
 
-
-
-
 def dev_dataset_factory(data_dicts: List[dict]):
     pass
 

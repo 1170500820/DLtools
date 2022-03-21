@@ -1,4 +1,7 @@
+import json
+import pickle
 
+from type_def import *
 
 """
 基础定义部分
@@ -19,6 +22,14 @@ dataset_type = 'duie'
 """
 
 
+"""
+数据处理的一些工具
+"""
+def load_jsonl(filename: str) -> List[dict]:
+    data = list(json.loads(x) for x in open(filename, 'r', encoding='utf-8').read().strip().split('\n'))
+    return data
+
+
 
 """
 处理数据的函数
@@ -28,6 +39,9 @@ dataset_type = 'duie'
 """
 对数据处理的包装函数
 """
+
+def tokenize_data(input_data_filename: str, output_data_filename, subset_name: str = 'train', dataset_type: str = dataset_type):
+    pass
 
 
 if __name__ == '__main__':
