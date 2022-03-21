@@ -95,7 +95,7 @@ def load_NYT_re(file_dir: str):
     loaded = {}
     for k, v in filenames.items():
         data_lst = []
-        dicts = list(map(json.loads, open(file_dir + v, 'r').read().strip().split('\n')))
+        dicts = list(map(json.loads, open(file_dir + v, 'r', encoding='utf-8').read().strip().split('\n')))
         for elem in dicts:
             triplets = []  # 当前句子所对应的所有triplet
             text = elem['sentText']
@@ -136,7 +136,7 @@ def load_WebNLG_re(file_dir: str):
     loaded = {}
     for k, v in filenames.items():
         data_lst = []
-        dicts = list(map(json.loads, open(file_dir + v, 'r').read().strip().split('\n')))
+        dicts = list(map(json.loads, open(file_dir + v, 'r', encoding='utf-8').read().strip().split('\n')))
         for elem in dicts:
             triplets = []  # 当前句子所对应的所有triplet
             text = elem['sentText']
@@ -187,7 +187,7 @@ def load_duie_re(file_dir: str):
     loaded = {}
     for k, v in filenames.items():
         data_lst = []
-        dicts = list(map(json.loads, open(file_dir + v, 'r').read().strip().split('\n')))
+        dicts = list(map(json.loads, open(file_dir + v, 'r', encoding='utf-8').read().strip().split('\n')))
         if k == 'test':
             for elem in dicts:
                 text = elem['text']
@@ -207,6 +207,8 @@ def load_duie_re(file_dir: str):
                     sub, obj, rel = elem_rel['subject'], elem_rel['object']['@value'], elem_rel['predicate']
                     sub = sub.replace('\t', ' ').replace('  ', ' ').replace('\u3000', ' ').replace('\xa0', ' ')
                     obj = obj.replace('\t', ' ').replace('  ', ' ').replace('\u3000', ' ').replace('\xa0', ' ')
+                    if sub == '' or obj == '':
+                        continue
                     _, other_objects = tools.split_dict(elem_rel['object'], ['@value'], keep_origin=True)
                     for elem_k in other_objects.keys():
                         other_objects[elem_k] = other_objects[elem_k].replace('\t', ' ').replace('  ', ' ').replace('\u3000', ' ').replace('\xa0', ' ')
@@ -216,6 +218,8 @@ def load_duie_re(file_dir: str):
                         "relation": rel,
                         "other_objects": other_objects
                     })
+                if len(triplets) == 0:
+                    continue
                 data_lst.append({
                     "text": text,
                     "triplets": triplets
