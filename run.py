@@ -111,7 +111,8 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
 
     # 根据主参数与任务参数，为Template创建模块
     task_model = instantiate_template_from_param_dict(task_template, working_params, working_model.model_registry)
-    print('running...' + (f'{param_dict["local_rank"]}' if param_dict["local_rank"] != -1 else ''))
+    if param_dict['local_rank'] in [-1, 0]:
+        logger.info('开始运行......')
     run_template_from_param_dict(task_model, working_params, working_model.model_registry)
 
 
