@@ -355,3 +355,6 @@ model_registry = {
     "evaluator": CASREL_Evaluator,
 
 }
+
+if __name__ == '__main__':
+    pass

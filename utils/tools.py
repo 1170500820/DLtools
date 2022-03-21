@@ -475,11 +475,18 @@ def get_word_occurrences_in_sentence(sentence: str, word: str):
     :param word:
     :return:
     """
+    if word == '':
+        raise Exception(f'[get_word_occurrences_in_sentence]出现了空word！')
     word_len = len(word)
     starts = [i for i in range(len(sentence)) if sentence.startswith(word, i)]
     spans = list((x, x + word_len - 1) for x in starts)
     if len(spans) == 0:
         raise Exception(f'[get_word_occurrences_in_sentence]No occurrences of word:[{word}] found in sentence:[{sentence}]')
+
+    # check span
+    for elem_span in spans:
+        if elem_span[0] < 0 or elem_span[1] < 0 or elem_span[1] >= len(sentence) or elem_span[0] > len(sentence):
+            raise Exception(f'[get_word_occurrences_in_sentence]')
     return spans
 
 
