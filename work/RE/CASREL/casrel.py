@@ -4,10 +4,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-
+from itertools import chain
+from torch.optim import AdamW
 import numpy as np
 
-from transformers import BertModel, BertTokenizerFast, AdamW
+from transformers import BertModel, BertTokenizerFast
 
 
 from type_def import *
@@ -15,6 +16,7 @@ from evaluate.evaluator import BaseEvaluator, F1_Evaluator
 from work.RE import RE_settings, RE_utils
 from work.RE.RE_utils import Triplet, convert_lists_to_triplet_casrel
 from utils import tools, tokenize_tools, batch_tool
+from analysis.recorder import NaiveRecorder
 from utils.data import SimpleDataset
 from dataset import re_dataset
 
@@ -43,6 +45,18 @@ class CASREL(nn.Module):
         self.subject_end_cls = nn.Linear(self.hidden, 1)
         self.object_start_cls = nn.Linear(self.hidden, self.relation_cnt)
         self.object_end_cls = nn.Linear(self.hidden, self.relation_cnt)
+
+        self.init_weights()
+
+    def init_weights(self):
+        torch.nn.init.xavier_uniform_(self.subject_start_cls.weight)
+        self.subject_start_cls.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.subject_end_cls.weight)
+        self.subject_end_cls.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.object_start_cls.weight)
+        self.object_start_cls.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.object_end_cls.weight)
+        self.object_end_cls.bias.data.fill_(0)
 
     def forward(self,
                 input_ids: torch.Tensor,
@@ -86,11 +100,14 @@ class CASREL(nn.Module):
         result = self.bert(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
         output, _ = result[0], result[1]  # output: (bsz, seq_l, hidden)
 
+        mask = (1 - attention_mask).bool()
         # 获取subject的预测
         subject_start_result = self.subject_start_cls(output)  # (bsz, seq_l, 1)
         subject_end_result = self.subject_end_cls(output)  # (bsz, seq_l, 1)
         subject_start_result = F.sigmoid(subject_start_result)  # (bsz, seq_l, 1)
         subject_end_result = F.sigmoid(subject_end_result)  # (bsz, seq_l, 1)
+        subject_start_result = subject_start_result.masked_fill(mask=mask.unsqueeze(dim=-1), value=0)
+        subject_end_result = subject_end_result.masked_fill(mask=mask.unsqueeze(dim=-1), value=0)
         if self.training:
             gt_start, gt_end = subject_gt_start.unsqueeze(dim=1), subject_gt_end.unsqueeze(dim=1)
             # both (bsz, 1, seq_l)
@@ -99,6 +116,14 @@ class CASREL(nn.Module):
             # 计算object的预测
             object_start_result = self.object_start_cls(embed)  # (bsz, seq_l, relation_cnt)
             object_end_result = self.object_end_cls(embed)  # (bsz, seq_l, relation_cnt)
+
+            object_start_result = F.sigmoid(object_start_result)  # (bsz, seq_l, relation_cnt)
+            object_end_result = F.sigmoid(object_end_result)  # (bsz, seq_l, relation_cnt)
+            relation_cnt = object_end_result.shape[-1]
+            ro_mask = mask.unsqueeze(dim=-1)  # (bsz, seq_l, 1)
+            ro_mask = ro_mask.repeat(1, 1, relation_cnt)
+            object_start_result = object_start_result.masked_fill(mask=ro_mask, value=0)
+            object_end_result = object_end_result.masked_fill(mask=ro_mask, value=0)
             return {
                 "subject_start_result": subject_start_result,  # (bsz, seq_l, 1)
                 "subject_end_result": subject_end_result,  # (bsz, seq_l, 1)
@@ -118,7 +143,7 @@ class CASREL(nn.Module):
             object_spans = []  #  List[List[SpanList]]  (subject, relation, span number)
             for elem_span in cur_spans:
                 object_spans_for_current_subject = []  # List[SpanList]  (relation, span number)
-                temporary_start, temporary_end = torch.zeros(1, 1, seq_l), torch.zeros(1, 1, seq_l)  # both (1, 1, seq_l)
+                temporary_start, temporary_end = torch.zeros(1, 1, seq_l).cuda(), torch.zeros(1, 1, seq_l).cuda()  # both (1, 1, seq_l)
                 temporary_start[0][0][elem_span[0]] = 1
                 temporary_end[0][0][elem_span[1]] = 1
                 embed = calculate_embed_with_subject(output, temporary_start, temporary_end)  # (1, seq_l, hidden)
@@ -142,8 +167,19 @@ class CASREL(nn.Module):
             }
 
 
+    def get_optimizers(self):
+        plm_params = self.bert.parameters()
+        ss_params = self.subject_start_cls.parameters()
+        se_params = self.subject_end_cls.parameters()
+        os_params = self.object_start_cls.parameters()
+        oe_params = self.object_end_cls.parameters()
+        plm_optimizer = AdamW(params=plm_params, lr=self.plm_lr)
+        linear_optimizer = AdamW(params=chain(ss_params, se_params, os_params, oe_params), lr=self.others_lr)
+        return [plm_optimizer, linear_optimizer]
+
+
 class CASREL_Loss(nn.Module):
-    def __init__(self, lamb: float = 0.8):
+    def __init__(self, lamb: float = 0.6):
         super(CASREL_Loss, self).__init__()
         self.lamb = lamb
 
@@ -173,27 +209,27 @@ class CASREL_Loss(nn.Module):
         subject_end_result = subject_end_result.squeeze()  # (bsz, seq_l)
 
         # 计算loss
-        subject_start_loss = F.binary_cross_entropy(subject_start_result, subject_start_label)
-        subject_end_loss = F.binary_cross_entropy(subject_end_result, subject_end_label)
-        object_start_loss = F.binary_cross_entropy(object_start_result, object_start_label)
-        object_end_loss = F.binary_cross_entropy(object_end_result, object_end_label)
+        subject_start_loss = F.binary_cross_entropy(subject_start_result, subject_start_label, 1 + subject_start_label * 3)
+        subject_end_loss = F.binary_cross_entropy(subject_end_result, subject_end_label, 1 + subject_end_label * 3)
+        object_start_loss = F.binary_cross_entropy(object_start_result, object_start_label, 1 + object_start_label * 3)
+        object_end_loss = F.binary_cross_entropy(object_end_result, object_end_label, 1 + object_end_label * 3)
 
         loss = self.lamb * (subject_start_loss + subject_end_loss) + (1 - self.lamb) * (object_start_loss + object_end_loss)
-        return {
-            "loss": loss
-        }
+        return loss
 
 
 class CASREL_Evaluator(BaseEvaluator):
     def __init__(self):
         super(CASREL_Evaluator, self).__init__()
         self.f1_evaluator = F1_Evaluator()
+        self.pred_lst, self.gt_lst = [], []
 
     def eval_single(self,
                 pred_subjects: SpanList,
                 pred_objects: List[List[SpanList]],
-                subjects_gt: SpanList,
-                objects_gt: List[List[SpanList]],
+                # subjects_gt: SpanList,
+                # objects_gt: List[List[SpanList]],
+                gt_triplets: List[Tuple],
                 tokens: List[str]):
         """
 
@@ -203,12 +239,17 @@ class CASREL_Evaluator(BaseEvaluator):
         :param objects_gt:
         :return:
         """
+        gt_triplets = list(tuple(x) for x in gt_triplets)
         pred_triplets = convert_lists_to_triplet_casrel(pred_subjects, pred_objects)  # List[Triplet]
-        gt_triplets = convert_lists_to_triplet_casrel(subjects_gt, objects_gt)  # List[Triplet]
+        # gt_triplets = convert_lists_to_triplet_casrel(subjects_gt, objects_gt)  # List[Triplet]
+        self.pred_lst.append([pred_triplets, pred_subjects, pred_objects])
+        self.gt_lst.append([gt_triplets, tokens])
         self.f1_evaluator.eval_single(pred_triplets, gt_triplets)
 
     def eval_step(self) -> Dict[str, Any]:
         f1_result = self.f1_evaluator.eval_step()
+        self.pred_lst = []
+        self.gt_lst = []
         return f1_result
 
 
@@ -247,21 +288,95 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = RE_settings.default
         :return:
         """
         data_dict = tools.transpose_list_of_dict(lst)
+        bsz = len(lst)
 
+        # generate basic input
         input_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['input_ids']), dtype=torch.long)
         token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['token_type_ids']), dtype=torch.long)
         attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['attention_mask']), dtype=torch.long)
+        seq_l = input_ids.shape[1]
+        # all (bsz, max_seq_l)
 
-        start_gt_info, end_gt_info = data_dict['subject_start_gt'], data_dict['subject_end_gt']
-        subject_gt_start = torch.zeros((bsz, start_gt_info['seq_l']))
+        # generate subject gt for phase 2
+        start_gt_info, end_gt_info = tools.transpose_list_of_dict(data_dict['subject_start_gt']), tools.transpose_list_of_dict(data_dict['subject_end_gt'])
+        start_indexes, end_indexes = start_gt_info['label_index'], end_gt_info['label_index']
+        start_gt = torch.zeros((bsz, seq_l)).scatter(dim=1, index=torch.LongTensor(start_indexes).unsqueeze(-1), src=torch.ones(bsz, 1))
+        end_gt = torch.zeros((bsz, seq_l)).scatter(dim=1, index=torch.LongTensor(end_indexes).unsqueeze(-1), src=torch.ones(bsz, 1))
+        # both (bsz, gt_l)
 
+        # generate subject label
+        start_label_info, end_label_info = tools.transpose_list_of_dict(data_dict['subject_start_label']), tools.transpose_list_of_dict(data_dict['subject_end_label'])
+        start_label_indexes, end_label_indexes = start_label_info['label_indexes'], end_label_info['label_indexes'] # list of list
+        start_labels, end_labels = [], []
+        for elem_start_indexes, elem_end_indexes in zip(start_label_indexes, end_label_indexes):
+            start_label_cnt, end_label_cnt = len(elem_start_indexes), len(elem_end_indexes)
+            start_labels.append(torch.zeros(seq_l).scatter(dim=0, index=torch.LongTensor(elem_start_indexes), src=torch.ones(start_label_cnt)))
+            end_labels.append(torch.zeros(seq_l).scatter(dim=0, index=torch.LongTensor(elem_end_indexes), src=torch.ones(end_label_cnt)))
+        start_label = torch.stack(start_labels)
+        end_label = torch.stack(end_labels)
+        # both (bsz, seq_l)
+
+        # generate object-relation label
+        ro_start_info, ro_end_info = tools.transpose_list_of_dict(data_dict['relation_to_object_start_label']), tools.transpose_list_of_dict(data_dict['relation_to_object_end_label'])
+        relation_cnt = ro_start_info['relation_cnt'][0]
+        start_label_pre_relation, end_label_per_relation = ro_start_info['label_per_relation'], ro_end_info['label_per_relation']
+        ro_start_label, ro_end_label = torch.zeros((bsz, seq_l, relation_cnt)), torch.zeros((bsz, seq_l, relation_cnt))
+        for i_batch in range(bsz):
+            for i_rel in range(relation_cnt):
+                ro_cur_start_label_indexes = start_label_pre_relation[i_batch][i_rel]
+                ro_cur_end_label_indexes = end_label_per_relation[i_batch][i_rel]
+                for elem in ro_cur_start_label_indexes:
+                    ro_start_label[i_batch][elem][i_rel] = 1
+                for elem in ro_cur_end_label_indexes:
+                    ro_end_label[i_batch][elem][i_rel] = 1
+
+        return {
+            'input_ids': input_ids,
+            'token_type_ids': token_type_ids,
+            'attention_mask': attention_mask,
+            'subject_gt_start': start_gt,
+            'subject_gt_end': end_gt
+               }, {
+            'subject_start_label': start_label,
+            'subject_end_label': end_label,
+            'object_start_label': ro_start_label,
+            'object_end_label': ro_end_label
+        }
+
+    train_dataloader = DataLoader(train_dataset, batch_size=bsz, shuffle=shuffle, collate_fn=collate_fn)
+
+    return train_dataloader
 
 
 def dev_dataset_factory(data_dicts: List[dict]):
-    pass
 
+    valid_dataset = SimpleDataset(data_dicts[:1000])
 
-def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int = RE_settings.default_bsz, shuffle: bool = RE_settings.default_shuffle):
+    def collate_fn(lst):
+        data_dict = tools.transpose_list_of_dict(lst)
+
+        # generate basic input
+        input_ids = torch.tensor(data_dict['input_ids'][0], dtype=torch.long).unsqueeze(0)
+        token_type_ids = torch.tensor(data_dict['token_type_ids'][0], dtype=torch.long).unsqueeze(0)
+        attention_mask = torch.tensor(data_dict['attention_mask'][0], dtype=torch.long).unsqueeze(0)
+        # all (1, seq_l)
+
+        gt_triplets = data_dict['eval_triplets'][0]
+        tokens = data_dict['token'][0]
+
+        return {
+            'input_ids': input_ids,
+            'token_type_ids': token_type_ids,
+            'attention_mask': attention_mask
+               }, {
+            'gt_triplets': gt_triplets,
+            'tokens': tokens
+        }
+
+    valid_dataloader = DataLoader(valid_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
+    return valid_dataloader
+
+def dataset_factory(train_file: str, valid_file: str, bsz: int = RE_settings.default_bsz, shuffle: bool = RE_settings.default_shuffle):
     train_data_dicts = pickle.load(open(train_file, 'rb'))
     valid_data_dicts = pickle.load(open(valid_file, 'rb'))
 
@@ -287,7 +402,16 @@ model_registry = {
     "evaluator": CASREL_Evaluator,
     'loss': CASREL_Loss,
     'train_val_data': dataset_factory,
+    'recorder': NaiveRecorder
 }
 
 if __name__ == '__main__':
-    pass
+    train_loader, val_loader = dataset_factory('temp_data/train.duie.final.pk', 'temp_data/valid.duie.eval_final.pk')
+    train_data, val_data = [], []
+    limit = 10
+    for (elem1, elem2) in zip(train_loader, val_loader):
+        train_data.append(elem1)
+        val_data.append(elem2)
+        limit -= 1
+        if limit <= 0:
+            break

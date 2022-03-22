@@ -110,8 +110,8 @@ class FlowAttention(nn.Module):
         # mask S
         context_bool_mask = (1 - context_attention_mask.unsqueeze(2)).bool()
         question_bool_mask = (1 - question_attention_mask.unsqueeze(1)).bool()
-        S.masked_fill_(mask=context_bool_mask, value=torch.tensor(-1e9))
-        S.masked_fill_(mask=question_bool_mask, value=torch.tensor(-1e9))
+        S = S.masked_fill(mask=context_bool_mask, value=torch.tensor(-1e9))
+        S = S.masked_fill(mask=question_bool_mask, value=torch.tensor(-1e9))
 
         # C2Q attention
         A = F.softmax(S, dim=-1)  # (bsz, C, Q)

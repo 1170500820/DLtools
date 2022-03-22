@@ -363,7 +363,7 @@ def data_filter(input_data_filename: str, output_data_filename, dataset_type: st
         else:
             new_data_dicts.append(elem)
 
-    dump_jsonl(new_data_dicts, temp_path + output_data_filename)
+    dump_jsonl(new_data_dicts[:100], temp_path + output_data_filename)
 
 
 
@@ -463,26 +463,26 @@ def main():
     logger.info(f'数据集类型:{dataset_type}')
 
     logger.info(f'正在生成训练数据')
-    # logger.info(f'[Step 1]过滤')
-    # data_filter(initial_dataset_path, f'train.{dataset_type}.filterd.jsonl', dataset_type, 'train')
+    logger.info(f'[Step 1]过滤')
+    data_filter(initial_dataset_path, f'train.{dataset_type}.filterd.100.jsonl', dataset_type, 'train')
 
-    # logger.info(f'[Step 2]tokenize')
-    # tokenize_data(f'train.{dataset_type}.filterd.jsonl', f'train.{dataset_type}.tokenized.jsonl', tokenier_plm)
+    logger.info(f'[Step 2]tokenize')
+    tokenize_data(f'train.{dataset_type}.filterd.100.jsonl', f'train.{dataset_type}.tokenized.100.jsonl', tokenier_plm)
 
-    # logger.info(f'[Step 3]获取span')
-    # get_span(f'train.{dataset_type}.tokenized.jsonl', f'train.{dataset_type}.span.jsonl')
+    logger.info(f'[Step 3]获取span')
+    get_span(f'train.{dataset_type}.tokenized.100.jsonl', f'train.{dataset_type}.span.100.jsonl')
 
-    # logger.info(f'[Step 4]生成label')
-    # get_subject_label(f'train.{dataset_type}.span.jsonl', f'train.{dataset_type}.labeled.pk')
-    #
-    # logger.info(f'[Step 5]重组数据')
-    # reassemble(f'train.{dataset_type}.labeled.pk', f'train.{dataset_type}.rearranged.pk')
+    logger.info(f'[Step 4]生成label')
+    get_subject_label(f'train.{dataset_type}.span.100.jsonl', f'train.{dataset_type}.labeled.100.pk')
 
-    # logger.info(f'[Step 6]为relation+object生成label')
-    # get_object_relation_label(f'train.{dataset_type}.rearranged.pk', f'train.{dataset_type}.ro_labeled.pk', dataset_type)
-    #
-    # logger.info(f'[Step 7]生成gt')
-    # get_train_gt(f'train.{dataset_type}.ro_labeled.pk', f'train.{dataset_type}.final.pk')
+    logger.info(f'[Step 5]重组数据')
+    reassemble(f'train.{dataset_type}.labeled.100.pk', f'train.{dataset_type}.rearranged.100.pk')
+
+    logger.info(f'[Step 6]为relation+object生成label')
+    get_object_relation_label(f'train.{dataset_type}.rearranged.100.pk', f'train.{dataset_type}.ro_labeled.100.pk', dataset_type)
+
+    logger.info(f'[Step 7]生成gt')
+    get_train_gt(f'train.{dataset_type}.ro_labeled.100.pk', f'train.{dataset_type}.final.100.pk')
 
     logger.info(f'正在生成评测数据')
     # logger.info(f'[Step 1]过滤')
@@ -495,7 +495,7 @@ def main():
     # get_span(f'valid.{dataset_type}.tokenized.jsonl', f'valid.{dataset_type}.span.jsonl')
 
     logger.info(f'[Step 4]直接获取eval gt')
-    get_eval_gt(f'valid.{dataset_type}.span.jsonl', f'valid.{dataset_type}.eval_final.pk', dataset_type)
+    get_eval_gt(f'train.{dataset_type}.span.100.jsonl', f'train.{dataset_type}.eval_final.100.pk', dataset_type)
 
 if __name__ == '__main__':
     main()
