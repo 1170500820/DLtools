@@ -189,14 +189,24 @@ def generate_key_labels_separate(data_dicts: List[Dict[str, Any]], key='subject'
     """
     for d in data_dicts:
         seq_l = len(d['input_ids'])
-        subject_start_label = np.zeros(seq_l)
-        subject_end_label = np.zeros(seq_l)
+        # subject_start_label = np.zeros(seq_l)
+        # subject_end_label = np.zeros(seq_l)
         subject_token_spans = list(x[key + '_token_span'] for x in d['triplets'])
-        for elem_span in subject_token_spans:
-            subject_start_label[elem_span[0]] = 1
-            subject_end_label[elem_span[1]] = 1
-        d[key + '_start_label'] = subject_start_label
-        d[key + '_end_label'] = subject_end_label
+        # for elem_span in subject_token_spans:
+        #     subject_start_label[elem_span[0]] = 1
+        #     subject_end_label[elem_span[1]] = 1
+        # d[key + '_start_label'] = subject_start_label
+        # d[key + '_end_label'] = subject_end_label
+        #
+        d[key + '_start_label'] = {
+            'seq_l': seq_l,
+            'label_indexes': list(x[0] for x in subject_token_spans)
+        }
+        d[key + '_end_label'] = {
+            'seq_l': seq_l,
+            'label_indexes': list(x[1] for x in subject_token_spans)
+        }
+
     return data_dicts
 
 
@@ -246,31 +256,74 @@ def generate_relation_to_object_labels(data_dicts: List[Dict[str, Any]], relatio
     relation_index = {i: x for (x, i) in enumerate(relation_lst)}
     for d in data_dicts:
         seq_l = len(d['input_ids'])
-        relation_start_arrays, relation_end_arrays = np.zeros([relation_cnt, seq_l]), np.zeros([relation_cnt, seq_l])
+        # relation_start_arrays, relation_end_arrays = np.zeros([relation_cnt, seq_l]), np.zeros([relation_cnt, seq_l])
+        start_label_per_relation = []
+        end_label_per_relation = []
+        for idx in range(relation_cnt):
+            start_label_per_relation.append([])
+            end_label_per_relation.append([])
         for elem_rel_obj in d['relation_object']:
             cur_relation = elem_rel_obj['relation']
             cur_object_span = elem_rel_obj['object_token_span']
             relation_idx = relation_index[cur_relation]
-            relation_start_arrays[relation_idx][cur_object_span[0]] = 1
-            relation_end_arrays[relation_idx][cur_object_span[1]] = 1
-        d['relation_to_object_start_label'] = relation_start_arrays
-        d['relation_to_object_end_label'] = relation_end_arrays
+            # relation_start_arrays[relation_idx][cur_object_span[0]] = 1
+            # relation_end_arrays[relation_idx][cur_object_span[1]] = 1
+            start_label_per_relation[relation_idx].append(cur_object_span[0])
+            end_label_per_relation[relation_idx].append(cur_object_span[1])
+        # d['relation_to_object_start_label'] = relation_start_arrays
+        # d['relation_to_object_end_label'] = relation_end_arrays
+        d['relation_to_object_start_label'] = {
+            'seq_l': seq_l,
+            'relation_cnt': relation_cnt,
+            'label_per_relation': start_label_per_relation
+        }
+        d['relation_to_object_end_label'] = {
+            'seq_l': seq_l,
+            'relation_cnt': relation_cnt,
+            'label_per_relation': end_label_per_relation
+        }
     return data_dicts
 
 
 def generate_subject_gt_for_relation_object_pair_sample(data_dict: Dict[str, Any]):
     seq_l = len(data_dict['input_ids'])
-    subject_start_gt, subject_end_gt = np.zeros(seq_l), np.zeros(seq_l)
+    # subject_start_gt, subject_end_gt = np.zeros(seq_l), np.zeros(seq_l)
     span = data_dict['subject_token_span']
-    if isinstance(span, list):
-        for elem_span in span:
-            subject_end_gt[elem_span[1]] = 1
-            subject_start_gt[elem_span[0]] = 1
-    else:
-        subject_end_gt[span[1]] = 1
-        subject_start_gt[span[0]] = 1
-    data_dict['subject_start_gt'] = subject_start_gt
-    data_dict['subject_end_gt'] = subject_end_gt
+
+    # for elem_span in span:
+    #     subject_end_gt[elem_span[1]] = 1
+    #     subject_start_gt[elem_span[0]] = 1
+    # data_dict['subject_start_gt'] = subject_start_gt
+    # data_dict['subject_end_gt'] = subject_end_gt
+
+    data_dict['subject_start_gt'] = {
+        'seq_l': seq_l,
+        'label_index': span[0]
+    }
+    data_dict['subject_end_gt'] = {
+        'seq_l': seq_l,
+        'label_index': span[1]
+    }
+
+
+def generate_eval_gt(data_dict: Dict[str, Any], relation_index: Dict[str, Any]):
+    """
+    为每一个句子生成eval阶段用于评测的gt
+
+    casrel在评测阶段会把模型抽取出的结果统一转换为triplet span格式，也就是：
+    (relation_idx, sub_start, sub_end, obj_start, obj_end)
+    因此本函数也需要将数据中的triplet转换为该格式
+    """
+    results = []
+
+    triplets = data_dict['triplets']
+    for elem in triplets:
+        subject_token = elem['subject_token_span']
+        object_token = elem['object_token_span']
+        relation_idx = relation_index[elem['relation']]
+        results.append([relation_idx, subject_token[0], subject_token[1], object_token[0], object_token[1]])
+    data_dict['eval_triplets'] = results
+
 
 
 """
@@ -375,7 +428,7 @@ def get_object_relation_label(input_data_filename: str, output_data_filename: st
     pickle.dump(data_dicts, open(temp_path + output_data_filename, 'wb'))
 
 
-def get_gt(input_data_filename: str, output_data_filename: str):
+def get_train_gt(input_data_filename: str, output_data_filename: str):
     data_dicts = pickle.load(open(temp_path + input_data_filename, 'rb'))
 
     for elem in data_dicts:
@@ -383,6 +436,18 @@ def get_gt(input_data_filename: str, output_data_filename: str):
 
     pickle.dump(data_dicts, open(temp_path + output_data_filename, 'wb'))
 
+
+def get_eval_gt(input_data_filename: str, output_data_filename: str, dataset_type: str):
+    if dataset_type == 'duie':
+        relations_index = RE_settings.duie_relations_idx
+    else:
+        raise Exception(f'[get_eval_gt]未知的数据集！{dataset_type}')
+    data_dicts = load_jsonl(temp_path + input_data_filename)
+
+    for elem in data_dicts:
+        generate_eval_gt(elem, relations_index)
+
+    pickle.dump(data_dicts, open(temp_path + output_data_filename, 'wb'))
 
 """
 主函数入口
@@ -397,34 +462,40 @@ def main():
     logger.info(f'数据集读取路径:{initial_dataset_path}')
     logger.info(f'数据集类型:{dataset_type}')
 
+    logger.info(f'正在生成训练数据')
     # logger.info(f'[Step 1]过滤')
     # data_filter(initial_dataset_path, f'train.{dataset_type}.filterd.jsonl', dataset_type, 'train')
-    # data_filter(initial_dataset_path, f'valid.{dataset_type}.filterd.jsonl', dataset_type, 'valid')
-    #
+
     # logger.info(f'[Step 2]tokenize')
     # tokenize_data(f'train.{dataset_type}.filterd.jsonl', f'train.{dataset_type}.tokenized.jsonl', tokenier_plm)
-    # tokenize_data(f'valid.{dataset_type}.filterd.jsonl', f'valid.{dataset_type}.tokenized.jsonl', tokenier_plm)
-    #
+
     # logger.info(f'[Step 3]获取span')
     # get_span(f'train.{dataset_type}.tokenized.jsonl', f'train.{dataset_type}.span.jsonl')
-    # get_span(f'valid.{dataset_type}.tokenized.jsonl', f'valid.{dataset_type}.span.jsonl')
 
     # logger.info(f'[Step 4]生成label')
     # get_subject_label(f'train.{dataset_type}.span.jsonl', f'train.{dataset_type}.labeled.pk')
-    # get_subject_label(f'valid.{dataset_type}.span.jsonl', f'valid.{dataset_type}.labeled.pk')
     #
     # logger.info(f'[Step 5]重组数据')
     # reassemble(f'train.{dataset_type}.labeled.pk', f'train.{dataset_type}.rearranged.pk')
-    # reassemble(f'valid.{dataset_type}.labeled.pk', f'valid.{dataset_type}.rearranged.pk')
 
-    logger.info(f'[Step 6]为relation+object生成label')
+    # logger.info(f'[Step 6]为relation+object生成label')
     # get_object_relation_label(f'train.{dataset_type}.rearranged.pk', f'train.{dataset_type}.ro_labeled.pk', dataset_type)
-    # get_object_relation_label(f'valid.{dataset_type}.rearranged.pk', f'valid.{dataset_type}.ro_labeled.pk', dataset_type)
+    #
+    # logger.info(f'[Step 7]生成gt')
+    # get_train_gt(f'train.{dataset_type}.ro_labeled.pk', f'train.{dataset_type}.final.pk')
 
-    logger.info(f'[Step 7]生成gt')
-    # get_gt(f'train.{dataset_type}.ro_labeled.pk', f'train.{dataset_type}.final.pk')
-    get_gt(f'valid.{dataset_type}.ro_labeled.pk', f'valid.{dataset_type}.final.pk')
+    logger.info(f'正在生成评测数据')
+    # logger.info(f'[Step 1]过滤')
+    # data_filter(initial_dataset_path, f'valid.{dataset_type}.filterd.jsonl', dataset_type, 'valid')
 
+    # logger.info(f'[Step 2]tokenize')
+    # tokenize_data(f'valid.{dataset_type}.filterd.jsonl', f'valid.{dataset_type}.tokenized.jsonl', tokenier_plm)
+
+    # logger.info(f'[Step 3]获取span')
+    # get_span(f'valid.{dataset_type}.tokenized.jsonl', f'valid.{dataset_type}.span.jsonl')
+
+    logger.info(f'[Step 4]直接获取eval gt')
+    get_eval_gt(f'valid.{dataset_type}.span.jsonl', f'valid.{dataset_type}.eval_final.pk', dataset_type)
 
 if __name__ == '__main__':
     main()
