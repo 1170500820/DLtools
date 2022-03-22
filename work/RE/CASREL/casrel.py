@@ -1,3 +1,5 @@
+import pickle
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +14,7 @@ from type_def import *
 from evaluate.evaluator import BaseEvaluator, F1_Evaluator
 from work.RE import RE_settings, RE_utils
 from work.RE.RE_utils import Triplet, convert_lists_to_triplet_casrel
-from utils import tools, tokenize_tools
+from utils import tools, tokenize_tools, batch_tool
 from utils.data import SimpleDataset
 from dataset import re_dataset
 
@@ -191,7 +193,8 @@ class CASREL_Evaluator(BaseEvaluator):
                 pred_subjects: SpanList,
                 pred_objects: List[List[SpanList]],
                 subjects_gt: SpanList,
-                objects_gt: List[List[SpanList]]):
+                objects_gt: List[List[SpanList]],
+                tokens: List[str]):
         """
 
         :param pred_subjects:
@@ -217,135 +220,64 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = RE_settings.default
     - token_type_ids
     - attention_mask
     - offset_mapping
-    - triplets(contains token span)
-        - subject
-        - subject_occur
-        - subject_token_span
-        - object
-        - object_occur
-        - object_token_span
-        - relation
+    - token
+
+    - subject
+    - subject_start_label {seq_l:, label_indexes:}
+    - subject_end_label (same)
+    - subject_occur
+    - subject_start_gt {seq_l: , label_index: }
+    - subject_end_gt
+
+    - relation_object
+    - relation_to_object_start_label {seq_l: , relation_cnt: , label_per_relation: }
+    - relation_to_object_end_label
+
     :param data_dicts:
     :param bsz:
     :param shuffle:
     :return:
     """
-    def split_dict_by_subject(d) -> List[dict]:
-        """
-        d是一个包含句子的tokenize结果，以及所有triplets（包括char span与token span）
-        本函数将d按照triplets中的subject划分，一个subject可能对应多个object_with_relation
-        同时也会保存所有subject的SpanList
-        :param d:
-        :return:
-        """
-        subject_set = set()  # 用于判断subject是否已存在
-        subject_dict = {}  # 存放用于作为subject gt与object label的所有数据
-        subject_list: SpanList = []  # 存放用于作为subject label的token span
-        regular_info = tools.split_dict(d, ['triplets'])
-        for elem in d['triplets']:
-            if elem['subject'] not in subject_set:
-                subject_set.add(elem['subject'])
-                subject_dict[elem['subject']] = {
-                    "subject_occur": elem['subject_occur'],
-                    "subject_token_span": elem['subject_token_span'],
-                    "objects": [elem['object']],
-                    "object_occurs": [elem['object_occur']],
-                    "object_token_spans": [elem['object_token_span']],
-                    'relations': [elem['relation']]
-                }
-                subject_list.append(elem['subject_token_span'])
-            else:
-                subject_dict[elem['subject']]['objects'].append(elem['object'])
-                subject_dict[elem['subject']]['object_occurs'].append(elem['object_occur'])
-                subject_dict[elem['subject']]['objects_token_spans'].append(elem['object_token_span'])
-                subject_dict[elem['subject']]['relations'].append(elem['relation'])
-        regular_info['subject_spans'] = subject_list
-        results = []
-        for k, v in subject_dict.items():
-            new_dict = {
-                "cur_objects": v['objects'],
-                "cur_object_occurs": v['object_occurs'],
-                "cur_object_token_spans": v['object_token_span'],
-                "cur_relations": v['relations']
-            }
-            new_dict.update(regular_info)
-            results.append(new_dict)
-        return results
-
-    data_dicts = tools.map_operation_to_list_elem(split_dict_by_subject, data_dicts)
     train_dataset = SimpleDataset(data_dicts)
 
     def collate_fn(lst):
         """
         dict in lst contains:
-        - input_ids
-        - tokens
-        - token_type_ids
-        - attention_mask
-        - offset_mapping
-        - subject_spans
-        --
-        - subject_occurs
-        - subject_token_spans
-        - cur_relations
-        - cur_objects
-        - cur_object_occurs
-        - cur_object_token_spans
         :param lst:
         :return:
         """
-        dicts = tools.transpose_list_of_dict(lst)
+        data_dict = tools.transpose_list_of_dict(lst)
+
+        input_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['input_ids']), dtype=torch.long)
+        token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['token_type_ids']), dtype=torch.long)
+        attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['attention_mask']), dtype=torch.long)
+
+        start_gt_info, end_gt_info = data_dict['subject_start_gt'], data_dict['subject_end_gt']
+        subject_gt_start = torch.zeros((bsz, start_gt_info['seq_l']))
+
 
 
 def dev_dataset_factory(data_dicts: List[dict]):
     pass
 
 
-def dataset_factory(data_type: str, data_dir: str, bsz: int = RE_settings.default_bsz, shuffle: bool = RE_settings.default_shuffle):
-    if data_type == 'NYT':
-        data = RE_utils.load_NYT_re(data_dir)
-        train_dicts, dev_dicts = data['train'], data['valid']
-    elif data_type == 'WebNLG':
-        data = RE_utils.load_WebNLG_re(data_dir)
-        train_dicts, dev_dicts = data['train'], data['valid']
-    elif data_type == 'duie':
-        data = RE_utils.load_duie_re(data_dir)
-        train_dicts, dev_dicts = data['train'], data['valid']
-    else:
-        raise Exception(f'[dataset_factory]遇到未知的数据集！[{data_type}]')
+def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int = RE_settings.default_bsz, shuffle: bool = RE_settings.default_shuffle):
+    train_data_dicts = pickle.load(open(train_file, 'rb'))
+    valid_data_dicts = pickle.load(open(valid_file, 'rb'))
 
-    # 首先生成train数据
-    # Version-tokenize
-    lst_tokenizer = tokenize_tools.bert_tokenizer(plm_path=RE_settings.default_plm[data_type])
-    train_dicts = re_dataset.tokenize_re_dataset(train_dicts, lst_tokenizer)
+    train_dataloader = train_dataset_factory(train_data_dicts, bsz=bsz, shuffle=shuffle)
+    valid_dataloader = dev_dataset_factory(valid_data_dicts)
 
-    # Version-获得charSpan
-    train_dicts = re_dataset.add_char_span_re_dataset(train_dicts)
+    return train_dataloader, valid_dataloader
 
-    # Version-获得tokenSpan
-    train_dicts = re_dataset.add_token_span_re_dataset(train_dicts)
-
-    # Version-获得subject总体label
-    train_dicts = re_dataset.generate_subject_labels(train_dicts)
-
-    # Version-根据subject重组
-    train_dicts = re_dataset.rearrange_by_subject(train_dicts)
-
-    # Version-获取relation>object label
-    train_dicts = re_dataset.generate_relation_to_object_labels(train_dicts, RE_settings.relations[data_type])
-
-    # Version-获取与relation-object对应的subject gt
-    train_dicts = re_dataset.generate_subject_gt_for_relation_object_pair(train_dicts)
-
-
-    for elem in train_dicts:
-        offset_mapping = elem['offset_mapping']
-        for elem_d in elem['triplets']:
-            RE_utils.add_token_span_to_re_data(elem_d, offset_mapping)
-    for elem in dev_dicts:
-        offset_mapping = elem['offset_mapping']
-        for elem_d in elem['triplets']:
-            RE_utils.add_token_span_to_re_data(elem_d, offset_mapping)
+    # for elem in train_dicts:
+    #     offset_mapping = elem['offset_mapping']
+    #     for elem_d in elem['triplets']:
+    #         RE_utils.add_token_span_to_re_data(elem_d, offset_mapping)
+    # for elem in dev_dicts:
+    #     offset_mapping = elem['offset_mapping']
+    #     for elem_d in elem['triplets']:
+    #         RE_utils.add_token_span_to_re_data(elem_d, offset_mapping)
 
 
 
@@ -353,7 +285,8 @@ def dataset_factory(data_type: str, data_dir: str, bsz: int = RE_settings.defaul
 model_registry = {
     "model": CASREL,
     "evaluator": CASREL_Evaluator,
-
+    'loss': CASREL_Loss,
+    'train_val_data': dataset_factory,
 }
 
 if __name__ == '__main__':
