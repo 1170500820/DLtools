@@ -498,7 +498,7 @@ def argument_span_determination(binary_start: IntList, binary_end: IntList, prob
     :param binary_end:
     :param prob_start:
     :param prob_end:
-    :return:
+    :return: List[Tuple[int, int]]
     """
     a_s, a_e = -1, -1
     state = 1
@@ -555,8 +555,9 @@ class FocalWeight:
         :return: (~)
         """
         logits_clone = logits.detach().clone()
-        pt = (1 - logits_clone) * ground_truth + logits_clone * (1 - ground_truth)
-        focal_weight = (self.alpha * ground_truth + (1 - self.alpha) * (1 - ground_truth)) * torch.pow(pt, self.gamma)
+        ground_truth_clone = ground_truth.detach().clone()
+        pt = (1 - logits_clone) * ground_truth_clone + logits_clone * (1 - ground_truth_clone)
+        focal_weight = (self.alpha * ground_truth_clone + (1 - self.alpha) * (1 - ground_truth_clone)) * torch.pow(pt, self.gamma)
         return focal_weight
 
 

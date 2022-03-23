@@ -356,8 +356,8 @@ indexes = {
 
 
 # train
-plm_lr = 2e-5
-others_lr = 1e-4
+plm_lr = 1e-5
+others_lr = 1e-5
 
 default_bsz = 8
 default_shuffle = True
