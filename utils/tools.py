@@ -546,12 +546,13 @@ class FocalWeight:
         self.alpha = alpha
         self.gamma = gamma
 
-    def __call__(self, logits: torch.Tensor, ground_truth: torch.Tensor):
+    def __call__(self, logits: torch.Tensor, ground_truth: torch.Tensor, mask: torch.Tensor = None):
         """
         输出logits对于ground_truth的focal loss权值矩阵
         实际上logits和ground_truth的shape一样就可以计算，
         :param logits: (~)
         :param ground_truth: (~)
+        :param mask: (~)
         :return: (~)
         """
         logits_clone = logits.detach().clone()
