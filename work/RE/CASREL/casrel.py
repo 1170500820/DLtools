@@ -88,8 +88,8 @@ class CASREL(nn.Module):
             :param subject_end: (bsz, 1, seq_l)
             :return:
             """
-            start_repr = torch.matmul(subject_start, bert_embed)  # (bsz, 1, hidden)
-            end_repr = torch.matmul(subject_end, bert_embed)  # (bsz, 1, hidden)
+            start_repr = torch.bmm(subject_start, bert_embed)  # (bsz, 1, hidden)
+            end_repr = torch.bmm(subject_end, bert_embed)  # (bsz, 1, hidden)
             subject_repr = (start_repr + end_repr) / 2  # (bsz, 1, hidden)
 
             # h_N + v^k_{sub}
@@ -137,11 +137,11 @@ class CASREL(nn.Module):
             subject_start_int = (subject_start_result > 0.5).int().tolist()
             subject_end_int = (subject_end_result > 0.5).int().tolist()
             seq_l = len(subject_start_int)
-            cur_spans = tools.argument_span_determination(subject_start_int, subject_end_int, subject_start_result, subject_end_result)  # SpanList
+            subject_spans = tools.argument_span_determination(subject_start_int, subject_end_int, subject_start_result, subject_end_result)  # SpanList
 
             # 迭代获取每个subject所对应的object预测
             object_spans = []  #  List[List[SpanList]]  (subject, relation, span number)
-            for elem_span in cur_spans:
+            for elem_span in subject_spans:
                 object_spans_for_current_subject = []  # List[SpanList]  (relation, span number)
                 temporary_start, temporary_end = torch.zeros(1, 1, seq_l).cuda(), torch.zeros(1, 1, seq_l).cuda()  # both (1, 1, seq_l)
                 temporary_start[0][0][elem_span[0]] = 1
@@ -154,6 +154,9 @@ class CASREL(nn.Module):
 
                 object_start_result = object_start_result.squeeze().T  # (relation_cnt, seq_l)
                 object_end_result = object_end_result.squeeze().T  # (relation_cnt, seq_l)
+
+                object_start_result = torch.sigmoid(object_start_result)
+                object_end_result = torch.sigmoid(object_end_result)
                 for (object_start_r, object_end_r) in zip(object_start_result, object_end_result):
                     o_start_int = (object_start_r > 0.5).int().tolist()
                     o_end_int = (object_end_r > 0.5).int().tolist()
@@ -162,7 +165,7 @@ class CASREL(nn.Module):
                 object_spans.append(object_spans_for_current_subject)
 
             return {
-                "pred_subjects": cur_spans,  # SpanList
+                "pred_subjects": subject_spans,  # SpanList
                 "pred_objects": object_spans  # List[List[SpanList]]
             }
 
@@ -178,10 +181,107 @@ class CASREL(nn.Module):
         return [plm_optimizer, linear_optimizer]
 
 
+class CASREL_subject_part(nn.Module):
+    def __init__(self,
+                 relation_cnt: int = len(RE_settings.relations[RE_settings.default_datatype]),
+                 bert_plm_path: str = RE_settings.default_plm[RE_settings.default_datatype],
+                 plm_lr: float = RE_settings.plm_lr,
+                 others_lr: float = RE_settings.others_lr
+                 ):
+        super(CASREL_subject_part, self).__init__()
+
+        # 保存初始化参数
+        self.relation_cnt = relation_cnt
+        self.plm_path = bert_plm_path
+        self.plm_lr = plm_lr
+        self.others_lr = others_lr
+
+        # 记载bert预训练模型
+        self.bert = BertModel.from_pretrained(bert_plm_path)
+        self.hidden = self.bert.config.hidden_size
+
+        # 初始化分类器
+        self.subject_start_cls = nn.Linear(self.hidden, 1)
+        self.subject_end_cls = nn.Linear(self.hidden, 1)
+
+        self.init_weights()
+
+    def init_weights(self):
+        torch.nn.init.xavier_uniform_(self.subject_start_cls.weight)
+        self.subject_start_cls.bias.data.fill_(0)
+        torch.nn.init.xavier_uniform_(self.subject_end_cls.weight)
+        self.subject_end_cls.bias.data.fill_(0)
+
+    def forward(self,
+                input_ids: torch.Tensor,
+                token_type_ids: torch.Tensor,
+                attention_mask: torch.Tensor,
+                subject_gt_start: torch.Tensor = None,
+                subject_gt_end: torch.Tensor = None):
+        """
+        在train模式下，
+            - subject_gt_start/end均不为None，将用于模型第二步的训练
+            - 返回值
+                - subject_start_result
+                - subject_end_result
+                - object_start_result
+                - object_end_result
+        在eval模式下，subject_gt_start/end为None（就算不为None，也不会用到）
+        :param input_ids: (bsz, seq_l)
+        :param token_type_ids: (bsz, seq_l)
+        :param attention_mask: (bsz, seq_l)
+        :param subject_gt_start: (bsz, seq_l) 只包含1和0的向量。
+        :param subject_gt_end: (bsz, seq_l)
+        :return:
+        """
+        def calculate_embed_with_subject(bert_embed, subject_start, subject_end):
+            """
+            计算subject的表示向量subject_repr
+            :param bert_embed: (bsz, seq_l, hidden)
+            :param subject_start: (bsz, 1, seq_l)
+            :param subject_end: (bsz, 1, seq_l)
+            :return:
+            """
+            start_repr = torch.matmul(subject_start, bert_embed)  # (bsz, 1, hidden)
+            end_repr = torch.matmul(subject_end, bert_embed)  # (bsz, 1, hidden)
+            subject_repr = (start_repr + end_repr) / 2  # (bsz, 1, hidden)
+
+            # h_N + v^k_{sub}
+            embed = bert_embed + subject_repr
+            return embed
+
+        # 获取BERT embedding
+        result = self.bert(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
+        output, _ = result[0], result[1]  # output: (bsz, seq_l, hidden)
+
+        mask = (1 - attention_mask).bool()
+        # 获取subject的预测
+        subject_start_result = self.subject_start_cls(output)  # (bsz, seq_l, 1)
+        subject_end_result = self.subject_end_cls(output)  # (bsz, seq_l, 1)
+        subject_start_result = F.sigmoid(subject_start_result)  # (bsz, seq_l, 1)
+        subject_end_result = F.sigmoid(subject_end_result)  # (bsz, seq_l, 1)
+        subject_start_result = subject_start_result.masked_fill(mask=mask.unsqueeze(dim=-1), value=0)
+        subject_end_result = subject_end_result.masked_fill(mask=mask.unsqueeze(dim=-1), value=0)
+        return {
+            "subject_start_result": subject_start_result,
+            'subject_end_result': subject_end_result
+        }
+
+
+    def get_optimizers(self):
+        plm_params = self.bert.parameters()
+        ss_params = self.subject_start_cls.parameters()
+        se_params = self.subject_end_cls.parameters()
+        plm_optimizer = AdamW(params=plm_params, lr=self.plm_lr)
+        linear_optimizer = AdamW(params=chain(ss_params, se_params), lr=self.others_lr)
+        return [plm_optimizer, linear_optimizer]
+
+
 class CASREL_Loss(nn.Module):
     def __init__(self, lamb: float = 0.6):
         super(CASREL_Loss, self).__init__()
         self.lamb = lamb
+        self.focal_weight = tools.FocalWeight()
 
     def forward(self,
                 subject_start_result: torch.Tensor,
@@ -208,20 +308,55 @@ class CASREL_Loss(nn.Module):
         subject_start_result = subject_start_result.squeeze()  # (bsz, seq_l)
         subject_end_result = subject_end_result.squeeze()  # (bsz, seq_l)
 
+        # 计算weight
+        subject_start_focal_weight = self.focal_weight(subject_start_label, subject_start_result)
+        subject_end_focal_weight = self.focal_weight(subject_end_label, subject_end_result)
+        object_start_focal_weight = self.focal_weight(object_start_label, object_start_result)
+        object_end_focal_weight = self.focal_weight(object_end_label, object_end_result)
+
         # 计算loss
-        subject_start_loss = F.binary_cross_entropy(subject_start_result, subject_start_label, 1 + subject_start_label * 3)
-        subject_end_loss = F.binary_cross_entropy(subject_end_result, subject_end_label, 1 + subject_end_label * 3)
-        object_start_loss = F.binary_cross_entropy(object_start_result, object_start_label, 1 + object_start_label * 3)
-        object_end_loss = F.binary_cross_entropy(object_end_result, object_end_label, 1 + object_end_label * 3)
+        subject_start_loss = F.binary_cross_entropy(subject_start_result, subject_start_label, subject_start_focal_weight)
+        subject_end_loss = F.binary_cross_entropy(subject_end_result, subject_end_label, subject_end_focal_weight)
+        object_start_loss = F.binary_cross_entropy(object_start_result, object_start_label, object_start_focal_weight)
+        object_end_loss = F.binary_cross_entropy(object_end_result, object_end_label, object_end_focal_weight)
 
         loss = self.lamb * (subject_start_loss + subject_end_loss) + (1 - self.lamb) * (object_start_loss + object_end_loss)
+        return loss
+
+
+class CASREL_subject_part_Loss(nn.Module):
+    def forward(self,
+                subject_start_result: torch.Tensor,
+                subject_end_result: torch.Tensor,
+                subject_start_label: torch.Tensor,
+                subject_end_label: torch.Tensor,
+                object_start_label, object_end_label):
+        """
+
+        :param subject_start_result: (bsz, seq_l, 1)
+        :param subject_end_result: (bsz, seq_l, 1)
+        :param subject_start_label: (bsz, seq_l)
+        :param subject_end_label: (bsz, seq_l)
+        """
+        # 将subject_result的形状与label对齐
+        subject_start_result = subject_start_result.squeeze()  # (bsz, seq_l)
+        subject_end_result = subject_end_result.squeeze()  # (bsz, seq_l)
+
+        # 计算loss
+        subject_start_loss = F.binary_cross_entropy(subject_start_result, subject_start_label,
+                                                    1 + subject_start_label * 3)
+        subject_end_loss = F.binary_cross_entropy(subject_end_result, subject_end_label, 1 + subject_end_label * 3)
+
+        loss = subject_start_loss + subject_end_loss
+
         return loss
 
 
 class CASREL_Evaluator(BaseEvaluator):
     def __init__(self):
         super(CASREL_Evaluator, self).__init__()
-        self.f1_evaluator = F1_Evaluator()
+        self.total_f1_evaluator = F1_Evaluator()
+        self.subject_f1_evaluator = F1_Evaluator()
         self.pred_lst, self.gt_lst = [], []
 
     def eval_single(self,
@@ -240,16 +375,52 @@ class CASREL_Evaluator(BaseEvaluator):
         :return:
         """
         gt_triplets = list(tuple(x) for x in gt_triplets)
+        pred_subjects = list(tuple(x) for x in pred_subjects)
+        gt_subject_spans = list(set((x[1], x[2]) for x in gt_triplets))
         pred_triplets = convert_lists_to_triplet_casrel(pred_subjects, pred_objects)  # List[Triplet]
         # gt_triplets = convert_lists_to_triplet_casrel(subjects_gt, objects_gt)  # List[Triplet]
         self.pred_lst.append([pred_triplets, pred_subjects, pred_objects])
         self.gt_lst.append([gt_triplets, tokens])
-        self.f1_evaluator.eval_single(pred_triplets, gt_triplets)
+        self.total_f1_evaluator.eval_single(pred_triplets, gt_triplets)
+        self.subject_f1_evaluator.eval_single(pred_subjects, gt_subject_spans)
+
+    def eval_step(self) -> Dict[str, Any]:
+        f1_result = self.total_f1_evaluator.eval_step()
+        subject_f1 = self.subject_f1_evaluator.eval_step()
+        f1_result = tools.modify_key_of_dict(f1_result, lambda x: 'total_' + x)
+        subject_f1 = tools.modify_key_of_dict(subject_f1, lambda x: 'subject_' + x)
+        self.pred_lst = []
+        self.gt_lst = []
+        subject_f1.update(f1_result)
+        return subject_f1
+
+
+class CASREL_subject_part_Evaluator(BaseEvaluator):
+    def __init__(self):
+        super(CASREL_subject_part_Evaluator, self).__init__()
+        self.f1_evaluator = F1_Evaluator()
+        self.pred_lst, self.gt_lst = [], []
+
+    def eval_single(self,
+                    subject_start_result: torch.Tensor,
+                    subject_end_result: torch.Tensor,
+                    gt_triplets: List[Tuple],
+                    tokens: List[str]):
+
+        subject_start_result = subject_start_result.squeeze()
+        subject_end_result = subject_end_result.squeeze()
+
+        gt_subject_spans = list(set((x[1], x[2]) for x in gt_triplets))
+        subject_start_bool = (subject_start_result > 0.5).int().tolist()
+        subject_end_bool = (subject_end_result > 0.5).int().tolist()
+        spans = tools.argument_span_determination(subject_start_bool, subject_end_bool, subject_start_result, subject_end_result)
+        self.f1_evaluator.eval_single(spans, gt_subject_spans)
+        self.pred_lst.append([subject_start_result.tolist(), subject_end_result.tolist(), spans])
+        self.gt_lst.append(gt_subject_spans)
 
     def eval_step(self) -> Dict[str, Any]:
         f1_result = self.f1_evaluator.eval_step()
-        self.pred_lst = []
-        self.gt_lst = []
+        self.pred_lst, self.gt_lst = [], []
         return f1_result
 
 
@@ -397,6 +568,13 @@ def dataset_factory(train_file: str, valid_file: str, bsz: int = RE_settings.def
 
 
 
+# model_registry = {
+#     "model": CASREL_subject_part,
+#     "evaluator": CASREL_subject_part_Evaluator,
+#     'loss': CASREL_subject_part_Loss,
+#     'train_val_data': dataset_factory,
+#     'recorder': NaiveRecorder
+# }
 model_registry = {
     "model": CASREL,
     "evaluator": CASREL_Evaluator,
