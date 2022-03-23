@@ -100,14 +100,14 @@ class CASREL(nn.Module):
         result = self.bert(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
         output, _ = result[0], result[1]  # output: (bsz, seq_l, hidden)
 
-        mask = (1 - attention_mask).bool()
+        mask = (1 - attention_mask).bool()  # (bsz, seq_l)
         # 获取subject的预测
         subject_start_result = self.subject_start_cls(output)  # (bsz, seq_l, 1)
         subject_end_result = self.subject_end_cls(output)  # (bsz, seq_l, 1)
-        subject_start_result = F.sigmoid(subject_start_result)  # (bsz, seq_l, 1)
-        subject_end_result = F.sigmoid(subject_end_result)  # (bsz, seq_l, 1)
-        subject_start_result = subject_start_result.masked_fill(mask=mask.unsqueeze(dim=-1), value=0)
-        subject_end_result = subject_end_result.masked_fill(mask=mask.unsqueeze(dim=-1), value=0)
+        subject_start_result = torch.sigmoid(subject_start_result)  # (bsz, seq_l, 1)
+        subject_end_result = torch.sigmoid(subject_end_result)  # (bsz, seq_l, 1)
+        subject_start_result = subject_start_result.masked_fill(mask=mask.unsqueeze(dim=-1), value=0)  # (bsz, seq_l, 1)
+        subject_end_result = subject_end_result.masked_fill(mask=mask.unsqueeze(dim=-1), value=0)  # (bsz, seq_l, 1)
         if self.training:
             gt_start, gt_end = subject_gt_start.unsqueeze(dim=1), subject_gt_end.unsqueeze(dim=1)
             # both (bsz, 1, seq_l)
@@ -117,18 +117,21 @@ class CASREL(nn.Module):
             object_start_result = self.object_start_cls(embed)  # (bsz, seq_l, relation_cnt)
             object_end_result = self.object_end_cls(embed)  # (bsz, seq_l, relation_cnt)
 
-            object_start_result = F.sigmoid(object_start_result)  # (bsz, seq_l, relation_cnt)
-            object_end_result = F.sigmoid(object_end_result)  # (bsz, seq_l, relation_cnt)
+            object_start_result = torch.sigmoid(object_start_result)  # (bsz, seq_l, relation_cnt)
+            object_end_result = torch.sigmoid(object_end_result)  # (bsz, seq_l, relation_cnt)
             relation_cnt = object_end_result.shape[-1]
             ro_mask = mask.unsqueeze(dim=-1)  # (bsz, seq_l, 1)
-            ro_mask = ro_mask.repeat(1, 1, relation_cnt)
-            object_start_result = object_start_result.masked_fill(mask=ro_mask, value=0)
-            object_end_result = object_end_result.masked_fill(mask=ro_mask, value=0)
+            ro_mask = ro_mask.repeat(1, 1, relation_cnt)  # (bsz, seq_l, relation_cnt)
+            ro_attention_mask = (1 - ro_mask.float())  # (bsz, seq_l, relation_cnt)
+            object_start_result = object_start_result.masked_fill(mask=ro_mask, value=0)  # (bsz, seq_l, relation_cnt)
+            object_end_result = object_end_result.masked_fill(mask=ro_mask, value=0)  # (bsz, seq_l, relation_cnt)
             return {
                 "subject_start_result": subject_start_result,  # (bsz, seq_l, 1)
                 "subject_end_result": subject_end_result,  # (bsz, seq_l, 1)
                 "object_start_result": object_start_result,  # (bsz, seq_l, relation_cnt)
-                "object_end_result": object_end_result  # （bsz, seq_l, relation_cnt)
+                "object_end_result": object_end_result,  # （bsz, seq_l, relation_cnt)
+                'subject_mask': attention_mask,  # (bsz, seq_l)
+                'ro_mask': ro_attention_mask,  # (bsz, seq_l, relation_cnt)
             }
         else:  # eval模式。该模式下，bsz默认为1
             # 获取subject的预测：cur_spans - SpanList
@@ -281,13 +284,15 @@ class CASREL_Loss(nn.Module):
     def __init__(self, lamb: float = 0.6):
         super(CASREL_Loss, self).__init__()
         self.lamb = lamb
-        self.focal_weight = tools.FocalWeight()
+        # self.focal_weight = tools.FocalWeight()
 
     def forward(self,
                 subject_start_result: torch.Tensor,
                 subject_end_result: torch.Tensor,
                 object_start_result: torch.Tensor,
                 object_end_result: torch.Tensor,
+                subject_mask: torch.Tensor,
+                ro_mask: torch.Tensor,
                 subject_start_label: torch.Tensor,
                 subject_end_label: torch.Tensor,
                 object_start_label: torch.Tensor,
@@ -298,6 +303,8 @@ class CASREL_Loss(nn.Module):
         :param subject_end_result: (bsz, seq_l, 1)
         :param object_start_result: (bsz, seq_l, relation_cnt)
         :param object_end_result: (bsz, seq_l, relation_cnt)
+        :param subject_mask: (bsz, seq_l) 用于处理subject的mask
+        :param ro_mask: (bsz, seq_l) 用于处理relation-object的mask
         :param subject_start_label: (bsz, seq_l)
         :param subject_end_label: (bsz, seq_l)
         :param object_start_label: (bsz, seq_l, relation_cnt)
@@ -305,22 +312,27 @@ class CASREL_Loss(nn.Module):
         :return:
         """
         # 将subject_result的形状与label对齐
-        subject_start_result = subject_start_result.squeeze()  # (bsz, seq_l)
-        subject_end_result = subject_end_result.squeeze()  # (bsz, seq_l)
+        subject_start_result = subject_start_result.squeeze(-1)  # (bsz, seq_l)
+        subject_end_result = subject_end_result.squeeze(-1)  # (bsz, seq_l)
 
         # 计算weight
-        subject_start_focal_weight = self.focal_weight(subject_start_label, subject_start_result)
-        subject_end_focal_weight = self.focal_weight(subject_end_label, subject_end_result)
-        object_start_focal_weight = self.focal_weight(object_start_label, object_start_result)
-        object_end_focal_weight = self.focal_weight(object_end_label, object_end_result)
+        # subject_start_focal_weight = self.focal_weight(subject_start_label, subject_start_result)
+        # subject_end_focal_weight = self.focal_weight(subject_end_label, subject_end_result)
+        # object_start_focal_weight = self.focal_weight(object_start_label, object_start_result)
+        # object_end_focal_weight = self.focal_weight(object_end_label, object_end_result)
 
         # 计算loss
-        subject_start_loss = F.binary_cross_entropy(subject_start_result, subject_start_label, subject_start_focal_weight)
-        subject_end_loss = F.binary_cross_entropy(subject_end_result, subject_end_label, subject_end_focal_weight)
-        object_start_loss = F.binary_cross_entropy(object_start_result, object_start_label, object_start_focal_weight)
-        object_end_loss = F.binary_cross_entropy(object_end_result, object_end_label, object_end_focal_weight)
+        subject_start_loss = F.binary_cross_entropy(subject_start_result, subject_start_label, reduction='none')
+        subject_end_loss = F.binary_cross_entropy(subject_end_result, subject_end_label, reduction='none')
+        object_start_loss = F.binary_cross_entropy(object_start_result, object_start_label, reduction='none')
+        object_end_loss = F.binary_cross_entropy(object_end_result, object_end_label, reduction='none')
 
-        loss = self.lamb * (subject_start_loss + subject_end_loss) + (1 - self.lamb) * (object_start_loss + object_end_loss)
+        ss_loss = torch.sum(subject_start_loss * subject_mask) / torch.sum(subject_mask)
+        se_loss = torch.sum(subject_end_loss * subject_mask) / torch.sum(subject_mask)
+        os_loss = torch.sum(object_start_loss * ro_mask) / torch.sum(ro_mask)
+        oe_loss = torch.sum(object_end_loss * ro_mask) / torch.sum(ro_mask)
+
+        loss = self.lamb * (ss_loss + se_loss) + (1 - self.lamb) * (os_loss + oe_loss)
         return loss
 
 
@@ -521,7 +533,7 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = RE_settings.default
 
 def dev_dataset_factory(data_dicts: List[dict]):
 
-    valid_dataset = SimpleDataset(data_dicts[:1000])
+    valid_dataset = SimpleDataset(data_dicts)
 
     def collate_fn(lst):
         data_dict = tools.transpose_list_of_dict(lst)
