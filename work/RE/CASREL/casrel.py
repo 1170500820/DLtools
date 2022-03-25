@@ -19,6 +19,7 @@ from utils import tools, tokenize_tools, batch_tool
 from analysis.recorder import NaiveRecorder
 from utils.data import SimpleDataset
 from dataset import re_dataset
+from models.model_utils import get_init_params
 
 
 class CASREL(nn.Module):
@@ -29,6 +30,7 @@ class CASREL(nn.Module):
                  others_lr: float = RE_settings.others_lr
                  ):
         super(CASREL, self).__init__()
+        self.init_params = get_init_params(locals())
 
         # 保存初始化参数
         self.relation_cnt = relation_cnt
