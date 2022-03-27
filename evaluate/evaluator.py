@@ -361,9 +361,9 @@ class CcksEvaluator(BaseEvaluator):
         return result
 
 
-class F1Evaluator(BaseEvaluator):
+class EE_F1Evaluator(BaseEvaluator):
     def __init__(self):
-        super(F1Evaluator, self).__init__()
+        super(EE_F1Evaluator, self).__init__()
         self.predevents: List[SentenceWithEvent] = []
         self.trueevents: List[SentenceWithEvent] = []
 

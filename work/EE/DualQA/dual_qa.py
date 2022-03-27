@@ -611,6 +611,7 @@ class DualQA_Evaluator(BaseEvaluator):
         self.gt_lst = []
         return result
 
+
 """
 数据处理部分
 """
