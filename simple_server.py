@@ -10,8 +10,8 @@ import asyncio
 import websockets
 import functools
 
-from work.EE.PLMEE import UseModel as ED_model
-from work.EE.PLMEE import UseModel as EE_joint
+# from work.EE.PLMEE import UseModel as ED_model
+# from work.EE.PLMEE import UseModel as EE_joint
 
 
 def str2json(s: str):
@@ -66,15 +66,15 @@ class Predictor:
     把这个文件放在DLtools目录下，加载两个模型即可，这部分真的很简单
     """
     def __init__(self):
-        self.ed_model = ED_model('work/EE/PLMEE/checkpoint/EventDetection-save-20.pth',
-                                 'work/EE/PLMEE/checkpoint/EventDetection-init_param.pk')
-        self.ee_model = EE_joint('work/EE/PLMEE/checkpoint/JointEE-save-15.pth',
-                                 'work/EE/PLMEE/checkpoint/JointEE-init_param.pk')
+        # self.ed_model = ED_model('work/EE/PLMEE/checkpoint/EventDetection-save-20.pth',
+        #                          'work/EE/PLMEE/checkpoint/EventDetection-init_param.pk')
+        # self.ee_model = EE_joint('work/EE/PLMEE/checkpoint/JointEE-save-15.pth',
+        #                          'work/EE/PLMEE/checkpoint/JointEE-init_param.pk')
         print('-\n-\nloaded\n-\n-')
 
     def __call__(self, sentence: str) -> dict:
-        pred_event_types = self.ed_model(sentence)
-        pred_result = self.ee_model(sentence, pred_event_types)
+        # pred_event_types = self.ed_model(sentence)
+        # pred_result = self.ee_model(sentence, pred_event_types)
         sample = {
             "id": "aab68a78f7e138ced02a25ff1de2ca76",
             "content": "财华社讯】招商局港口(00144-HK)于9月20日公布,基于现有资料,决定不接纳间接控股股东布罗德福提出收购大连港(02880-HK)全部H股之可能强制性无条件现金要约。",
@@ -92,10 +92,10 @@ class Predictor:
                     {"word": "布罗德福", "span": [47, 51], "role": "sub"},
                     {"word": "9月20日", "span": [21, 26], "role": "date"},
                     {"word": "大连港", "span": [55, 58], "role": "obj"}]}]}
-        filled_result = fill_word(pred_result)
+        filled_result = fill_word(sample)
         if len(filled_result['events']) == 0:
             filled_result['events'] = [{'type': '-', 'mentions': []}]
-        return convert_event(pred_result)
+        return convert_event(filled_result)
 # WS server example
 
 
@@ -115,7 +115,7 @@ async def hello(websocket, path, lock: asyncio.Lock, func):
 async def main():
     lock = asyncio.Lock()
     predictor = Predictor()
-    async with websockets.serve(functools.partial(hello, lock=lock, func=predictor), "localhost", 9870):
+    async with websockets.serve(functools.partial(hello, lock=lock, func=predictor), "0.0.0.0", 9870):
         await asyncio.Future()  # run forever
 
 asyncio.run(main())
