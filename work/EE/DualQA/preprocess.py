@@ -14,6 +14,7 @@ from type_def import *
 from dataset.ee_dataset import load_FewFC_ee, load_Duee_ee_formated
 from utils import tools, tokenize_tools
 from work.EE.EE_utils import remove_illegal_length
+from work.EE.EE_utils import split_by_content_type_trigger
 from work.EE import EE_settings
 
 # 中间处理结果将会被输入到临时目录当中
