@@ -483,7 +483,7 @@ class PLMEE_Hybrid_Evaluator(BaseEvaluator):
     def __init__(self):
         super(PLMEE_Hybrid_Evaluator, self).__init__()
         self.ccks = CcksEvaluator()
-        self.f1 = F1Evaluator()
+        self.f1 = EE_F1Evaluator()
 
     def eval_single(self, pred: SentenceWithEvent, gt: SentenceWithEvent):
         """

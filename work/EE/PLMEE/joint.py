@@ -11,7 +11,7 @@ from itertools import chain
 import pickle
 import copy
 
-from evaluate.evaluator import BaseEvaluator, tokenspans2events, F1Evaluator, CcksEvaluator
+from evaluate.evaluator import BaseEvaluator, tokenspans2events, EE_F1Evaluator, CcksEvaluator
 from work.EE.PLMEE.sentence_representation_layer import SentenceRepresentation, TriggeredSentenceRepresentation
 from work.EE.PLMEE.trigger_extraction_model import TriggerExtractionLayer_woSyntactic
 from work.EE.PLMEE.argument_extraction_model import ArgumentExtractionModel_woSyntactic
@@ -250,7 +250,7 @@ class JointEE_Evaluator(BaseEvaluator):
         self.gt_lst = []
         self.pred_lst = []
         self.ccks_evaluator = CcksEvaluator()
-        self.f1_evaluator = F1Evaluator()
+        self.f1_evaluator = EE_F1Evaluator()
 
     def eval_single(self, pred, gt):
         self.gt_lst.append(copy.deepcopy(gt))
