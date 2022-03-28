@@ -124,8 +124,10 @@ class PLMEE(nn.Module):
                             a_start_digit = (e_start > self.threshold).int().tolist()
                             a_end_digit = (e_end > self.threshold).int().tolist()
                             cur_span = tools.argument_span_determination(a_start_digit, a_end_digit, a_start, a_end)
-                            argument_preds.append((i_rtype, cur_span))
-                        predicts[-1][-1].append([e_span, argument_preds])
+                            if len(cur_span) != 0:
+                                argument_preds.append((i_rtype, cur_span))
+                        if len(argument_preds) != 0:
+                            predicts[-1][-1].append([e_span, argument_preds])
 
                     # predicts[-1][-1].append(spans)
                     # predicts[-1][-1].append(argument_preds)

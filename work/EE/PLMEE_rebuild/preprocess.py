@@ -194,26 +194,26 @@ if __name__ == '__main__':
     logger.info(f'正在处理{dataset_type}数据')
     logger.info(f'数据源文件的存放路径: {initial_dataset_path}')
 
-    # logger.info(f'处理train数据中')
-    # logger.info(f'[Step 1]正在去除过长的句子')
-    # data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.{dataset_type}.filtered_length.jsonl')
-    #
-    # logger.info(f'[Step 2]正在按事件类型和触发词拆分数据')
-    # divide_by_event_type(f'train.{dataset_type}.filtered_length.jsonl', f'train.{dataset_type}.divided.jsonl', temp_path=temp_path, dataset_type=dataset_type)
-    #
-    # logger.info(f'[Step 3]正在tokenize')
-    # tokenize_content(f'train.{dataset_type}.divided.jsonl', f'train.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
+    logger.info(f'处理train数据中')
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.{dataset_type}.filtered_length.jsonl')
 
-    # logger.info(f'[Step 4]')
-    # generate_input_and_label(f'train.{dataset_type}.tokenized.pk', f'train.{dataset_type}.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
+    logger.info(f'[Step 2]正在按事件类型和触发词拆分数据')
+    divide_by_event_type(f'train.{dataset_type}.filtered_length.jsonl', f'train.{dataset_type}.divided.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]正在tokenize')
+    tokenize_content(f'train.{dataset_type}.divided.jsonl', f'train.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]')
+    generate_input_and_label(f'train.{dataset_type}.tokenized.pk', f'train.{dataset_type}.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
 
     logger.info(f'处理valid数据中')
-    # logger.info(f'[Step 1]正在去除过长的句子')
-    # data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.{dataset_type}.filtered_length.jsonl')
-    #
-    # logger.info(f'[Step 2]正在tokenize')
-    # tokenize_content(f'valid.{dataset_type}.filtered_length.jsonl', f'valid.{dataset_type}.tokenized.pk', temp_path, dataset_type)
-    #
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.{dataset_type}.filtered_length.jsonl')
+
+    logger.info(f'[Step 2]正在tokenize')
+    tokenize_content(f'valid.{dataset_type}.filtered_length.jsonl', f'valid.{dataset_type}.tokenized.pk', temp_path, dataset_type)
+
     logger.info(f'[Step 3]正在生成gt')
     generate_gt(f'valid.{dataset_type}.tokenized.pk', f'valid.{dataset_type}.gt.pk', temp_path, dataset_type)
 
