@@ -124,9 +124,13 @@ class PLMEE(nn.Module):
                 'predicts': predicts
             }
         else:
+            token_label = torch.zeros(token_type_ids.shape, dtype=torch.long)
+            if token_type_ids.is_cuda:
+                token_label = token_label.cuda()
             for idx, elem in enumerate(trigger_gt):
-                token_type_ids[idx][elem[0]] = 1
-                token_type_ids[idx][elem[1]] = 1
+                token_label[idx][elem[0]] = 1
+                token_label[idx][elem[1]] = 1
+            token_type_ids = token_type_ids + token_label
             argument_output = self.predict_argument(input_ids, token_type_ids, attention_mask)
             a_start, a_end = argument_output['argument_start'], argument_output['argument_end']
             # both (bsz, seq_l, role_type_cnt)
@@ -172,6 +176,19 @@ class PLMEE_Loss(nn.Module):
                 trigger_end_label: torch.Tensor,
                 argument_start_label: torch.Tensor,
                 argument_end_label: torch.Tensor):
+        """
+
+        :param trigger_start_pred: (bsz, seq_l, event_type_cnt)
+        :param trigger_end_pred:
+        :param argument_start_pred:
+        :param argument_end_pred:
+        :param attention_mask: (bsz, seq_l)
+        :param trigger_start_label:
+        :param trigger_end_label:
+        :param argument_start_label:
+        :param argument_end_label:
+        :return:
+        """
         # mask = (1 - attention_mask).bool()
         #
         # # 计算mask
@@ -180,6 +197,7 @@ class PLMEE_Loss(nn.Module):
         # argument_start_pred = argument_start_pred.masked_fill(mask, value=torch.tensor(0))
         # argument_end_pred = argument_end_pred.masked_fill(mask, value=torch.tensor(0))
 
+        attention_mask = attention_mask.unsqueeze(-1)  # (bsz, seq_l, 1)
         # 计算loss
         trigger_start_loss = F.binary_cross_entropy(trigger_start_pred, trigger_start_label, reduction='none')
         trigger_end_loss = F.binary_cross_entropy(trigger_end_pred, trigger_end_label, reduction='none')
