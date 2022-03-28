@@ -145,9 +145,9 @@ def load_FewFC_ee(file_dir: str, splitted=True):
         test_file = 'test.json'
         train_file = 'train.json'
         val_file = 'val.json'
-        test_data = list(json.loads(x) for x in open(file_dir + test_file, 'r').read().strip().split('\n'))
-        train_data = list(json.loads(x) for x in open(file_dir + train_file, 'r').read().strip().split('\n'))
-        val_data = list(json.loads(x) for x in open(file_dir + val_file, 'r').read().strip().split('\n'))
+        test_data = list(json.loads(x) for x in open(file_dir + test_file, 'r', encoding='utf-8').read().strip().split('\n'))
+        train_data = list(json.loads(x) for x in open(file_dir + train_file, 'r', encoding='utf-8').read().strip().split('\n'))
+        val_data = list(json.loads(x) for x in open(file_dir + val_file, 'r', encoding='utf-8').read().strip().split('\n'))
         return {
             "train": train_data,
             "test": test_data,
@@ -163,9 +163,9 @@ def load_Duee_ee(file_dir: str):
     test_file = 'duee_test2.json/duee_test2.json'
     train_file = 'duee_train.json/duee_train.json'
     valid_file = 'duee_dev.json/duee_dev.json'
-    test_data = list(json.loads(x) for x in open(file_dir + test_file, 'r').read().strip().split('\n'))
-    train_data = list(json.loads(x) for x in open(file_dir + train_file, 'r').read().strip().split('\n'))
-    val_data = list(json.loads(x) for x in open(file_dir + valid_file, 'r').read().strip().split('\n'))
+    test_data = list(json.loads(x) for x in open(file_dir + test_file, 'r', encoding='utf-8').read().strip().split('\n'))
+    train_data = list(json.loads(x) for x in open(file_dir + train_file, 'r', encoding='utf-8').read().strip().split('\n'))
+    val_data = list(json.loads(x) for x in open(file_dir + valid_file, 'r', encoding='utf-8').read().strip().split('\n'))
     return {
         "train": train_data,
         "test": test_data,

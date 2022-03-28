@@ -317,20 +317,24 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default
         trigger_start_label, trigger_end_label = torch.zeros((bsz, seq_l, len(event_types)), dtype=torch.float), torch.zeros((bsz, seq_l, len(event_types)), dtype=torch.float)
         for idx, e_trigger_label in enumerate(trigger_start_label_info):
             for i_etype, i_start in enumerate(e_trigger_label):
-                trigger_start_label[idx][i_start][i_etype] = 1
+                i_cur_type, i_cur_index = i_start
+                trigger_start_label[idx][i_cur_index][i_cur_type] = 1
         for idx, e_trigger_label in enumerate(trigger_end_label_info):
             for i_etype, i_end in enumerate(e_trigger_label):
-                trigger_end_label[idx][i_end][i_etype] = 1
+                i_cur_type, i_cur_index = i_end
+                trigger_end_label[idx][i_cur_index][i_cur_type] = 1
 
         # generate argument labels
         arg_start_info, arg_end_info = data_dict['argument_start_label'], data_dict['argument_end_label']
         argument_start_label, argument_end_label = torch.zeros((bsz, seq_l, len(role_types)), dtype=torch.float), torch.zeros((bsz, seq_l, len(role_types)), dtype=torch.float)
         for idx, e_arg_label in enumerate(arg_start_info):
             for i_rtype, i_start in enumerate(e_arg_label):
-                argument_start_label[idx][i_start][i_rtype] = 1
+                i_cur_type, i_cur_index = i_start
+                argument_start_label[idx][i_cur_index][i_cur_type] = 1
         for idx, e_arg_label in enumerate(arg_end_info):
             for i_rtype, i_end in enumerate(e_arg_label):
-                argument_end_label[idx][i_end][i_rtype] = 1
+                i_cur_type, i_cur_index = i_end
+                argument_end_label[idx][i_cur_index][i_cur_type] = 1
 
         return {
             'input_ids': input_ids,
@@ -438,4 +442,21 @@ model_registry = {
 
 
 if __name__ == '__main__':
-    pass
+    train_file = 'temp_data/train.FewFC.labeled.pk'
+    valid_file = 'temp_data/valid.FewFC.gt.pk'
+    bsz = 4
+    shuffle = False
+    dataset_type = 'FewFC'
+
+    train_data_dicts = pickle.load(open(train_file, 'rb'))
+    valid_data_dicts = pickle.load(open(valid_file, 'rb'))
+
+    train_dataloader = train_dataset_factory(train_data_dicts, bsz=bsz, shuffle=shuffle, dataset_type=dataset_type)
+    valid_dataloader = dev_dataset_factory(valid_data_dicts, dataset_type=dataset_type)
+
+    limit = 5
+    train_data, valid_data = [], []
+    for idx, (train_sample, valid_sample) in enumerate(list(zip(train_dataloader, valid_dataloader))):
+        train_data.append(train_sample)
+        valid_data.append(valid_sample)
+
