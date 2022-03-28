@@ -35,7 +35,7 @@ class PLMEE(nn.Module):
         self.event_types = event_types
         self.role_types = role_types
 
-        self.threshold = self.threshold
+        self.threshold = threshold
 
         self.bert = BertModel.from_pretrained(self.plm_path)
         self.hidden = self.bert.config.hidden_size
