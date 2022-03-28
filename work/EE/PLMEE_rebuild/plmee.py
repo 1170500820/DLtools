@@ -91,35 +91,45 @@ class PLMEE(nn.Module):
 
             trigger_start_digit = (trigger_start > self.threshold).int().tolist()
             trigger_end_digit = (trigger_end > self.threshold).int().tolist()
+            # both (bsz, event_type_cnt, seq_l)
             predicts = []  # (batch, event_type, [trigger_span, arguments])
 
             for i_batch, (e_start_tensor, e_start_digit, e_end_tensor, e_end_digit) in enumerate(list(zip(trigger_start, trigger_start_digit, trigger_end, trigger_end_digit))):
+                # 对每个batch考虑
                 # all (event_type_cnt, seq_l)
                 predicts.append([])
-                cur_input_ids = input_ids[i_batch].unsqueeze(0)  # (1, seq_l)
-                cur_attention_mask = input_ids[i_batch].unsqueeze(0)  # (1, seq_l)
+                # predicts[-1]存放当前句子的信息
+                cur_input_ids = input_ids[i_batch].unsqueeze(0)  # (seq_l)
+                cur_attention_mask = input_ids[i_batch].unsqueeze(0)  # (seq_l)
                 for i_etype, (e_start_type_tensor, e_start_type_digit, e_end_type_tensor, e_end_type_digit) in enumerate(list(zip(e_start_tensor, e_start_digit, e_end_tensor, e_end_digit))):
+                    # 对当前句子的每个事件类型考虑
                     # all (seq_l)
                     predicts[-1].append([])
+                    # predicts[-1][-1]存放当前事件类型的信息
+                    # 该句子当前类型的触发词都存放在span当中
                     spans = tools.argument_span_determination(e_start_type_digit, e_end_type_digit, e_start_type_tensor, e_end_type_tensor)
-                    argument_preds = []  # (trigger_span, role_type)
+                    # 存放该句子在每个触发词下所对应的论元的列表
+                    argument_preds: List[Tuple[int, List[Tuple[int, int]]]] = []  # list element: (role_type, role span list)
+                    # len(spans) == len(argument_preds)
                     for e_span in spans:
-                        argument_preds.append([])
+                        # argument_preds[-1]就存放论元的列表
                         cur_token_type_ids = token_type_ids[i_batch].clone().detach().unsqueeze(0)  # (1, seq_l)
                         cur_token_type_ids[0][e_span[0]] = 1
                         cur_token_type_ids[0][e_span[1]] = 1
                         argument_output = self.predict_argument(cur_input_ids, cur_token_type_ids, cur_attention_mask)
                         a_start, a_end = argument_output['argument_start'].squeeze(0).T, argument_output['argument_end'].squeeze(0).T
                         # both (role_type_cnt, seq_l)
-                        for (e_start, e_end) in zip(a_start, a_end):
+                        for i_rtype, (e_start, e_end) in enumerate(list(zip(a_start, a_end))):
                             # both (seq_l)
                             a_start_digit = (e_start > self.threshold).int().tolist()
                             a_end_digit = (e_end > self.threshold).int().tolist()
                             cur_span = tools.argument_span_determination(a_start_digit, a_end_digit, a_start, a_end)
-                            argument_preds[-1].append(cur_span)
+                            argument_preds.append((i_rtype, cur_span))
+                        predicts[-1][-1].append([e_span, argument_preds])
 
-                    predicts[-1][-1].append(spans)
-                    predicts[-1][-1].append(argument_preds)
+                    # predicts[-1][-1].append(spans)
+                    # predicts[-1][-1].append(argument_preds)
+                    # predicts[-1][-1].append((spans, argument_preds))
             return {
                 'predicts': predicts
             }
@@ -232,31 +242,33 @@ def convert_predicts_to_SentenceWithEvent(predicts: list, sentence: str, offset_
     events = []
     for i_etype, e_etype in enumerate(predict):
         event_type_word = event_types[i_etype]
+        mentions = []
         for i_ta, e_ta in enumerate(e_etype):
-            trigger_spans, arguments = e_ta
-            for i_trig, (e_trig, e_args) in enumerate(list(zip(trigger_spans, arguments))):
-                trigger_word = tokenize_tools.tokenSpan_to_word(sentence, e_trig, offset_mapping)
-                trigger_span = list(tokenize_tools.tokenSpan_to_charSpan(e_trig, offset_mapping))
-                mentions = []
-                for i_role, e_role in enumerate(e_args):
-                    role_type_word = role_types[i_role]
-                    for i_rolespan, e_rolespan in enumerate(e_role):
-                        role_word = tokenize_tools.tokenSpan_to_word(sentence, e_rolespan, offset_mapping)
-                        role_charspan = tokenize_tools.tokenSpan_to_charSpan(e_rolespan, offset_mapping)
-                        mentions.append({
-                            'word': role_word,
-                            'span': list(role_charspan),
-                            'role': role_type_word
-                        })
-                mentions.append({
-                    'word': trigger_word,
-                    'span': trigger_span,
-                    'role': 'trigger'
-                })
-                events.append({
-                    'type': event_type_word,
-                    'mentions': mentions
-                })
+            trigger_span, arguments = e_ta
+            trigger_word = tokenize_tools.tokenSpan_to_word(sentence, trigger_span, offset_mapping)
+            trigger_char_span = list(tokenize_tools.tokenSpan_to_charSpan(trigger_span, offset_mapping))
+            for elem_arg in arguments:
+                rtype_idx, arg_spans = elem_arg
+                role_type_word = role_types[rtype_idx]
+                for elem_role_span in arg_spans:
+                    role_word = tokenize_tools.tokenSpan_to_word(sentence, elem_role_span, offset_mapping)
+                    role_charspan = tokenize_tools.tokenSpan_to_charSpan(elem_role_span, offset_mapping)
+                    mentions.append({
+                        'word': role_word,
+                        'span': role_charspan,
+                        'role': role_type_word
+                    })
+            mentions.append({
+                'word': trigger_word,
+                'span': trigger_char_span,
+                'role': 'trigger'
+            })
+
+        events.append({
+            'type': event_type_word,
+            'mentions': mentions
+        })
+
     sentencenwithevents = {
         'id': '',
         'content': sentence,
