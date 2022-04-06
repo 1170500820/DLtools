@@ -51,7 +51,8 @@ class PLMEE_Trigger(nn.Module):
         linear_end_params = self.end_classifiers.parameters()
         bert_params = self.bert.parameters()
         linear_optimizer = AdamW(params=chain(linear_start_params, linear_end_params), lr=self.linear_lr)
-        bert_optimizer = AdamW(parser=bert_params, lr=self.plm_lr)
+        bert_optimizer = AdamW(params=bert_params, lr=self.plm_lr)
+        return [linear_optimizer, bert_optimizer]
 
     def forward(self, input_ids: torch.Tensor, token_type_ids: torch.Tensor, attention_mask: torch.Tensor):
         """
