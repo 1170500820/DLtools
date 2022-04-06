@@ -102,6 +102,7 @@ class PLMEE_Trigger_Loss(nn.Module):
         event_loss = []
         for (pstart, pend, lstart, lend) in zip(pred_starts, pred_ends, start_labels, end_labels):
             start_losses, end_losses = [], []
+            lstart, lend = lstart.cuda(), lend.cuda(0)
             for i_batch in range(bsz):
                 start_loss = F.cross_entropy(pstart[i_batch], lstart[i_batch], reduction='none')  # (bsz, seq_l)
                 end_loss = F.cross_entropy(pend[i_batch], lend[i_batch], reduction='none')  # (bsz, seq_l)
@@ -212,8 +213,8 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default
         labels = data_dict['labels']
         start_labels, end_labels = [], []
         for idx, elem_type in enumerate(event_types):
-            start_label = torch.zeros((bsz, seq_l), dtype=torch.float)
-            end_label = torch.zeros((bsz, seq_l), dtype=torch.float)
+            start_label = torch.zeros((bsz, seq_l), dtype=torch.long)
+            end_label = torch.zeros((bsz, seq_l), dtype=torch.long)
             for i_batch in range(bsz):
                 if elem_type in labels[i_batch]:
                     for elem_trigger in labels[i_batch][elem_type]:
