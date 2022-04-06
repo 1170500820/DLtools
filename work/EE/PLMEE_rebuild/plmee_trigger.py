@@ -98,12 +98,19 @@ class PLMEE_Trigger_Loss(nn.Module):
         :param mask: (bsz, seq_l) batch中每一个句子的mask
         :return:
         """
+        bsz = pred_starts[0].shape[0]
         event_loss = []
         for (pstart, pend, lstart, lend) in zip(pred_starts, pred_ends, start_labels, end_labels):
-            start_loss = F.cross_entropy(pstart, lstart, reduction='none')  # (bsz, seq_l)
-            end_loss = F.cross_entropy(pend, lend, reduction='none')  # (bsz, seq_l)
-            start_loss = torch.sum(start_loss * mask) / torch.sum(mask)
-            end_loss = torch.sum(end_loss * mask) / torch.sum(mask)
+            start_losses, end_losses = [], []
+            for i_batch in range(bsz):
+                start_loss = F.cross_entropy(pstart[i_batch], lstart[i_batch], reduction='none')  # (bsz, seq_l)
+                end_loss = F.cross_entropy(pend[i_batch], lend[i_batch], reduction='none')  # (bsz, seq_l)
+                start_loss = torch.sum(start_loss * mask[i_batch]) / torch.sum(mask[i_batch])
+                end_loss = torch.sum(end_loss * mask[i_batch]) / torch.sum(mask[i_batch])
+                start_losses.append(start_loss)
+                end_losses.append(end_loss)
+            start_loss = sum(start_losses)
+            end_loss = sum(end_losses)
             combined_loss = start_loss + end_loss
             event_loss.append(combined_loss)
 
