@@ -20,13 +20,21 @@ from work.EE import EE_settings, EE_utils
 
 class PLMEE_Trigger(nn.Module):
     def __init__(self, plm_lr: float = EE_settings.plm_lr, linear_lr: float = EE_settings.others_lr,
-                 plm_path: str = EE_settings.default_plm_path, event_types: str = EE_settings.event_types_full):
+                 plm_path: str = EE_settings.default_plm_path, dataset_type: str = 'FewFC'):
         super(PLMEE_Trigger, self).__init__()
         self.init_params = get_init_params(locals())
 
         self.plm_lr = plm_lr
         self.linear_lr = linear_lr
         self.plm_path = plm_path
+
+        self.dataset_type = dataset_type
+        if self.dataset_type == 'FewFC':
+            event_types = EE_settings.event_types_full
+        elif self.dataset_type == 'Duee':
+            event_types = EE_settings.duee_event_types
+        else:
+            raise Exception(f'{dataset_type}数据集不存在！')
         self.event_types = event_types
 
         self.bert = BertModel.from_pretrained(self.plm_path)
@@ -151,14 +159,22 @@ def convert_output_to_evaluate_format(pred_starts: List[torch.Tensor], pred_ends
 
 
 class PLMEE_Trigger_Evaluator(BaseEvaluator):
-    def __init__(self):
+    def __init__(self, dataset_type: str = 'FewFC'):
         super(PLMEE_Trigger_Evaluator, self).__init__()
+        self.dataset_type = dataset_type
         self.f1_eval = F1_Evaluator()
         self.pred_lst = []
         self.gt_lst = []
 
     def eval_single(self, pred_starts: List[torch.Tensor], pred_ends: List[torch.Tensor], mask: torch.Tensor, sentence: str, offset_mapping: OffsetMapping, gt: dict):
-        converted_preds = convert_output_to_evaluate_format(pred_starts, pred_ends, mask, sentence, offset_mapping, EE_settings.event_types_full)
+        if self.dataset_type == 'FewFC':
+            event_types = EE_settings.event_types_full
+        elif self.dataset_type == 'Duee':
+            event_types = EE_settings.duee_event_types
+        else:
+            raise Exception(f'{self.dataset_type}数据集不存在！')
+
+        converted_preds = convert_output_to_evaluate_format(pred_starts, pred_ends, mask, sentence, offset_mapping, event_types)
 
         preds, gts = [], []
 
@@ -179,6 +195,7 @@ class PLMEE_Trigger_Evaluator(BaseEvaluator):
         self.pred_lst = []
         self.gt_lst = []
         return result
+
 
 def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default_bsz, shuffle: bool = EE_settings.default_shuffle, dataset_type: str = 'FewFC'):
     if dataset_type == 'FewFC':
@@ -274,7 +291,6 @@ def valid_dataset_factory(data_dicts: List[dict], dataset_type: str = 'FewFC'):
 
     valid_dataloader = DataLoader(valid_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
     return valid_dataloader
-
 
 
 def dataset_factory(train_file: str, valid_file: str, bsz: int = EE_settings.default_bsz, shuffle: bool = EE_settings.default_shuffle, dataset_type: str = 'FewFC'):

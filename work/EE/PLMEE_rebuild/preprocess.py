@@ -15,8 +15,11 @@ from work.EE import EE_settings
 
 # 包括存放中间处理结果的临时目录在内的一些信息
 temp_path = 'temp_data/'
-initial_dataset_path = '../../../data/NLP/EventExtraction/FewFC-main'
-dataset_type = 'FewFC'
+# initial_dataset_path = '../../../data/NLP/EventExtraction/FewFC-main'
+# dataset_type = 'FewFC'
+
+initial_dataset_path = '../../../data/NLP/EventExtraction/duee'
+dataset_type = 'Duee'
 
 # 数据处理函数
 
@@ -39,6 +42,9 @@ def generate_input_and_label_p(data_dict: dict, dataset_type: str):
     if dataset_type == 'FewFC':
         event_types = EE_settings.event_types_full
         role_types = EE_settings.role_types
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
     else:
         raise Exception(f'{dataset_type}数据集不存在！')
     event_type_idx = {x: i for (i, x) in enumerate(event_types)}
@@ -102,6 +108,9 @@ def generate_gt_p(data_dict: dict, dataset_type: str):
     """
     if dataset_type == 'FewFC':
         event_types = EE_settings.event_types_full
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
     else:
         raise Exception(f'{dataset_type}数据集不存在！')
     event_type_idx = {x: i for (i, x) in enumerate(event_types)}
@@ -141,6 +150,9 @@ def generate_input_and_label_trigger_p(data_dict: dict, dataset_type: str):
     """
     if dataset_type == 'FewFC':
         event_types = EE_settings.event_types_full
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
     else:
         raise Exception(f'{dataset_type}数据集不存在！')
     event_type_idx = {x: i for (i, x) in enumerate(event_types)}
@@ -186,6 +198,9 @@ def generate_gt_trigger_p(data_dict: dict, dataset_type: str):
     """
     if dataset_type == 'FewFC':
         event_types = EE_settings.event_types_full
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
     else:
         raise Exception(f'{dataset_type}数据集不存在！')
     event_type_idx = {x: i for (i, x) in enumerate(event_types)}
