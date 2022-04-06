@@ -200,7 +200,8 @@ class PLMEE_Trigger_Evaluator(BaseEvaluator):
 def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default_bsz, shuffle: bool = EE_settings.default_shuffle, dataset_type: str = 'FewFC'):
     if dataset_type == 'FewFC':
         event_types = EE_settings.event_types_full
-        role_types = EE_settings.role_types
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
     else:
         raise Exception(f'{dataset_type}数据集不存在！')
     train_dataset = SimpleDataset(data_dicts)
