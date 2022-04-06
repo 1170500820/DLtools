@@ -352,7 +352,7 @@ def PLMEE_main():
     generate_gt(f'valid.{dataset_type}.tokenized.pk', f'valid.{dataset_type}.gt.pk', temp_path, dataset_type)
 
 
-def PLMEE_Trigger_main():
+def PLMEE_Trigger_main(plm_path: str = EE_settings.default_plm_path):
     logger.info(f'为PLMEE_Trigger模型生产数据')
     logger.info(f'正在处理{dataset_type}数据')
     logger.info(f'数据源文件的存放路径: {initial_dataset_path}')
@@ -362,21 +362,34 @@ def PLMEE_Trigger_main():
     data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.PLMEE_Trigger.{dataset_type}.filtered_length.jsonl')
 
     logger.info(f'[Step 2]正在tokenize')
-    tokenize_content(f'train.PLMEE_Trigger.{dataset_type}.filtered_length.jsonl', f'train.PLMEE_Trigger.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path='hfl/chinese-roberta-wwm-ext-large')
+    if plm_path == 'hfl/chinese-roberta-wwm-ext-large':
+        tokenize_content(f'train.PLMEE_Trigger.{dataset_type}.filtered_length.jsonl', f'train.PLMEE_Trigger.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path='hfl/chinese-roberta-wwm-ext-large')
 
-    logger.info(f'[Step 3]生成label')
-    generate_input_and_label_trigger(f'train.PLMEE_Trigger.{dataset_type}.RoBERTa.tokenized.pk', f'train.PLMEE_Trigger.{dataset_type}.RoBERTa.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
+        logger.info(f'[Step 3]生成label')
+        generate_input_and_label_trigger(f'train.PLMEE_Trigger.{dataset_type}.RoBERTa.tokenized.pk', f'train.PLMEE_Trigger.{dataset_type}.RoBERTa.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
+    else:
+        tokenize_content(f'train.PLMEE_Trigger.{dataset_type}.filtered_length.jsonl', f'train.PLMEE_Trigger.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
+
+        logger.info(f'[Step 3]生成label')
+        generate_input_and_label_trigger(f'train.PLMEE_Trigger.{dataset_type}.tokenized.pk', f'train.PLMEE_Trigger.{dataset_type}.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
 
     logger.info(f'处理valid数据中')
     logger.info(f'[Step 1]正在去除过长的句子')
     data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.PLMEE_Trigger.{dataset_type}.filtered_length.jsonl')
 
     logger.info(f'[Step 2]正在tokenize')
-    tokenize_content(f'valid.PLMEE_Trigger.{dataset_type}.filtered_length.jsonl', f'valid.PLMEE_Trigger.{dataset_type}.RoBERTa.tokenized.pk', temp_path, dataset_type, plm_path='hfl/chinese-roberta-wwm-ext-large')
+    if plm_path == 'hfl/chinese-roberta-wwm-ext-large':
+        tokenize_content(f'valid.PLMEE_Trigger.{dataset_type}.filtered_length.jsonl', f'valid.PLMEE_Trigger.{dataset_type}.RoBERTa.tokenized.pk', temp_path, dataset_type, plm_path='hfl/chinese-roberta-wwm-ext-large')
 
-    logger.info(f'[Step 3]生成gt')
-    generate_gt_trigger(f'valid.PLMEE_Trigger.{dataset_type}.RoBERTa.tokenized.pk', f'valid.PLMEE_Trigger.{dataset_type}.RoBERTa.gt.pk', temp_path, dataset_type)
+        logger.info(f'[Step 3]生成gt')
+        generate_gt_trigger(f'valid.PLMEE_Trigger.{dataset_type}.RoBERTa.tokenized.pk', f'valid.PLMEE_Trigger.{dataset_type}.RoBERTa.gt.pk', temp_path, dataset_type)
+    else:
+        tokenize_content(f'valid.PLMEE_Trigger.{dataset_type}.filtered_length.jsonl',
+                         f'valid.PLMEE_Trigger.{dataset_type}.tokenized.pk', temp_path, dataset_type)
 
+        logger.info(f'[Step 3]生成gt')
+        generate_gt_trigger(f'valid.PLMEE_Trigger.{dataset_type}.tokenized.pk',
+                            f'valid.PLMEE_Trigger.{dataset_type}.gt.pk', temp_path, dataset_type)
 
 if __name__ == '__main__':
-    PLMEE_Trigger_main()
+    PLMEE_Trigger_main('bert-base-chinese')
