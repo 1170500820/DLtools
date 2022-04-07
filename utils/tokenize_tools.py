@@ -201,7 +201,7 @@ def tokenSpan_to_charSpan(token_span: Span, offset_mapping: OffsetMapping) -> Sp
     if end_part[0] == end_part[1]:
         end = end_part[0]
     else:
-        end = end_part[1] - 1
+        end = end_part[0]
     return (start, end)
 
 
@@ -268,7 +268,11 @@ def tokenSpan_to_word(sentence: str, token_span: Span, offset_mapping: OffsetMap
 
 if __name__ == '__main__':
     tokenizer = BertTokenizerFast.from_pretrained('bert-base-chinese')
-    s = '我在人民广场 吃炸鸡'
+    s = '消失的“外企光环”，5月份在华裁员900余人，香饽饽变“臭”了'
+    charSpan = (15, 17)
     result = tokenizer(s, return_offsets_mapping=True)
     tokens = tokenizer.convert_ids_to_tokens(result['input_ids'])
-    print(tokenSpan_to_word(s, (3, 7), result['offset_mapping']))
+    tokenSpan = charSpan_to_tokenSpan(charSpan, result['offset_mapping'])
+    word = tokenSpan_to_word(s, tokenSpan, result['offset_mapping'])
+    new_charSpan = tokenSpan_to_charSpan(tokenSpan, result['offset_mapping'])
+    print(f'tokenSpan: {tokenSpan}, word: {word}, charSpan: {charSpan}')
