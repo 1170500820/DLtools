@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-from transformers import BertModel
+from transformers import BertModel, AutoTokenizer
 from itertools import chain
 import pickle
 import allennlp
@@ -15,6 +15,7 @@ from utils.data import SimpleDataset
 from evaluate.evaluator import BaseEvaluator, EE_F1Evaluator, SentenceWithEvent, Events, Event, Mention, Mentions, F1_Evaluator
 from models.model_utils import get_init_params
 from analysis.recorder import NaiveRecorder
+from work.EE.EE_utils import load_jsonl, dump_jsonl
 
 from work.EE import EE_settings, EE_utils
 
@@ -308,13 +309,66 @@ def dataset_factory(train_file: str, valid_file: str, bsz: int = EE_settings.def
     return train_dataloader, valid_dataloader
 
 
+class UseModel:
+    def __init__(self, state_dict_path: str, init_params_path: str, use_gpu: bool = False, plm_path: str = EE_settings.default_plm_path, event_types = EE_settings.event_types_full):
+        # 首先加载初始化模型所使用的参数
+        init_params = pickle.load(open(init_params_path, 'rb'))
+        self.model = PLMEE_Trigger(**init_params)
+        if not use_gpu:
+            self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cpu')))
+        else:
+            self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('gpu')))
+
+        # 初始化 raw2input, output2read所使用的工具
+        # 该部分的参数直接从__init__传入就好
+
+        self.tokenizer = AutoTokenizer.from_pretrained(plm_path)
+        self.event_types = event_types
+
+
+    def __call__(self, sentence: str):
+        """
+        从sentence中抽取触发词以及对应的类型。
+        :param sentence:
+        :return:
+        """
+
+        tokenized = self.tokenizer(sentence, return_offsets_mapping=True)
+        input_ids = torch.tensor(tokenized['input_ids']).unsqueeze(dim=0)  # (1, seq_l)
+        token_type_ids = torch.tensor(tokenized['token_type_ids']).unsqueeze(dim=0)  # (1, seq_l)
+        attention_mask = torch.tensor(tokenized['attention_mask']).unsqueeze(dim=0)  # (1, seq_l)
+        offset_mapping = tokenized['offset_mapping']
+        tokens = self.tokenizer.convert_ids_to_tokens(tokenized['input_ids'])
+
+        result = self.model(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
+        pred_starts, pred_ends, mask = result['pred_starts'], result['pred_ends'], result['mask']
+        converted = convert_output_to_evaluate_format(pred_starts, pred_ends, mask, sentence, offset_mapping, self.event_types)
+        return converted
+
+
+def output_result(use_model: ..., input_filename: str, output_filename: str):
+    """
+    读取input文件，使用use_model抽取其中所有句子的触发词，然后写入output_filename文件当中
+    :param use_model:
+    :param input_filename: jsonl格式，{'content': 需要抽取的句子}
+    :param output_filename: jsonl格式, {'content': 需要抽取的句子, 'event': }
+    :return:
+    """
+    inp = load_jsonl(input_filename)
+    for idx in range(len(inp)):
+        elem = inp[idx]
+        elem['events'] = use_model(elem['content'])
+    dump_jsonl(inp, output_filename)
+
 
 model_registry = {
     'model': PLMEE_Trigger,
     'loss': PLMEE_Trigger_Loss,
     'evaluator': PLMEE_Trigger_Evaluator,
     'train_val_data': dataset_factory,
-    'recorder': NaiveRecorder
+    'recorder': NaiveRecorder,
+    'func': output_result,
+    'use_model': UseModel
 }
 
 
