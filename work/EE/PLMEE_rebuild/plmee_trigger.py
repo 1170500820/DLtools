@@ -120,12 +120,12 @@ class PLMEE_Trigger_Loss(nn.Module):
                 end_loss = torch.sum(end_loss * mask[i_batch]) / torch.sum(mask[i_batch])
                 start_losses.append(start_loss)
                 end_losses.append(end_loss)
-            start_loss = sum(start_losses)
-            end_loss = sum(end_losses)
+            start_loss = sum(start_losses) / len(start_losses)
+            end_loss = sum(end_losses) / len(end_losses)
             combined_loss = start_loss + end_loss
             event_loss.append(combined_loss)
 
-        loss = sum(event_loss)
+        loss = sum(event_loss) / len(event_loss)
         return loss
 
 
