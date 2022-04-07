@@ -152,7 +152,6 @@ def generate_input_and_label_trigger_p(data_dict: dict, dataset_type: str):
         event_types = EE_settings.event_types_full
     elif dataset_type == 'Duee':
         event_types = EE_settings.duee_event_types
-        role_types = EE_settings.duee_role_types
     else:
         raise Exception(f'{dataset_type}数据集不存在！')
     event_type_idx = {x: i for (i, x) in enumerate(event_types)}
@@ -200,7 +199,6 @@ def generate_gt_trigger_p(data_dict: dict, dataset_type: str):
         event_types = EE_settings.event_types_full
     elif dataset_type == 'Duee':
         event_types = EE_settings.duee_event_types
-        role_types = EE_settings.duee_role_types
     else:
         raise Exception(f'{dataset_type}数据集不存在！')
     event_type_idx = {x: i for (i, x) in enumerate(event_types)}

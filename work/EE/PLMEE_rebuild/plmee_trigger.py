@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from transformers import BertModel
 from itertools import chain
 import pickle
+import allennlp
 
 from type_def import *
 from utils import tools, batch_tool, tokenize_tools
@@ -108,6 +109,7 @@ class PLMEE_Trigger_Loss(nn.Module):
         """
         bsz = pred_starts[0].shape[0]
         event_loss = []
+
         for (pstart, pend, lstart, lend) in zip(pred_starts, pred_ends, start_labels, end_labels):
             start_losses, end_losses = [], []
             lstart, lend = lstart.cuda(), lend.cuda(0)
@@ -297,6 +299,7 @@ def valid_dataset_factory(data_dicts: List[dict], dataset_type: str = 'FewFC'):
 def dataset_factory(train_file: str, valid_file: str, bsz: int = EE_settings.default_bsz, shuffle: bool = EE_settings.default_shuffle, dataset_type: str = 'FewFC'):
     train_data_dicts = pickle.load(open(train_file, 'rb'))
     valid_data_dicts = pickle.load(open(valid_file, 'rb'))
+    print(f'dataset_type: {dataset_type}')
 
     train_dataloader = train_dataset_factory(train_data_dicts, bsz=bsz, shuffle=shuffle, dataset_type=dataset_type)
     valid_dataloader = valid_dataset_factory(valid_data_dicts, dataset_type=dataset_type)
@@ -315,12 +318,12 @@ model_registry = {
 
 
 if __name__ == '__main__':
-    train_file = 'temp_data/train.PLMEE_Trigger.FewFC.labeled.pk'
-    valid_file = 'temp_data/valid.PLMEE_Trigger.FewFC.gt.pk'
+    train_file = 'temp_data/train.PLMEE_Trigger.Duee.labeled.pk'
+    valid_file = 'temp_data/valid.PLMEE_Trigger.Duee.gt.pk'
 
     bsz = 4
     shuffle = False
-    dataset_type = 'FewFC'
+    dataset_type = 'Duee'
 
     train_data_dicts = pickle.load(open(train_file, 'rb'))
     valid_data_dicts = pickle.load(open(valid_file, 'rb'))
