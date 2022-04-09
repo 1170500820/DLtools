@@ -310,7 +310,7 @@ def dataset_factory(train_file: str, valid_file: str, bsz: int = EE_settings.def
 
 
 class UseModel:
-    def __init__(self, state_dict_path: str, init_params_path: str, use_gpu: bool = False, plm_path: str = EE_settings.default_plm_path, event_types = EE_settings.event_types_full):
+    def __init__(self, state_dict_path: str, init_params_path: str, use_gpu: bool = False, plm_path: str = EE_settings.default_plm_path, dataset_type: str = 'FewFC'):
         # 首先加载初始化模型所使用的参数
         init_params = pickle.load(open(init_params_path, 'rb'))
         self.model = PLMEE_Trigger(**init_params)
@@ -323,7 +323,13 @@ class UseModel:
         # 该部分的参数直接从__init__传入就好
 
         self.tokenizer = AutoTokenizer.from_pretrained(plm_path)
-        self.event_types = event_types
+
+        if dataset_type == 'FewFC':
+            self.event_types = EE_settings.event_types_full
+        elif dataset_type == 'Duee':
+            self.event_types = EE_settings.duee_event_types
+        else:
+            raise Exception(f'{dataset_type}数据集不存在！')
 
 
     def __call__(self, sentence: str):
