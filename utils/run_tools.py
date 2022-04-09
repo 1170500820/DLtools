@@ -411,8 +411,8 @@ def run_template_from_param_dict(template, param_dict: Dict[str, Any], module_re
         submodule_dict[elem_submodule_name] = submodule
         # print('finish')
 
-    # 然后用子模块和参数运行当前模型
-    param_dict.update(submodule_dict)
+        # 然后用子模块和参数运行当前模型
+        param_dict.update(submodule_dict)
     # print('running')
     run_instance_with_dict(template, param_dict)
 
