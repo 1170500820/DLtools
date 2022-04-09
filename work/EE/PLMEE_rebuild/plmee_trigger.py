@@ -191,11 +191,11 @@ class PLMEE_Trigger_Evaluator(BaseEvaluator):
 
         for key, value in converted_preds.items():
             for elem_v in value:
-                preds.append(key + elem_v)
+                preds.append(key + ':' + elem_v)
 
         for key, value in gt.items():
             for elem_v in value:
-                gts.append(key + elem_v['word'])
+                gts.append(key + ':' + elem_v['word'])
 
         gts = list(set(gts))
         self.f1_eval.eval_single(preds, gts)
