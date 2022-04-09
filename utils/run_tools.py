@@ -398,6 +398,8 @@ def run_instance_with_dict(instance, param_dict):
 def run_template_from_param_dict(template, param_dict: Dict[str, Any], module_registry: dict):
     # 首先获取内置参数和子模块列表
     param_lst, init_module_lst, call_module_lst = get_template_params_recursive(template.__class__, module_registry)
+    call_module_lst.reverse()
+    init_module_lst.reverse()
 
     # 首先初始化每一个子模块
     # print('initializing running essentials...')
