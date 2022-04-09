@@ -113,7 +113,7 @@ class PLMEE_Trigger_Loss(nn.Module):
 
         for (pstart, pend, lstart, lend) in zip(pred_starts, pred_ends, start_labels, end_labels):
             start_losses, end_losses = [], []
-            lstart, lend = lstart.cuda(), lend.cuda(0)
+            lstart, lend = lstart.cuda(), lend.cuda()
             for i_batch in range(bsz):
                 start_loss = F.cross_entropy(pstart[i_batch], lstart[i_batch], reduction='none')  # (bsz, seq_l)
                 end_loss = F.cross_entropy(pend[i_batch], lend[i_batch], reduction='none')  # (bsz, seq_l)
@@ -333,7 +333,7 @@ class UseModel:
         :return:
         """
 
-        tokenized = self.tokenizer(sentence, return_offsets_mapping=True)
+        tokenized = self.tokenizer(sentence, return_offsets_mapping=True, max_length=256)
         input_ids = torch.tensor(tokenized['input_ids']).unsqueeze(dim=0)  # (1, seq_l)
         token_type_ids = torch.tensor(tokenized['token_type_ids']).unsqueeze(dim=0)  # (1, seq_l)
         attention_mask = torch.tensor(tokenized['attention_mask']).unsqueeze(dim=0)  # (1, seq_l)

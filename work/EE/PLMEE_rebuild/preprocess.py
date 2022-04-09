@@ -187,6 +187,69 @@ def generate_input_and_label_trigger_p(data_dict: dict, dataset_type: str):
     return data_dict
 
 
+def generate_input_and_label_argument_p(data_dict: dict, dataset_type: str):
+    """
+    data_dict包含
+    - content
+    - events
+
+    - event_type    str
+    - trigger_info  trigger的mention信息
+    - other_mentions    除trigger外的mention信息
+
+    - input_ids
+    - token_type_ids
+    - attention_mask
+    - token
+    - offset_mapping
+
+    :param data_dict:
+    :param dataset_type:
+    :return:
+    """
+    if dataset_type == 'FewFC':
+        event_types = EE_settings.event_types_full
+        role_types = EE_settings.role_types
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
+    else:
+        raise Exception(f'{dataset_type}数据集不存在！')
+    event_type_idx = {x: i for (i, x) in enumerate(event_types)}
+    role_type_idx = {x: i for (i, x) in enumerate(role_types)}
+
+    input_ids = data_dict['input_ids']
+    token_type_ids = data_dict['token_type_ids']
+    attention_mask = data_dict['attention_mask']
+    offset_mapping = data_dict['offset_mapping']
+    trigger_info = data_dict['trigger_info']
+    trigger_span = trigger_info['span']
+    other_mentions = data_dict['other_mentions']
+    token_span = tokenize_tools.charSpan_to_tokenSpan(trigger_span, offset_mapping)
+
+    # 构造输入，为token_type_ids添加trigger信息
+    for idx in range(token_span[0], token_span[1]):
+        token_type_ids[idx] = 1
+
+    # 构造argument label
+    labels = {}
+    for elem_mention in other_mentions:
+        mention_type = elem_mention['role']
+        mention_char_span = elem_mention['span']
+        mention_token_span = tokenize_tools.charSpan_to_tokenSpan(mention_char_span, offset_mapping)
+        if mention_type not in labels:
+            labels[mention_type] = [mention_token_span]
+        else:
+            labels[mention_type].append(mention_token_span)
+
+    return {
+        'input_ids': input_ids,
+        'token_type_ids': token_type_ids,
+        'attention_mask': attention_mask,
+        'label': labels,
+    }
+
+
 def generate_gt_trigger_p(data_dict: dict, dataset_type: str):
     """
     为PLMEE_Trigger模型生成gt
@@ -234,6 +297,75 @@ def generate_gt_trigger_p(data_dict: dict, dataset_type: str):
     data_dict['gts'] = gts
     return data_dict
 
+
+def generate_gt_argument_p(data_dict: dict, dataset_type: str):
+    """
+    data_dict包含(与生成label部分的一致)
+    - content
+    - events
+
+    - event_type    str
+    - trigger_info  trigger的mention信息
+    - other_mentions    除trigger外的mention信息
+
+    - input_ids
+    - token_type_ids
+    - attention_mask
+    - token
+    - offset_mapping
+
+    :param data_dict:
+    :param dataset_type:
+    :return:
+    """
+    if dataset_type == 'FewFC':
+        event_types = EE_settings.event_types_full
+        role_types = EE_settings.role_types
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
+    else:
+        raise Exception(f'{dataset_type}数据集不存在！')
+    event_type_idx = {x: i for (i, x) in enumerate(event_types)}
+    role_type_idx = {x: i for (i, x) in enumerate(role_types)}
+
+    input_ids = data_dict['input_ids']
+    token_type_ids = data_dict['token_type_ids']
+    attention_mask = data_dict['attention_mask']
+    offset_mapping = data_dict['offset_mapping']
+    trigger_info = data_dict['trigger_info']
+    trigger_span = trigger_info['span']
+    other_mentions = data_dict['other_mentions']
+    token_span = tokenize_tools.charSpan_to_tokenSpan(trigger_span, offset_mapping)
+
+
+    # 构造输入，为token_type_ids添加trigger信息
+    for idx in range(token_span[0], token_span[1]):
+        token_type_ids[idx] = 1
+
+    gts = {}
+    for elem_mention in other_mentions:
+        mention_type, mention_span, mention_word = elem_mention['role'], elem_mention['span'], elem_mention['word']
+        mention_token_span = tokenize_tools.charSpan_to_tokenSpan(mention_span, offset_mapping)
+        if mention_type not in gts:
+            gts[mention_type] = [{
+                'tokenSpan': mention_token_span,
+                'word': mention_word
+            }]
+        else:
+            gts[mention_type].append({
+                'tokenSpan': mention_token_span,
+                'word': mention_word
+            })
+
+    return {
+        'input_ids': input_ids,
+        'token_type_ids': token_type_ids,
+        'attention_mask': attention_mask,
+        'sentence': data_dict['content'],
+        'offset_mapping': offset_mapping,
+        'gt': gts
+    }
 
 # 数据处理函数的调用函数
 
@@ -310,6 +442,16 @@ def generate_input_and_label_trigger(last_output_name: str, output_name: str, te
     pickle.dump(results, open(temp_path + output_name, 'wb'))
 
 
+def generate_input_and_label_argument(last_output_name: str, output_name: str, temp_path: str, dataset_type: str):
+    data_dicts = pickle.load(open(temp_path + last_output_name, 'rb'))
+
+    results = []
+    for elem in data_dicts:
+        results.append(generate_input_and_label_argument_p(elem, dataset_type))
+
+    pickle.dump(results, open(temp_path + output_name, 'wb'))
+
+
 def generate_gt_trigger(last_output_name: str, output_name: str, temp_path: str, dataset_type: str):
     data_dicts = pickle.load(open(temp_path + last_output_name, 'rb'))
 
@@ -319,6 +461,15 @@ def generate_gt_trigger(last_output_name: str, output_name: str, temp_path: str,
 
     pickle.dump(results, open(temp_path + output_name, 'wb'))
 
+
+def generate_gt_argument(last_output_name: str, output_name: str, temp_path: str, dataset_type: str):
+    data_dicts = pickle.load(open(temp_path + last_output_name, 'rb'))
+
+    results = []
+    for elem in data_dicts:
+        results.append(generate_gt_argument_p(elem, dataset_type))
+
+    pickle.dump(results, open(temp_path + output_name, 'wb'))
 
 
 # 完整的数据生成函数
@@ -389,5 +540,79 @@ def PLMEE_Trigger_main(plm_path: str = EE_settings.default_plm_path):
         generate_gt_trigger(f'valid.PLMEE_Trigger.{dataset_type}.tokenized.pk',
                             f'valid.PLMEE_Trigger.{dataset_type}.gt.pk', temp_path, dataset_type)
 
+
+def PLMEE_Argument_main(plm_path: str = EE_settings.default_plm_path):
+    logger.info(f'为PLMEE_Argument模型生产数据')
+    logger.info(f'正在处理{dataset_type}数据')
+    logger.info(f'数据源文件的存放路径: {initial_dataset_path}')
+
+    logger.info(f'处理train数据中')
+    # logger.info(f'[Step 1]正在去除过长的句子')
+    # data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.PLMEE_Argument.{dataset_type}.filtered_length.jsonl')
+
+    # logger.info(f'[Step 2]正在按事件类型和触发词拆分数据')
+    # divide_by_event_type(f'train.PLMEE_Argument.{dataset_type}.filtered_length.jsonl', f'train.PLMEE_Argument.{dataset_type}.divided.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    # logger.info(f'[Step 3]正在tokenize')
+    if plm_path == 'hfl/chinese-roberta-wwm-ext-large':
+        # tokenize_content(f'train.PLMEE_Argument.{dataset_type}.divided.jsonl', f'train.PLMEE_Argument.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path='hfl/chinese-roberta-wwm-ext-large')
+
+        logger.info(f'[Step 4]生成label')
+        generate_input_and_label_argument(f'train.PLMEE_Argument.{dataset_type}.RoBERTa.tokenized.pk', f'train.PLMEE_Argument.{dataset_type}.RoBERTa.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
+    else:
+        # tokenize_content(f'train.PLMEE_Argument.{dataset_type}.divided.jsonl', f'train.PLMEE_Argument.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
+
+        logger.info(f'[Step 4]生成label')
+        generate_input_and_label_argument(f'train.PLMEE_Argument.{dataset_type}.tokenized.pk', f'train.PLMEE_Argument.{dataset_type}.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
+
+
+
+    logger.info(f'处理valid数据中')
+    # logger.info(f'[Step 1]正在去除过长的句子')
+    # data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.PLMEE_Argument.{dataset_type}.filtered_length.jsonl')
+
+    # logger.info(f'[Step 2]正在按事件类型和触发词拆分数据')
+    # divide_by_event_type(f'valid.PLMEE_Argument.{dataset_type}.filtered_length.jsonl', f'valid.PLMEE_Argument.{dataset_type}.divided.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+
+    # logger.info(f'[Step 3]正在tokenize')
+    if plm_path == 'hfl/chinese-roberta-wwm-ext-large':
+        # tokenize_content(f'valid.PLMEE_Argument.{dataset_type}.divided.jsonl', f'valid.PLMEE_Argument.{dataset_type}.RoBERTa.tokenized.pk', temp_path, dataset_type, plm_path='hfl/chinese-roberta-wwm-ext-large')
+
+        logger.info(f'[Step 4]生成gt')
+        generate_gt_argument(f'valid.PLMEE_Argument.{dataset_type}.RoBERTa.tokenized.pk', f'valid.PLMEE_Argument.{dataset_type}.RoBERTa.gt.pk', temp_path, dataset_type)
+    else:
+        # tokenize_content(f'valid.PLMEE_Argument.{dataset_type}.divided.jsonl',
+        #                  f'valid.PLMEE_Argument.{dataset_type}.tokenized.pk', temp_path, dataset_type)
+
+        logger.info(f'[Step 4]生成gt')
+        generate_gt_argument(f'valid.PLMEE_Argument.{dataset_type}.tokenized.pk',
+                            f'valid.PLMEE_Argument.{dataset_type}.gt.pk', temp_path, dataset_type)
+
+
+def rfief_main():
+    pass
+
+
+def trigger_predict_file_main(dataset_type: str, output_filename: str):
+    if dataset_type == 'FewFC':
+        loaded = load_FewFC_ee(initial_dataset_path)
+    elif dataset_type == 'Duee':
+        loaded = load_Duee_ee_formated(initial_dataset_path)
+    else:
+        raise Exception(f'[dual_qa:dataset_factory]不存在{dataset_type}数据集！')
+    data_dicts = loaded['test']
+
+    contents = []
+    for elem in data_dicts:
+        contents.append({
+            'content': elem['content']
+        })
+
+    dump_jsonl(contents, temp_path + output_filename)
+
+
 if __name__ == '__main__':
-    PLMEE_Trigger_main('bert-base-chinese')
+    # PLMEE_Trigger_main('bert-base-chinese')
+    # PLMEE_Argument_main('bert-base-chinese')
+    trigger_predict_file_main('Duee', 'Duee_content.jsonl')
