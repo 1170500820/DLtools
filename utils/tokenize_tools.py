@@ -192,16 +192,29 @@ def offset_mapping_to_matches(offset_mapping: List[Tuple[int, int]]) -> Tuple[di
 def tokenSpan_to_charSpan(token_span: Span, offset_mapping: OffsetMapping) -> Span:
     """
     将token序列中的一个span转换为char序列中的一个对应的span
-    :param token_span:
-    :param offset_mapping:
+    :param token_span: tokens[token_span[0]: token_span[1]]代表该token_span所表示的词。
+        也就是说token_span[1]并不属于其中，而是一个外边界。
+        token_span[0] <= token_span[1]
+    :param offset_mapping: 与该token_span所对应的offset mapping
     :return:
     """
-    start_part, end_part = offset_mapping[token_span[0]], offset_mapping[token_span[1]]
-    start = start_part[0]
-    if end_part[0] == end_part[1]:
-        end = end_part[0]
-    else:
-        end = end_part[0]
+    # 初始时候，start与end都是0，在不断遍历token_span所包含的offset mapping项中更新
+    start, end = 0, 0
+    if token_span[0] < token_span[1]:
+        start = offset_mapping[token_span[0]][0]
+    for elem_mapping in offset_mapping[token_span[0]: token_span[1]]:
+        map_start, map_end = elem_mapping
+        if map_start == map_end:  # 此时该mapping将一个token映射到空区间，也就是说该token在原句中没有对应任何char
+            continue
+        # 代码运行到下面，说明map_start < map_end，sentence[map_start: map_end]为所对应的区间
+        start = min(start, map_start)
+        end = max(end, map_end)
+    # start_part, end_part = offset_mapping[token_span[0]], offset_mapping[token_span[1]]
+    # start = start_part[0]
+    # if end_part[0] == end_part[1]:
+    #     end = end_part[0]
+    # else:
+    #     end = end_part[0]
     return (start, end)
 
 
