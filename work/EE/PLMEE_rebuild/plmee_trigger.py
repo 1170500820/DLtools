@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from transformers import BertModel, AutoTokenizer
 from itertools import chain
 import pickle
-import allennlp
+from tqdm import tqdm
 
 from type_def import *
 from utils import tools, batch_tool, tokenize_tools
@@ -361,7 +361,7 @@ def output_result(use_model: ..., input_filename: str, output_filename: str):
     :return:
     """
     inp = load_jsonl(input_filename)
-    for idx in range(len(inp)):
+    for idx in tqdm(range(len(inp))):
         elem = inp[idx]
         elem['events'] = use_model(elem['content'])
     dump_jsonl(inp, output_filename)
