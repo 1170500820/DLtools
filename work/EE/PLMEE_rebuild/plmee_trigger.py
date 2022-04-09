@@ -142,6 +142,7 @@ def convert_output_to_evaluate_format(pred_starts: List[torch.Tensor], pred_ends
     :return:
     """
     result = {}
+    detailed = {}
     for i_type, (e_start, e_end) in enumerate(list(zip(pred_starts, pred_ends))):
         cur_type = event_types[i_type]
         e_start = e_start.squeeze(dim=0)  # (seq_l, 2)
@@ -153,12 +154,19 @@ def convert_output_to_evaluate_format(pred_starts: List[torch.Tensor], pred_ends
         spans = tools.argument_span_determination(start_digit, end_digit, start_prob, end_prob)
 
         words = []
+        detailed_words = []
         for elem_span in spans:
-            words.append(tokenize_tools.tokenSpan_to_word(sentence, elem_span, offset_mapping))
+            word = tokenize_tools.tokenSpan_to_word(sentence, elem_span, offset_mapping)
+            words.append(word)
+            detailed_words.append({
+                'word': word,
+                'token_span': elem_span
+            })
 
         if len(words) != 0:
             result[cur_type] = words
-    return result
+            detailed[cur_type] = detailed_words
+    return result, detailed
 
 
 class PLMEE_Trigger_Evaluator(BaseEvaluator):
@@ -177,7 +185,7 @@ class PLMEE_Trigger_Evaluator(BaseEvaluator):
         else:
             raise Exception(f'{self.dataset_type}数据集不存在！')
 
-        converted_preds = convert_output_to_evaluate_format(pred_starts, pred_ends, mask, sentence, offset_mapping, event_types)
+        converted_preds, detailed = convert_output_to_evaluate_format(pred_starts, pred_ends, mask, sentence, offset_mapping, event_types)
 
         preds, gts = [], []
 
@@ -191,7 +199,12 @@ class PLMEE_Trigger_Evaluator(BaseEvaluator):
 
         gts = list(set(gts))
         self.f1_eval.eval_single(preds, gts)
-        self.pred_lst.append(preds)
+        self.pred_lst.append({
+            'results': preds,
+            'detailed': detailed,
+            'sentence': sentence,
+            'offset_mapping': offset_mapping
+        })
         self.gt_lst.append(gts)
 
     def eval_step(self) -> Dict[str, Any]:
