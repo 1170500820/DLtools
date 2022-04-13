@@ -99,6 +99,8 @@ def main():
     duee_results = {}
     for key, value in tqdm(duee_samples.items()):
         duee_results[key] = {x: [] for x in value}
+        for elem in duee_common_templates:
+            duee_results[key][elem] = []
         templates = value + duee_common_templates
         for elem_template in templates:
             combined_sentence = key + '\n' + elem_template
@@ -106,10 +108,13 @@ def main():
                 result = fill_blank(cpm2, combined_sentence)
                 answer = re.split('<s_\d+>', result.strip())[:max_span]
                 duee_results[key][elem_template].append(answer)
+            json.dump(duee_results, open('duee_results.json', 'w', encoding='utf-8'), ensure_ascii=False)
 
     fewfc_results = {}
     for key, value in tqdm(fewfc_samples.items()):
         fewfc_results[key] = {x: [] for x in value}
+        for elem in fewfc_common_templates:
+            fewfc_results[key][elem] = []
         templates = value + fewfc_common_templates
         for elem_template in templates:
             combined_sentence = key + '\n' + elem_template
@@ -117,6 +122,7 @@ def main():
                 result = fill_blank(cpm2, combined_sentence)
                 answer = re.split('<s_\d+>', result.strip())[:max_span]
                 fewfc_results[key][elem_template].append(answer)
+            json.dump(fewfc_results, open('fewfc_results.json', 'w', encoding='utf-8'), ensure_ascii=False)
 
     json.dump(duee_results, open('duee_results.json', 'w', encoding='utf-8'), ensure_ascii=False)
     json.dump(fewfc_results, open('fewfc_results.json', 'w', encoding='utf-8'), ensure_ascii=False)
