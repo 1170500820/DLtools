@@ -82,7 +82,6 @@ def read_global_graph(global_graph_path: str):
     """
     lines = open(global_graph_path, 'r', encoding='utf-8').read().strip().split('\n')
     edge2weight, node2degree = {}, {}
-    print('gathering global graph info...')
     for elem_line in lines:
         parts = elem_line.split('\t\t')  # StrList, len==2
         source_node = int(parts[0])  # source node of current path?
@@ -102,6 +101,52 @@ def read_global_graph(global_graph_path: str):
     return edge2weight, node2degree
 
 
+def cascade_edges_to_graph(
+        edges: List[Tuple[int, int]],
+        edge_cnt: int,
+        node2degree: dict,
+        edge2weight: dict,
+        trans_type: int,
+        pseudo_count: float):
+    """
+    将edges转换为networkx graph
+    :param edges:
+    :return:
+    """
+    node_to_edges = dict()
+    if edge_cnt != 0:
+        for (elem_src, elem_tgt) in edges:
+            try:
+                if not elem_src in node_to_edges:
+                    neighbors = list()
+                    node_to_edges[elem_src] = neighbors
+                else:
+                    neighbors = node_to_edges[elem_src]
+                neighbors.append((elem_tgt, node2degree.get(elem_tgt, 0)))
+            except:
+                pass
+    nx_G = nx.DiGraph()
+    for source, nbr_weights in node_to_edges.items():
+        # 这是老版本的dict.items()吗
+        for nbr_weight in nbr_weights:
+            target = nbr_weight[0]
+
+            if trans_type == 0:  # trans_type不是string吗，怎么又012了
+                edge_weight = pseudo_count + edge2weight.get((source, target), 0)
+                weight = edge_weight
+            elif trans_type == 1:
+                target_nbrs = node_to_edges.get(target, None)
+                local_degree = 0 if target_nbrs is None else len(target_nbrs)
+                local_degree += pseudo_count
+                weight = local_degree
+            else:
+                global_degree = nbr_weight[1] + pseudo_count
+                weight = global_degree
+            # 应该分别对于edge，deg，DEG
+            nx_G.add_edge(source, target, weight=weight)
+        # 这里就是为每一条边定义了weight，用来计算转移概率的
+    return nx_G
+
 def generate_random_walk(
         edge2weight: dict,
         node2degree: dict,
@@ -109,7 +154,7 @@ def generate_random_walk(
         walks_per_graph: int = cascade_settings.walks_per_graph,
         trans_type: int = cascade_settings.trans_type,
         walk_length: int = cascade_settings.walk_length,
-        pseudo_count: int = cascade_settings.pseudo_count,
+        pseudo_count: float = cascade_settings.pseudo_count,
         p: float = cascade_settings.node2vec_p,
         q: float = cascade_settings.node2vec_q):
     """
@@ -137,38 +182,7 @@ def generate_random_walk(
         cascade_id = elem_cascade['id']
         edge_cnt = elem_cascade['edge_cnt']
         edges = elem_cascade['edges']
-        node_to_edges = dict()
-        if edge_cnt != 0:
-            for (elem_src, elem_tgt) in edges:
-                try:
-                    if not elem_src in node_to_edges:
-                        neighbors = list()
-                        node_to_edges[elem_src] = neighbors
-                    else:
-                        neighbors = node_to_edges[elem_src]
-                    neighbors.append((elem_tgt, node2degree.get(elem_tgt, 0)))
-                except:
-                    pass
-        nx_G = nx.DiGraph()
-        for source, nbr_weights in node_to_edges.items():
-            # 这是老版本的dict.items()吗
-            for nbr_weight in nbr_weights:
-                target = nbr_weight[0]
-
-                if trans_type == 0:  # trans_type不是string吗，怎么又012了
-                    edge_weight = pseudo_count + edge2weight.get((source, target), 0)
-                    weight = edge_weight
-                elif trans_type == 1:
-                    target_nbrs = node_to_edges.get(target, None)
-                    local_degree = 0 if target_nbrs is None else len(target_nbrs)
-                    local_degree += pseudo_count
-                    weight = local_degree
-                else:
-                    global_degree = nbr_weight[1] + pseudo_count
-                    weight = global_degree
-                # 应该分别对于edge，deg，DEG
-                nx_G.add_edge(source, target, weight=weight)
-            # 这里就是为每一条边定义了weight，用来计算转移概率的
+        nx_G = cascade_edges_to_graph(edges, edge_cnt, node2degree, edge2weight, trans_type, pseudo_count)
 
         # List of the starting nodes.
         roots = list()
@@ -455,8 +469,13 @@ def generate_deepcas_data(
 
 
 if __name__ == '__main__':
+    # generate_deepcas_data(
+    #     cascade_directory='../../../DeepCas/data/other/weibo_data/预测T之后的增长/T_3_h',
+    #     globalgraph_directory='../../../DeepCas/data/other/weibo_data/预测T之后的增长',
+    #     output_directory='../../../DeepCas/data/other/weibo_data/预测T之后的增长/T_3_h_new'
+    # )
     generate_deepcas_data(
-        cascade_directory='../../../DeepCas/data/other/weibo_data/预测T之后的增长/T_3_h',
-        globalgraph_directory='../../../DeepCas/data/other/weibo_data/预测T之后的增长',
-        output_directory='../../../DeepCas/data/other/weibo_data/预测T之后的增长/T_3_h_new'
+        cascade_directory='../../data/cascade/APS/5',
+        globalgraph_directory='../../data/cascade',
+        output_directory='../../data/cascade/APS/5'
     )
