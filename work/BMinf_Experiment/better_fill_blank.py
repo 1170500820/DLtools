@@ -7,15 +7,21 @@ TOKEN_SPAN = "<span>"
 
 input_text0 = "北京环球度假区相关负责人介绍，北京环球影城指定单日门票将采用<span>制度，即推出淡季日、平季日、旺季日和特定日门票。<span>价格为418元，<span>价格为528元，<span>价格为638元，<span>价格为<span>元。北京环球度假区将提供90天滚动价格日历，以方便游客提前规划行程。"
 input_text1 = "被证实将再裁员1800人 福特汽车公司在为落后的经营模式买单。那么，<span>进行了裁员"
+input_text2 = """被证实将再裁员1800人 福特汽车公司在为落后的经营模式买单。
+在这句话中，哪家公司进行了裁员：<span>。
+"""
+input_text3 = '被证实将再裁员1800人 福特汽车公司在为落后的经营模式买单。这句话<span>（是/否）描述了一个“裁员”事件'
+input_text4 = '被证实将再裁员1800人 福特汽车公司在为落后的经营模式买单。裁员人数为<span>，裁员方为<span>。'
+input_text5 = '被证实将再裁员1800人 福特汽车公司在为落后的经营模式买单.福特汽车公司进行了<span>'
 
 
 def fill_blank(cpm2: bminf.models.CPM2,
                input_sentence: str,
                spans_position: Optional[List[int]] = None,
                max_tokens: int = 128,
-               top_n: Optional[int] = None,
-               top_p: Optional[float] = None,
-               temperature: float = 0.9,
+               top_n: Optional[int] = 5,
+               top_p: Optional[float] = 1.0,
+               temperature: float = 0.5,
                frequency_penalty: float = 0,
                presence_penalty: float = 0,
                ):
@@ -45,6 +51,7 @@ def fill_blank(cpm2: bminf.models.CPM2,
         presence_penalty,
         filter_tokens=[cpm2._model.tokenizer.unk_id]
     )
+    res = list(res)
     next_span = 0
     blanks = []
     # for token in res:
@@ -65,14 +72,34 @@ def fill_blank(cpm2: bminf.models.CPM2,
     #     }
     #     for blank_pos, blank_tokens in zip(spans_position, blanks)
     # ]
-    return cpm2._model.tokenizer.devode(res)
+    return cpm2._model.tokenizer.decode(res)
 
 
 def main():
     print("Loading model")
     cpm2 = bminf.models.CPM2()
-    print("Start")
+    print("text0")
+    result = fill_blank(cpm2, input_text0)
+    print('Result:\n', result)
+
+    print('text1')
     result = fill_blank(cpm2, input_text1)
+    print('Result:\n', result)
+
+    print('text2')
+    result = fill_blank(cpm2, input_text2)
+    print('Result:\n', result)
+
+    print('text3')
+    result = fill_blank(cpm2, input_text3)
+    print('Result:\n', result)
+
+    print('text4')
+    result = fill_blank(cpm2, input_text4)
+    print('Result:\n', result)
+
+    print('text5')
+    result = fill_blank(cpm2, input_text5)
     print('Result:\n', result)
 
 
