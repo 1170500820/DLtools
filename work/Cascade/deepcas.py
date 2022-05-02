@@ -327,8 +327,8 @@ def train_dataset_function(train_cascades: List[dict], train_random_walks: Dict[
         # x - list of [bsz, n_seq, seq_l]
         # y - [bsz] of int
         # sz - [bsz] of int
-        x_vector = torch.tensor(rst['x'], dtype=torch.int)
-        cascade_sizes = torch.tensor(rst['sizes'], dtype=torch.int)
+        x_vector = torch.tensor(rst['x'], dtype=torch.long)
+        cascade_sizes = torch.tensor(rst['sizes'], dtype=torch.long)
         label = torch.tensor(rst['y'])
         return {
             "x_vector": x_vector,  # (bsz, n_seq, seq_l)
