@@ -93,8 +93,12 @@ def main():
 
     # 加载模型
     cpm2 = bminf.models.CPM2()
-    repeat = 3
+    repeat = 4
     max_span = 4
+    max_tokens = 45
+
+    duee_filename = 'duee_results3.json'
+    fewfc_filename = 'fewfc_results3.json'
 
     duee_results = {}
     for key, value in tqdm(duee_samples.items()):
@@ -105,10 +109,11 @@ def main():
         for elem_template in templates:
             combined_sentence = key + '\n' + elem_template
             for idx in range(repeat):
-                result = fill_blank(cpm2, combined_sentence)
-                answer = re.split('<s_\d+>', result.strip())[:max_span]
+                result = fill_blank(cpm2, combined_sentence, max_tokens=max_tokens)
+                answer = re.split('<s_\d+>', result.strip())[1:-1][:max_span]
                 duee_results[key][elem_template].append(answer)
-            json.dump(duee_results, open('duee_results.json', 'w', encoding='utf-8'), ensure_ascii=False)
+            json.dump(duee_results, open(duee_filename, 'w', encoding='utf-8'), ensure_ascii=False)
+    json.dump(duee_results, open(duee_filename, 'w', encoding='utf-8'), ensure_ascii=False)
 
     fewfc_results = {}
     for key, value in tqdm(fewfc_samples.items()):
@@ -119,13 +124,11 @@ def main():
         for elem_template in templates:
             combined_sentence = key + '\n' + elem_template
             for idx in range(repeat):
-                result = fill_blank(cpm2, combined_sentence)
-                answer = re.split('<s_\d+>', result.strip())[:max_span]
+                result = fill_blank(cpm2, combined_sentence, max_tokens=max_tokens)
+                answer = re.split('<s_\d+>', result.strip())[1:-1][:max_span]
                 fewfc_results[key][elem_template].append(answer)
-            json.dump(fewfc_results, open('fewfc_results.json', 'w', encoding='utf-8'), ensure_ascii=False)
-
-    json.dump(duee_results, open('duee_results.json', 'w', encoding='utf-8'), ensure_ascii=False)
-    json.dump(fewfc_results, open('fewfc_results.json', 'w', encoding='utf-8'), ensure_ascii=False)
+            json.dump(fewfc_results, open(fewfc_filename, 'w', encoding='utf-8'), ensure_ascii=False)
+    json.dump(fewfc_results, open(fewfc_filename, 'w', encoding='utf-8'), ensure_ascii=False)
 
 
 if __name__ == '__main__':
