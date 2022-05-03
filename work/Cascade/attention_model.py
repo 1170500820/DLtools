@@ -51,7 +51,7 @@ class GeoWeight(nn.Module):
         # 开始对初始的geo_weight进行处理。
         #   1, 转化为一个概率值, w -> p， 然后按cascade sz进行正则化
         p_geo = F.sigmoid(self.geo_weight)  # (1)
-        a_c = torch.pow(p_geo, torch.log2(cascade_sizes + 1)).unsqueeze(dim=-1)  # broadcast (bsz, 1)
+        a_c = torch.pow(p_geo, torch.log2(cascade_sizes + 1)).unsqueeze(dim=-1).cuda()  # broadcast (bsz, 1)
         #   2, 按mini-batch展开
         geo_exponent = torch.arange(mini_seq).cuda()  # (mini_seq): (0, 1, 2, ..., mini_seq)
         geo_result = torch.pow(1 - a_c, geo_exponent)  # broadcast, (bsz, mini-seq)

@@ -205,10 +205,10 @@ class DeepCasEvaluator(BaseEvaluator):
                     model):
         self.cnt += 1
         self.errors.append(float(torch.mean((output - label) ** 2)))
-        # self.origin_outputs.append(2 ** float(output) - 1)
-        # self.origin_labels.append(2 ** float(label) - 1)
-        self.origin_outputs.append(float(output))
-        self.origin_labels.append(float(label))
+        self.origin_outputs.append(2 ** float(output) - 1)
+        self.origin_labels.append(2 ** float(label) - 1)
+        # self.origin_outputs.append(float(output))
+        # self.origin_labels.append(float(label))
         self.model = model
 
     def eval_step(self) -> str:
@@ -224,8 +224,8 @@ class DeepCasEvaluator(BaseEvaluator):
 
         origin_MRSE = mean_relative_square_loss(origin_tgt, origin_out)
         origin_mRSE = median_relative_square_loss(origin_tgt, origin_out)
-        origin_MSLE = mean_squared_error(origin_tgt, origin_out)
-        origin_mSLE = median_squared_error(origin_tgt, origin_out)
+        origin_MSLE = mean_squared_logarithmic_error(origin_tgt, origin_out)
+        origin_mSLE = median_squared_logarithmic_error(origin_tgt, origin_out)
 
         step_weight = self.model.step_weight.step_weight.tolist()
         geo_weight = float(self.model.geo_weight.geo_weight)

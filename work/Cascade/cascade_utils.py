@@ -476,6 +476,6 @@ if __name__ == '__main__':
     # )
     generate_deepcas_data(
         cascade_directory='../../data/cascade/APS/5',
-        globalgraph_directory='../../data/cascade',
+        globalgraph_directory='../../data/cascade/APS',
         output_directory='../../data/cascade/APS/5'
     )
