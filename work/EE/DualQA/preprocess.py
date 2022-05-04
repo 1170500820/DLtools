@@ -335,7 +335,7 @@ def construct_T_TWord_context(data_dicts: Dict[str, Any], dataset_type: str, sta
             'span': trigger_span
         }
         TWord_label = 1
-    TWord_question = f'该句子中的"{verb}"能否作为触发词？'
+    TWord_question = f'该句子中的"{verb["text"]}"能否作为触发词？'
 
     return {
         'context': context_sentence,
