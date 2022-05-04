@@ -561,7 +561,7 @@ def generate_label(last_output_name: str, output_name: str, dataset_type: str = 
 
 def generate_label_trigger(last_output_name: str, output_name: str, dataset_type: str = dataset_type):
 
-    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r', encoding='utf-8').read().strip().split('\n'))
+    data_dicts = pickle.load(open(temp_path + last_output_name, 'rb'))
 
     # data_dicts = tools.map_operation_to_list_elem(new_generate_EAR_target, data_dicts)
     results = []
