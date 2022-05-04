@@ -352,7 +352,7 @@ def generate_T_label(data_dicts: Dict[str, Any]):
     context_length = len(data_dicts['input_ids'])
 
     span = data_dicts['T_label']
-    token_span = tokenize_tools.charSpan_to_tokenSpan(span, data_dicts['offsets_mapping'])
+    token_span = tokenize_tools.charSpan_to_tokenSpan(span, data_dicts['offset_mapping'])
     start_label, end_label = np.array([0] * context_length), np.array([0] * context_length)
     start_label[token_span[0]] = 1
     end_label[token_span[1]] = 1
@@ -621,18 +621,18 @@ def generate_data_for_dualqa_trigger():
     print(f'初始路径：{initial_dataset_path}')
     # 首先对train和val进行筛选
     print('Step 1 - 正在去除过长句子')
-    data_filter(initial_dataset_path, dataset_type, 'train', f'train.DualQA_Trigger.{dataset_type}.filtered_length.jsonl')
-    data_filter(initial_dataset_path, dataset_type, 'valid', f'valid.DualQA_Trigger.{dataset_type}.filtered_length.jsonl')
+    # data_filter(initial_dataset_path, dataset_type, 'train', f'train.DualQA_Trigger.{dataset_type}.filtered_length.jsonl')
+    # data_filter(initial_dataset_path, dataset_type, 'valid', f'valid.DualQA_Trigger.{dataset_type}.filtered_length.jsonl')
 
     # 然后按照事件类型进行切分
     print('Step 2 - 正在按事件类型拆分数据')
-    divide_by_event_type(f'train.DualQA_Trigger.{dataset_type}.filtered_length.jsonl', f'train.DualQA_Trigger.{dataset_type}.divided.jsonl')
-    divide_by_event_type(f'valid.DualQA_Trigger.{dataset_type}.filtered_length.jsonl', f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl')
+    # divide_by_event_type(f'train.DualQA_Trigger.{dataset_type}.filtered_length.jsonl', f'train.DualQA_Trigger.{dataset_type}.divided.jsonl')
+    # divide_by_event_type(f'valid.DualQA_Trigger.{dataset_type}.filtered_length.jsonl', f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl')
 
     # 然后构造EAR question, ERR question, context
     print('Step 3 - 正在生成context与question')
-    construct_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.divided.jsonl', f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl')
-    construct_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl', f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl')
+    # construct_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.divided.jsonl', f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl')
+    # construct_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl', f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl')
 
     # 对context和question进行tokenize
     print('Step 4 - 正在tokenize')

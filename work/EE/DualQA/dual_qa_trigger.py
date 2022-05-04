@@ -335,7 +335,8 @@ def val_dataset_factory(data_dicts: List[dict]):
 
 def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int):
     train_data_dicts = pickle.load(open(train_file, 'rb'))
-    valid_data_dicts = list(json.loads(x) for x in open(valid_file, 'r', encoding='utf-8').read().strip().split('\n'))
+    valid_data_dicts = pickle.load(open(valid_file, 'rb'))
+    # valid_data_dicts = list(json.loads(x) for x in open(valid_file, 'r', encoding='utf-8').read().strip().split('\n'))
 
     train_dataloader = train_dataset_factory(train_data_dicts, bsz=bsz)
     val_dataloader = val_dataset_factory(valid_data_dicts)
@@ -352,7 +353,7 @@ model_registry = {
 
 
 if __name__ == '__main__':
-    train_loader, val_loader = dataset_factory('FewFC', 'temp_data/train.DualQA_Trigger.FewFC.tokenized.jsonl', 'temp_data/train.DualQA_Trigger.FewFC.labeled.jsonl', bsz=1)
+    train_loader, val_loader = dataset_factory('FewFC', 'temp_data/train.DualQA_Trigger.FewFC.labeled.pk', 'temp_data/valid.DualQA_Trigger.FewFC.tokenized.pk', bsz=1)
     train_samples, valid_samples = [], []
     for elem in train_loader:
         train_samples.append(elem)
