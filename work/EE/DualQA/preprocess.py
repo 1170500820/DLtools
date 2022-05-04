@@ -348,7 +348,7 @@ def construct_T_TWord_context(data_dicts: Dict[str, Any], dataset_type: str, sta
     }
 
 
-def generate_T_label(data_dicts: Dict[str, Any], dataset_type: str):
+def generate_T_label(data_dicts: Dict[str, Any]):
     context_length = len(data_dicts['input_ids'])
 
     span = data_dicts['T_label']
@@ -563,6 +563,20 @@ def generate_label(last_output_name: str, output_name: str, dataset_type: str = 
     pickle.dump(data_dicts, open(temp_path + output_name, 'wb'))
 
 
+def generate_label_trigger(last_output_name: str, output_name: str, dataset_type: str = dataset_type):
+
+    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r', encoding='utf-8').read().strip().split('\n'))
+
+    data_dicts = tools.map_operation_to_list_elem(new_generate_EAR_target, data_dicts)
+    results = []
+    for elem in data_dicts:
+        results.append(generate_T_label(elem))
+    data_dicts = results
+    # data_dicts = tools.map_operation_to_list_elem(new_generate_ERR_target, data_dicts)
+
+    pickle.dump(data_dicts, open(temp_path + output_name, 'wb'))
+
+
 def construct_context_and_question_dualqa_trigger(last_output_name: str, output_name: str, dataset_type: str = dataset_type):
     pass
 
@@ -629,6 +643,8 @@ def generate_data_for_dualqa_trigger():
     tokenize_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'train.DualQA_Trigger.{dataset_type}.tokenized.jsonl')
     tokenize_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'valid.DualQA_Trigger.{dataset_type}.tokenized.jsonl')
 
+    print('Step 5 - 为train生成label')
+    generate_label_trigger(f'train.DualQA_Trigger.{dataset_type}.tokenized.jsonl', f'train.DualQA_Trigger.{dataset_type}.labeled.jsonl')
 
 def main():
     # generate_data_for_dualqa()

@@ -265,7 +265,25 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = dualqa_settings.def
         TWord_token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_token_type_ids']), dtype=torch.long)
         TWord_attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_attention_mask']), dtype=torch.long)
 
+        start_T_label = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['start_T_label']), dtype=torch.long)
+        end_T_label = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['end_T_label']), dtype=torch.long)
+        TWord_label = torch.tensor(data_dict['TWord_label'], dtype=torch.long)
 
+        return {
+           'context_input_ids': context_input_ids,
+           'context_token_type_ids': context_token_type_ids,
+           'context_attention_mask': context_attention_mask,
+           'T_input_ids': T_input_ids,
+           'T_token_type_ids': T_token_type_ids,
+           'T_attention_mask': T_attention_mask,
+           'TWord_input_ids': TWord_input_ids,
+           'TWord_token_type_ids': TWord_token_type_ids,
+           'TWord_attention_mask': TWord_attention_mask
+               }, {
+            'start_T_label': start_T_label,
+            'end_T_label': end_T_label,
+            'TWord_label': TWord_label
+        }
 
 
     dataloader = DataLoader(dataset, batch_size=bsz, shuffle=shuffle, collate_fn=collate_fn)
@@ -278,6 +296,41 @@ def val_dataset_factory(data_dicts: List[dict]):
     :return:
     """
     dataset = SimpleDataset(data_dicts)
+    def collate_fn(lst):
+        """
+
+        :param lst:
+        :return:
+        """
+        data_dict = tools.transpose_list_of_dict(lst)
+        context_input_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['input_ids']), dtype=torch.long)
+        context_token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['token_type_ids']), dtype=torch.long)
+        context_attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['attention_mask']), dtype=torch.long)
+        T_input_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['T_input_ids']), dtype=torch.long)
+        T_token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['T_token_type_ids']), dtype=torch.long)
+        T_attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['T_attention_mask']), dtype=torch.long)
+        TWord_input_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_input_ids']), dtype=torch.long)
+        TWord_token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_token_type_ids']), dtype=torch.long)
+        TWord_attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_attention_mask']), dtype=torch.long)
+
+        return {
+           'context_input_ids': context_input_ids,
+           'context_token_type_ids': context_token_type_ids,
+           'context_attention_mask': context_attention_mask,
+           'T_input_ids': T_input_ids,
+           'T_token_type_ids': T_token_type_ids,
+           'T_attention_mask': T_attention_mask,
+           'TWord_input_ids': TWord_input_ids,
+           'TWord_token_type_ids': TWord_token_type_ids,
+           'TWord_attention_mask': TWord_attention_mask
+               }, {
+            'T_gt': data_dict['T_gt'][0],
+            'TWord_label': data_dict['TWord_label'][0]
+        }
+
+
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
+    return dataloader
 
 
 def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int):
@@ -299,4 +352,9 @@ model_registry = {
 
 
 if __name__ == '__main__':
-    pass
+    train_loader, val_loader = dataset_factory('FewFC', 'temp_data/train.DualQA_Trigger.FewFC.tokenized.jsonl', 'temp_data/train.DualQA_Trigger.FewFC.labeled.jsonl', bsz=1)
+    train_samples, valid_samples = [], []
+    for elem in train_loader:
+        train_samples.append(elem)
+    for elem in val_loader:
+        valid_samples.append(elem)
