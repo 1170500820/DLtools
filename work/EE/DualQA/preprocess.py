@@ -348,14 +348,6 @@ def construct_T_TWord_context(data_dicts: Dict[str, Any], dataset_type: str, sta
     }
 
 
-def generate_T_target(data_dict: Dict[str, Any]):
-    pass
-
-
-def generate_TWord_target(data_dict: Dict[str, Any]):
-    pass
-
-
 """
 调用part
 """
@@ -496,6 +488,37 @@ def tokenize_context_and_questions(last_output_name: str, output_name: str, data
     data_dict.update(context_result)
     data_dict.update(EAR_result)
     data_dict.update(ERR_result)
+    data_dicts = tools.transpose_dict_of_list(data_dict)
+
+    f = open(temp_path + output_name, 'w', encoding='utf-8')
+    for elem in data_dicts:
+        s = json.dumps(elem, ensure_ascii=False)
+        f.write(s + '\n')
+    f.close()
+
+
+def tokenize_context_and_questions_trigger(last_output_name: str, output_name: str, dataset_type: str = dataset_type):
+    data_dicts = list(json.loads(x) for x in open(temp_path + last_output_name, 'r', encoding='utf-8').read().strip().split('\n'))
+
+    # tokenize
+    data_dict = tools.transpose_list_of_dict(data_dicts)
+    lst_tokenizer = tokenize_tools.bert_tokenizer()
+
+    context_result = lst_tokenizer(data_dict['context'])
+    context_result = tools.transpose_list_of_dict(context_result)
+    context_result = tools.modify_key_of_dict(context_result, lambda x: x)
+
+    T_result = lst_tokenizer(data_dict['T_question'])
+    T_result = tools.transpose_list_of_dict(T_result)
+    T_result = tools.modify_key_of_dict(T_result, lambda x: 'T_' + x)
+
+    TWord_result = lst_tokenizer(data_dict['TWord_question'])
+    TWord_result = tools.transpose_list_of_dict(TWord_result)
+    TWord_result = tools.modify_key_of_dict(TWord_result, lambda x: 'TWord_' + x)
+
+    data_dict.update(context_result)
+    data_dict.update(T_result)
+    data_dict.update(TWord_result)
     data_dicts = tools.transpose_dict_of_list(data_dict)
 
     f = open(temp_path + output_name, 'w', encoding='utf-8')
