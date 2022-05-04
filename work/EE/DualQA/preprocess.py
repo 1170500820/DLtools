@@ -454,7 +454,7 @@ def construct_context_and_questions_trigger(last_output_name: str, output_name: 
     stanza_nlp = stanza.Pipeline(lang='zh', processors='tokenize,lemma,pos')
     results = []
     for elem in tqdm(data_dicts):
-        results.extend(construct_T_TWord_context(elem, dataset_type, stanza_nlp))
+        results.append(construct_T_TWord_context(elem, dataset_type, stanza_nlp))
 
     f = open(temp_path + output_name, 'w', encoding='utf-8')
     for elem in results:
