@@ -20,6 +20,7 @@ from dataset.ee_dataset import load_FewFC_ee, load_Duee_ee_formated
 from analysis.recorder import NaiveRecorder
 from work.EE.DualQA import dualqa_utils, dualqa_settings
 from work.EE.DualQA.dual_qa import SharedEncoder, SimilarityModel, FlowAttention, SharedProjection
+from work.EE.DualQA.dualqa_utils import concat_token_for_evaluate
 from models.model_utils import get_init_params
 
 
@@ -220,7 +221,33 @@ class DualQA_Trigger(nn.Module):
 
 
 class DualQA_Trigger_Loss(nn.Module):
-    pass
+    def forward(self,
+                start_probs: torch.Tensor,
+                end_probs: torch.Tensor,
+                trigger_word_pred: torch.Tensor,
+                start_T_label: torch.Tensor,
+                end_T_label: torch.Tensor,
+                TWord_label: torch.Tensor):
+        """
+
+        :param start_probs: (bsz, C)
+        :param end_probs: (bsz, C)
+        :param trigger_word_pred: (bsz, 2)
+        :param start_T_label: (bsz, C)
+        :param end_T_label: (bsz, C)
+        :param TWord_label: (bsz)
+        :return:
+        """
+        T_start_loss = F.binary_cross_entropy(start_probs, start_T_label)
+        T_end_loss = F.binary_cross_entropy(end_probs, end_T_label)
+        T_loss = T_start_loss + T_end_loss
+
+        TWord_loss = F.cross_entropy(trigger_word_pred, TWord_label)
+
+        loss = T_loss + TWord_loss
+
+        return loss
+
 
 
 class DualQA_Trigger_Evaluator(BaseEvaluator):
@@ -232,11 +259,62 @@ class DualQA_Trigger_Evaluator(BaseEvaluator):
         self.pred_lst = []
         self.gt_lst = []
 
-    def eval_single(self, test=None):
-        pass
+    def eval_single(self,
+                    start_probs: torch.Tensor,
+                    end_probs: torch.Tensor,
+                    trigger_word_pred: torch.Tensor,
+                    T_gt: str,
+                    TWord_label: int,
+                    tokens: List[str],
+                    threshold: int = 0.5):
+        """
+
+        :param start_probs: (bsz, C)
+        :param end_probs: (bsz, C)
+        :param trigger_word_pred:
+        :param T_gt:
+        :param TWord_label:
+        :return:
+        """
+        start_probs = start_probs.squeeze().clone().detach().cpu()
+        start_digits = (start_probs > threshold).int().tolist()
+        start_probs = np.array(start_probs)  # (C)
+        end_probs = end_probs.squeeze().clone().detach().cpu()
+        end_digits = (end_probs > threshold).int().tolist()
+        end_probs = np.array(end_probs)  # (C)
+        start_position = int(np.argsort(start_probs)[-1])
+        end_position = int(np.argsort(end_probs)[-1])
+        span = (start_position, end_position)
+        trigger_pred = concat_token_for_evaluate(tokens, span)
+
+        word_pred = int(np.argsort(trigger_word_pred)[-1])
+
+        self.trigger_precision_evaluator.eval_single(trigger_pred, T_gt)
+        self.trigger_word_precision_evaluator.eval_single(word_pred, TWord_label)
+
+        self.pred_lst.append({
+            'trigger_pred': trigger_pred,
+            'trigger_word_pred': word_pred
+        })
+        self.gt_lst.append({
+            'trigger_gt': T_gt,
+            'trigger_word_gt': TWord_label
+        })
 
     def eval_step(self) -> Dict[str, Any]:
-        pass
+        trigger_p = self.trigger_precision_evaluator.eval_step()
+        trigger_word_p = self.trigger_word_precision_evaluator.eval_step()
+
+        trigger_p = tools.modify_key_of_dict(trigger_p, lambda x: 'trigger_' + x)
+        trigger_word_p = tools.modify_key_of_dict(trigger_word_p, lambda x: 'trigger_word_' + x)
+
+        result = {}
+        result.update(trigger_p)
+        result.update(trigger_word_p)
+
+        self.pred_lst = []
+        self.gt_lst = []
+        return result
 
 
 def train_dataset_factory(data_dicts: List[dict], bsz: int = dualqa_settings.default_bsz, shuffle: bool = True):
@@ -325,7 +403,8 @@ def val_dataset_factory(data_dicts: List[dict]):
            'TWord_attention_mask': TWord_attention_mask
                }, {
             'T_gt': data_dict['T_gt'][0],
-            'TWord_label': data_dict['TWord_label'][0]
+            'TWord_label': data_dict['TWord_label'][0],
+            'tokens': data_dict['token']
         }
 
 
