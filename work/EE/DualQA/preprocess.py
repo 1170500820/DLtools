@@ -536,11 +536,7 @@ def tokenize_context_and_questions_trigger(last_output_name: str, output_name: s
     data_dict.update(TWord_result)
     data_dicts = tools.transpose_dict_of_list(data_dict)
 
-    f = open(temp_path + output_name, 'w', encoding='utf-8')
-    for elem in data_dicts:
-        s = json.dumps(elem, ensure_ascii=False)
-        f.write(s + '\n')
-    f.close()
+    pickle.dump(data_dicts, open(temp_path + output_name, 'wb'))
 
 
 def generate_label(last_output_name: str, output_name: str, dataset_type: str = dataset_type):
@@ -640,11 +636,11 @@ def generate_data_for_dualqa_trigger():
 
     # 对context和question进行tokenize
     print('Step 4 - 正在tokenize')
-    tokenize_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'train.DualQA_Trigger.{dataset_type}.tokenized.jsonl')
-    tokenize_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'valid.DualQA_Trigger.{dataset_type}.tokenized.jsonl')
+    tokenize_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'train.DualQA_Trigger.{dataset_type}.tokenized.pk')
+    tokenize_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'valid.DualQA_Trigger.{dataset_type}.tokenized.pk')
 
     print('Step 5 - 为train生成label')
-    generate_label_trigger(f'train.DualQA_Trigger.{dataset_type}.tokenized.jsonl', f'train.DualQA_Trigger.{dataset_type}.labeled.pk')
+    generate_label_trigger(f'train.DualQA_Trigger.{dataset_type}.tokenized.pk', f'train.DualQA_Trigger.{dataset_type}.labeled.pk')
 
 def main():
     # generate_data_for_dualqa()
