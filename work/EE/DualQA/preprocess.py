@@ -325,8 +325,8 @@ def construct_T_TWord_context(data_dicts: Dict[str, Any], dataset_type: str, sta
             verb = random.choice(verbs)
         else:
             verb = {
-                'text': processed[0]['text'],
-                'span': (processed[0]['start_char'], processed[0]['end_char'])
+                'text': processed[0][0]['text'],
+                'span': (processed[0][0]['start_char'], processed[0][0]['end_char'])
             }
         TWord_label = 0
     else:
