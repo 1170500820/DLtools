@@ -605,21 +605,14 @@ def generate_data_for_dualqa_trigger():
     divide_by_event_type(f'valid.DualQA_Trigger.{dataset_type}.filtered_length.jsonl', f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl')
 
     # 然后构造EAR question, ERR question, context
-    print('正在生成context与question')
+    print('Step 3 - 正在生成context与question')
     construct_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.divided.jsonl', f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl')
     construct_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl', f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl')
 
     # 对context和question进行tokenize
-    # print('正在tokenize')
-    # tokenize_context_and_questions(f'train.{dataset_type}.questioned.balanced.jsonl', f'train.{dataset_type}.tokenized.balanced.jsonl')
-    # tokenize_context_and_questions(f'valid.{dataset_type}.questioned.balanced.jsonl', f'valid.{dataset_type}.tokenized.balanced.jsonl')
-
-    # 然后为训练集生成label
-    # print('正在生成label')
-    # generate_label(f'train.{dataset_type}.tokenized.balanced.jsonl', f'train.{dataset_type}.labeled.balanced.pk')
-
-    # 为评价集生成gt
-    # print('正在生成gt')
+    print('Step 4 - 正在tokenize')
+    tokenize_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'train.DualQA_Trigger.{dataset_type}.tokenized.jsonl')
+    tokenize_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'valid.DualQA_Trigger.{dataset_type}.tokenized.jsonl')
 
 
 def main():
