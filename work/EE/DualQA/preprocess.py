@@ -644,7 +644,7 @@ def generate_data_for_dualqa_trigger():
     tokenize_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'valid.DualQA_Trigger.{dataset_type}.tokenized.jsonl')
 
     print('Step 5 - 为train生成label')
-    generate_label_trigger(f'train.DualQA_Trigger.{dataset_type}.tokenized.jsonl', f'train.DualQA_Trigger.{dataset_type}.labeled.jsonl')
+    generate_label_trigger(f'train.DualQA_Trigger.{dataset_type}.tokenized.jsonl', f'train.DualQA_Trigger.{dataset_type}.labeled.pk')
 
 def main():
     # generate_data_for_dualqa()
