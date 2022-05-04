@@ -282,6 +282,80 @@ def new_generate_ERR_target(data_dict: Dict[str, Any], dataset_type: str):
     return [data_dict]
 
 
+def construct_T_TWord_context(data_dicts: Dict[str, Any], dataset_type: str, stanza_nlp):
+    """
+    为DualQA_Trigger构建QT， QTWord， context
+    :param data_dicts: [content, event_type, trigger_info, other_mentions]
+    :param dataset_type:
+    :return:
+    """
+    content, event_type, trigger_info, mentions = \
+        data_dicts['content'], data_dicts['event_type'], data_dicts['trigger_info'], data_dicts['other_mentions']
+
+    trigger_span = trigger_info['span']
+
+    # context
+    context_sentence = f'{event_type}[SEP]{content}'
+    # 给content添加的前缀改变了index，需要转换一下
+    appended_length = len(event_type) + len('[SEP]')
+    for idx in range(len(data_dicts['other_mentions'])):
+        old_span = data_dicts['other_mentions'][idx]['span']
+        new_span = (old_span[0] + appended_length, old_span[1] + appended_length)
+        data_dicts['other_mentions'][idx]['span'] = new_span
+
+    # Question T
+    T_question = '该句子中作为事件触发词的是哪一个词？'
+    T_label = trigger_span
+    T_gt = trigger_info['word']
+
+    # Question TWord
+    processed = stanza_nlp(content).to_dict()
+    #  先决定是正例还是负例:0-负例 1-正例
+    choice = random.choice([0, 1])
+    # 随机选一个词。如果为空，则使用第一个词
+    if choice == 0:
+        verbs = []
+        for elem in processed[0]:
+            if elem['upos'] == 'VERB':
+                verbs.append({
+                    'text': elem['text'],
+                    'span': (elem['start_char'], elem['end_char'])
+                })
+        if len(verbs) > 0:
+            verb = random.choice(verbs)
+        else:
+            verb = {
+                'text': processed[0]['text'],
+                'span': (processed[0]['start_char'], processed[0]['end_char'])
+            }
+        TWord_label = 0
+    else:
+        verb = {
+            'text': trigger_info['word'],
+            'span': trigger_span
+        }
+        TWord_label = 1
+    TWord_question = f'该句子中的"{verb}"能否作为触发词？'
+
+    return {
+        'context': context_sentence,
+        'T_question': T_question,
+        'T_label': T_label,
+        'T_gt': T_gt,
+        'TWord_question': TWord_question,
+        'TWord_label': TWord_label,
+
+    }
+
+
+def generate_T_target(data_dict: Dict[str, Any]):
+    pass
+
+
+def generate_TWord_target(data_dict: Dict[str, Any]):
+    pass
+
+
 """
 调用part
 """
@@ -379,6 +453,24 @@ def construct_context_and_questions(last_output_name: str, output_name: str, dat
     f.close()
 
 
+def construct_context_and_questions_trigger(last_output_name: str, output_name: str, dataset_type: str = dataset_type):
+    data_dicts = list(
+        json.loads(x) for x in open(temp_path + last_output_name, 'r', encoding='utf-8').read().strip().split('\n'))
+    data_dicts = data_dicts
+
+    # 同时构造context，EAR问题与ERR问题。
+    stanza_nlp = stanza.Pipeline(lang='zh', processors='tokenize,lemma,pos')
+    results = []
+    for elem in tqdm(data_dicts):
+        results.extend(construct_T_TWord_context(elem, dataset_type, stanza_nlp))
+
+    f = open(temp_path + output_name, 'w', encoding='utf-8')
+    for elem in results:
+        s = json.dumps(elem, ensure_ascii=False)
+        f.write(s + '\n')
+    f.close()
+
+
 def tokenize_context_and_questions(last_output_name: str, output_name: str, dataset_type: str = dataset_type):
     """
     需要分别对context，EAR_question与ERR_quesiton进行tokenize
@@ -433,18 +525,26 @@ def generate_label(last_output_name: str, output_name: str, dataset_type: str = 
     pickle.dump(data_dicts, open(temp_path + output_name, 'wb'))
 
 
-if __name__ == '__main__':
+def construct_context_and_question_dualqa_trigger(last_output_name: str, output_name: str, dataset_type: str = dataset_type):
+    pass
+
+"""
+任务对应的pipeline
+"""
+
+
+def generate_data_for_dualqa():
     print(f'正在预处理{dataset_type}数据')
     print(f'初始路径：{initial_dataset_path}')
     # 首先对train和val进行筛选
-    print('正在去除过长句子')
-    # data_filter(initial_dataset_path, dataset_type, 'train', f'train.{dataset_type}.filtered_length.balanced.jsonl')
-    # data_filter(initial_dataset_path, dataset_type, 'valid', f'valid.{dataset_type}.filtered_length.balanced.jsonl')
+    print('Step 1 - 正在去除过长句子')
+    data_filter(initial_dataset_path, dataset_type, 'train', f'train.{dataset_type}.filtered_length.balanced.jsonl')
+    data_filter(initial_dataset_path, dataset_type, 'valid', f'valid.{dataset_type}.filtered_length.balanced.jsonl')
 
     # 然后按照事件类型进行切分
-    print('正在按事件类型拆分数据')
-    # divide_by_event_type(f'train.{dataset_type}.filtered_length.balanced.jsonl', f'train.{dataset_type}.divided.balanced.jsonl')
-    # divide_by_event_type(f'valid.{dataset_type}.filtered_length.balanced.jsonl', f'valid.{dataset_type}.divided.balanced.jsonl')
+    print('Step 2 - 正在按事件类型拆分数据')
+    divide_by_event_type(f'train.{dataset_type}.filtered_length.balanced.jsonl', f'train.{dataset_type}.divided.balanced.jsonl')
+    divide_by_event_type(f'valid.{dataset_type}.filtered_length.balanced.jsonl', f'valid.{dataset_type}.divided.balanced.jsonl')
 
     # 然后构造EAR question, ERR question, context
     print('正在生成context与question')
@@ -465,3 +565,43 @@ if __name__ == '__main__':
 
 
     # 得到的train.labeled.jsonl与valid.questioned.jsonl就是最终输入给模型的数据
+
+
+def generate_data_for_dualqa_trigger():
+    print(f'为DualQA_Trigger生成训练、评价数据')
+    print(f'正在预处理{dataset_type}数据')
+    print(f'初始路径：{initial_dataset_path}')
+    # 首先对train和val进行筛选
+    print('Step 1 - 正在去除过长句子')
+    data_filter(initial_dataset_path, dataset_type, 'train', f'train.DualQA_Trigger.{dataset_type}.filtered_length.jsonl')
+    data_filter(initial_dataset_path, dataset_type, 'valid', f'valid.DualQA_Trigger.{dataset_type}.filtered_length.jsonl')
+
+    # 然后按照事件类型进行切分
+    print('Step 2 - 正在按事件类型拆分数据')
+    divide_by_event_type(f'train.DualQA_Trigger.{dataset_type}.filtered_length.jsonl', f'train.DualQA_Trigger.{dataset_type}.divided.jsonl')
+    divide_by_event_type(f'valid.DualQA_Trigger.{dataset_type}.filtered_length.jsonl', f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl')
+
+    # 然后构造EAR question, ERR question, context
+    print('正在生成context与question')
+    construct_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.divided.jsonl', f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl')
+    construct_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl', f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl')
+
+    # 对context和question进行tokenize
+    # print('正在tokenize')
+    # tokenize_context_and_questions(f'train.{dataset_type}.questioned.balanced.jsonl', f'train.{dataset_type}.tokenized.balanced.jsonl')
+    # tokenize_context_and_questions(f'valid.{dataset_type}.questioned.balanced.jsonl', f'valid.{dataset_type}.tokenized.balanced.jsonl')
+
+    # 然后为训练集生成label
+    # print('正在生成label')
+    # generate_label(f'train.{dataset_type}.tokenized.balanced.jsonl', f'train.{dataset_type}.labeled.balanced.pk')
+
+    # 为评价集生成gt
+    # print('正在生成gt')
+
+
+def main():
+    # generate_data_for_dualqa()
+    generate_data_for_dualqa_trigger()
+
+if __name__ == '__main__':
+    main()

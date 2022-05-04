@@ -702,7 +702,7 @@ def split_by_questions(data_dict: Dict[str, Any]):
 """
 
 
-def new_train_dataset_factory(data_dicts: List[dict], bsz: int = dualqa_settings, shuffle: bool = True):
+def new_train_dataset_factory(data_dicts: List[dict], bsz: int = dualqa_settings.default_bsz, shuffle: bool = True):
     """
     对FewFC格式的数据进行预处理，包括以下步骤：
 
