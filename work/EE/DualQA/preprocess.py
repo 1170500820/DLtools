@@ -348,6 +348,21 @@ def construct_T_TWord_context(data_dicts: Dict[str, Any], dataset_type: str, sta
     }
 
 
+def generate_T_label(data_dicts: Dict[str, Any], dataset_type: str):
+    context_length = len(data_dicts['input_ids'])
+
+    span = data_dicts['T_label']
+    token_span = tokenize_tools.charSpan_to_tokenSpan(span, data_dicts['offsets_mapping'])
+    start_label, end_label = np.array([0] * context_length), np.array([0] * context_length)
+    start_label[token_span[0]] = 1
+    end_label[token_span[1]] = 1
+
+    data_dicts.update({
+        'start_T_label': start_label,
+        'end_T_label': end_label
+    })
+    return data_dicts
+
 """
 调用part
 """

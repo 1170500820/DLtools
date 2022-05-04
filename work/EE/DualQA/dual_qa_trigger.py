@@ -240,11 +240,44 @@ class DualQA_Trigger_Evaluator(BaseEvaluator):
 
 
 def train_dataset_factory(data_dicts: List[dict], bsz: int = dualqa_settings.default_bsz, shuffle: bool = True):
-    pass
+    """
 
+    :param data_dicts:
+    :param bsz:
+    :param shuffle:
+    :return:
+    """
+    dataset = SimpleDataset(data_dicts)
+    def collate_fn(lst):
+        """
+
+        :param lst:
+        :return:
+        """
+        data_dict = tools.transpose_list_of_dict(lst)
+        context_input_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['input_ids']), dtype=torch.long)
+        context_token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['token_type_ids']), dtype=torch.long)
+        context_attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['attention_mask']), dtype=torch.long)
+        T_input_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['T_input_ids']), dtype=torch.long)
+        T_token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['T_token_type_ids']), dtype=torch.long)
+        T_attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['T_attention_mask']), dtype=torch.long)
+        TWord_input_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_input_ids']), dtype=torch.long)
+        TWord_token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_token_type_ids']), dtype=torch.long)
+        TWord_attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_attention_mask']), dtype=torch.long)
+
+
+
+
+    dataloader = DataLoader(dataset, batch_size=bsz, shuffle=shuffle, collate_fn=collate_fn)
+    return dataloader
 
 def val_dataset_factory(data_dicts: List[dict]):
-    pass
+    """
+
+    :param data_dicts:
+    :return:
+    """
+    dataset = SimpleDataset(data_dicts)
 
 
 def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int):
