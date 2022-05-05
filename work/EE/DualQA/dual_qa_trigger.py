@@ -140,7 +140,7 @@ class DualQA_Trigger(nn.Module):
                 T_attention_mask: torch.Tensor = None,
                 TWord_input_ids: torch.Tensor = None,
                 TWord_token_type_ids: torch.Tensor = None,
-                Tword_attention_mask: torch.Tensor = None):
+                TWord_attention_mask: torch.Tensor = None):
         """
         C - 上下文（context）
         T - 用于判断句子中哪个词是Trigger的询问句子
@@ -190,9 +190,9 @@ class DualQA_Trigger(nn.Module):
             UTWord = self.shared_encoder(
                 input_ids=TWord_input_ids,
                 token_type_ids=TWord_token_type_ids,
-                attention_mask=Tword_attention_mask)
+                attention_mask=TWord_attention_mask)
             # (QTWord, hidden)
-            H_TWord_hat, UTWord_hat = self.flow_attention(H, UTWord, context_attention_mask, Tword_attention_mask)  # both (bsz, C, hidden)
+            H_TWord_hat, UTWord_hat = self.flow_attention(H, UTWord, context_attention_mask, TWord_attention_mask)  # both (bsz, C, hidden)
             GTWord = self.shared_projection(H, H_TWord_hat, UTWord_hat)  # (bsz, C, hidden)
             trigger_word_pred = self.trigger_word_classifier(GTWord)  # (bsz, 2)
 
@@ -287,7 +287,7 @@ class DualQA_Trigger_Evaluator(BaseEvaluator):
         span = (start_position, end_position)
         trigger_pred = concat_token_for_evaluate(tokens, span)
 
-        word_pred = int(np.argsort(trigger_word_pred)[-1])
+        word_pred = int(np.argsort(trigger_word_pred.squeeze().clone().detach().cpu())[-1])
 
         self.trigger_precision_evaluator.eval_single(trigger_pred, T_gt)
         self.trigger_word_precision_evaluator.eval_single(word_pred, TWord_label)
@@ -343,8 +343,8 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = dualqa_settings.def
         TWord_token_type_ids = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_token_type_ids']), dtype=torch.long)
         TWord_attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['TWord_attention_mask']), dtype=torch.long)
 
-        start_T_label = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['start_T_label']), dtype=torch.long)
-        end_T_label = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['end_T_label']), dtype=torch.long)
+        start_T_label = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['start_T_label']), dtype=torch.float)
+        end_T_label = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['end_T_label']), dtype=torch.float)
         TWord_label = torch.tensor(data_dict['TWord_label'], dtype=torch.long)
 
         return {
@@ -404,7 +404,7 @@ def val_dataset_factory(data_dicts: List[dict]):
                }, {
             'T_gt': data_dict['T_gt'][0],
             'TWord_label': data_dict['TWord_label'][0],
-            'tokens': data_dict['token']
+            'tokens': data_dict['token'][0]
         }
 
 
@@ -413,6 +413,7 @@ def val_dataset_factory(data_dicts: List[dict]):
 
 
 def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int):
+    bsz = int(bsz)
     train_data_dicts = pickle.load(open(train_file, 'rb'))
     valid_data_dicts = pickle.load(open(valid_file, 'rb'))
     # valid_data_dicts = list(json.loads(x) for x in open(valid_file, 'r', encoding='utf-8').read().strip().split('\n'))
