@@ -87,7 +87,7 @@ def get_template_params(template_class: ...) -> Tuple[List[MyArgs], StrList, Str
                     continue
                 if hasattr(v, 'default') and v.default is not inspect._empty:
                     param_type = type(v.default)
-                elif v.annotation is not inspect._empty:
+                elif v.annotation is inspect._empty:
                     param_type = str
                 else:
                     param_type = v.annotation
