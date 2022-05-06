@@ -515,9 +515,6 @@ class DualQA_Loss(nn.Module):
         return start_loss + end_loss + role_loss
 
 
-
-
-
 class DualQA_Evaluator(BaseEvaluator):
     def __init__(self):
         super(DualQA_Evaluator, self).__init__()
