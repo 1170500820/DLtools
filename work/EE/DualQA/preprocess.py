@@ -298,14 +298,15 @@ def construct_T_TWord_context(data_dicts: Dict[str, Any], dataset_type: str, sta
     context_sentence = f'{event_type}[SEP]{content}'
     # 给content添加的前缀改变了index，需要转换一下
     appended_length = len(event_type) + len('[SEP]')
-    for idx in range(len(data_dicts['other_mentions'])):
-        old_span = data_dicts['other_mentions'][idx]['span']
-        new_span = (old_span[0] + appended_length, old_span[1] + appended_length)
-        data_dicts['other_mentions'][idx]['span'] = new_span
+    # for idx in range(len(data_dicts['other_mentions'])):
+    #     old_span = data_dicts['other_mentions'][idx]['span']
+    #     new_span = (old_span[0] + appended_length, old_span[1] + appended_length)
+    #     data_dicts['other_mentions'][idx]['span'] = new_span
+    new_trigger_span = (trigger_span[0] + appended_length, trigger_span[1] + appended_length)
 
     # Question T
     T_question = '该句子中作为事件触发词的是哪一个词？'
-    T_label = trigger_span
+    T_label = new_trigger_span
     T_gt = trigger_info['word']
 
     # Question TWord
@@ -631,16 +632,16 @@ def generate_data_for_dualqa_trigger():
 
     # 然后构造EAR question, ERR question, context
     print('Step 3 - 正在生成context与question')
-    # construct_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.divided.jsonl', f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl')
-    # construct_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl', f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl')
+    construct_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.divided.jsonl', f'train.DualQA_Trigger.{dataset_type}.questioned.right_out.jsonl')
+    construct_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.divided.jsonl', f'valid.DualQA_Trigger.{dataset_type}.questioned.right_out.jsonl')
 
     # 对context和question进行tokenize
     print('Step 4 - 正在tokenize')
-    tokenize_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'train.DualQA_Trigger.{dataset_type}.tokenized.pk')
-    tokenize_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.questioned.jsonl', f'valid.DualQA_Trigger.{dataset_type}.tokenized.pk')
+    tokenize_context_and_questions_trigger(f'train.DualQA_Trigger.{dataset_type}.questioned.right_out.jsonl', f'train.DualQA_Trigger.{dataset_type}.tokenized.right_out.pk')
+    tokenize_context_and_questions_trigger(f'valid.DualQA_Trigger.{dataset_type}.questioned.right_out.jsonl', f'valid.DualQA_Trigger.{dataset_type}.tokenized.right_out.pk')
 
     print('Step 5 - 为train生成label')
-    generate_label_trigger(f'train.DualQA_Trigger.{dataset_type}.tokenized.pk', f'train.DualQA_Trigger.{dataset_type}.labeled.pk')
+    generate_label_trigger(f'train.DualQA_Trigger.{dataset_type}.tokenized.right_out.pk', f'train.DualQA_Trigger.{dataset_type}.labeled.right_out.pk')
 
 def main():
     # generate_data_for_dualqa()

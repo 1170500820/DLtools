@@ -109,9 +109,9 @@ class TriggerWordClassifier(nn.Module):
 
         G_digits = self.classifier(G_max)  # (bsz, 2)
 
-        G_probs = F.softmax(G_digits, dim=-1)  # (bsz, 2)
+        # G_probs = F.softmax(G_digits, dim=-1)  # (bsz, 2)
 
-        return G_probs
+        return G_digits
 
 
 class DualQA_Trigger(nn.Module):
@@ -414,7 +414,6 @@ def val_dataset_factory(data_dicts: List[dict]):
 
 
 def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: int):
-    bsz = int(bsz)
     train_data_dicts = pickle.load(open(train_file, 'rb'))
     valid_data_dicts = pickle.load(open(valid_file, 'rb'))
     # valid_data_dicts = list(json.loads(x) for x in open(valid_file, 'r', encoding='utf-8').read().strip().split('\n'))
