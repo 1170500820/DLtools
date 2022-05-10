@@ -157,7 +157,7 @@ class Trainer:
                 loss.backward()
                 norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 500)
 
-                train_record = train_callback(model, model_output, lossFunc, loss.clone().detach(), {'norm': norm})
+                train_record = train_callback(model, model_output, lossFunc, loss, {'norm': norm})
                 train_records.append(train_record)
 
                 if recorder and local_rank in [-1, self.main_local_rank]:
