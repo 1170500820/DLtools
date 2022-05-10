@@ -134,7 +134,8 @@ class Trainer:
             optimizers = model.get_optimizers()
 
         # 这里为DualQA_Trigger部分修改，用于分析loss的变化情况
-        loss_records = []
+        # 用于监测模型在训练时的状态
+        train_records = []
 
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
@@ -157,11 +158,8 @@ class Trainer:
                 loss.backward()
                 norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 500)
 
-                loss_record_dict['loss'] = float(loss)
-                loss_record_dict['norm'] = float(norm.cpu().item())
-                loss_record_dict['T_loss'] = lossFunc.T_loss_value
-                loss_record_dict['TWord_loss'] = lossFunc.TWord_loss_value
-                loss_records.append(loss_record_dict)
+                train_record = train_callback(model, model_output, lossFunc, loss.clone().detach(), {'norm': norm})
+                train_records.append(train_record)
 
                 if recorder and local_rank in [-1, self.main_local_rank]:
                     recorder.record_after_backward(loss_output=loss, loss_func=lossFunc)
@@ -202,8 +200,8 @@ class Trainer:
                             recorder.eval_checkpoint()
             model.zero_grad()
 
-            frame = pd.DataFrame(loss_records)
-            pd.to_pickle(frame, open(f'pd_record.{control_name}.pk', 'wb'))
+            frame = pd.DataFrame(train_records)
+            pd.to_pickle(frame, open(f'{control_name}.train_records.pk', 'wb'))
 
             if (i_epoch + 1) % model_save_epoch == 0 and local_rank in [-1, self.main_local_rank]:
                 model_state_dict_save_name = model_save_path + '/checkpoint/' + f'save.state_dict.{control_name}.epoch-{i_epoch+1}.pth'

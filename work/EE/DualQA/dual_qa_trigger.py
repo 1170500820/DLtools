@@ -429,12 +429,22 @@ def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: in
     return train_dataloader, val_dataloader
 
 
+def train_callback_balance(model, model_output, loss, loss_output, others) -> dict:
+    loss_record_dict = {}
+    loss_record_dict['loss'] = float(loss_output)
+    loss_record_dict['norm'] = float(others['norm'].cpu().item())
+    loss_record_dict['T_loss'] = loss.T_loss_value
+    loss_record_dict['TWord_loss'] = loss.TWord_loss_value
+    return loss_record_dict
+
+
 model_registry = {
     'model': DualQA_Trigger,
     'loss': DualQA_Trigger_Loss,
     'evaluator': DualQA_Trigger_Evaluator,
     'train_val_data': dataset_factory,
-    'recorder': NaiveRecorder
+    'recorder': NaiveRecorder,
+    'train_callback': train_callback_balance
 }
 
 
