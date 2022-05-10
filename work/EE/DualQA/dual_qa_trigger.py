@@ -221,6 +221,8 @@ class DualQA_Trigger(nn.Module):
 
 
 class DualQA_Trigger_Loss(nn.Module):
+    T_loss_value = 0
+    TWord_loss_value = 0
     def forward(self,
                 start_probs: torch.Tensor,
                 end_probs: torch.Tensor,
@@ -244,7 +246,11 @@ class DualQA_Trigger_Loss(nn.Module):
 
         TWord_loss = F.cross_entropy(trigger_word_pred, TWord_label)
 
-        loss = T_loss + TWord_loss
+        # 每次计算loss的时候，顺便记录分开的两个loss
+        self.T_loss_value = float(T_loss)
+        self.TWord_loss_value = float(TWord_loss)
+        # loss = T_loss + TWord_loss
+        loss = T_loss
 
         return loss
 

@@ -6,12 +6,14 @@ from contextlib import nullcontext
 import numpy as np
 from loguru import logger
 from rich.console import Console
+import pandas as pd
 from rich.table import Table
 
 from type_def import *
 from evaluate.evaluator import dict2fstring, BaseEvaluator
 from analysis.recorder import BaseRecorder
 from torch.utils.data import DataLoader
+from train.callbacks import default_train_callback, default_eval_callback
 import pickle
 
 
@@ -83,7 +85,9 @@ class Trainer:
             grad_acc_step=1,
             do_eval=True,
             use_cuda=True,
-            control_name: str = 'default'):
+            control_name: str = 'default',
+            train_callback: ... = default_train_callback,
+            eval_callback: ... = default_eval_callback):
         if train_val_data is not None:
             train_loader, test_loader = train_val_data
         lossFunc = loss
@@ -129,10 +133,14 @@ class Trainer:
         else:  # 可能是想用gpu训练吧
             optimizers = model.get_optimizers()
 
+        # 这里为DualQA_Trigger部分修改，用于分析loss的变化情况
+        loss_records = []
+
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
             for i_batch, train_sample in enumerate(iter(train_loader)):
                 model.train()
+                loss_record_dict = {}
                 if recorder and local_rank in [-1, self.main_local_rank]:
                     recorder.train_checkin((i_epoch, i_batch))
                 train_input, train_gt = train_sample
@@ -148,6 +156,13 @@ class Trainer:
                 loss = loss / grad_acc_step
                 loss.backward()
                 norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 500)
+
+                loss_record_dict['loss'] = float(loss)
+                loss_record_dict['norm'] = float(norm.cpu().item())
+                loss_record_dict['T_loss'] = lossFunc.T_loss_value
+                loss_record_dict['TWord_loss'] = lossFunc.TWord_loss_value
+                loss_records.append(loss_record_dict)
+
                 if recorder and local_rank in [-1, self.main_local_rank]:
                     recorder.record_after_backward(loss_output=loss, loss_func=lossFunc)
                     recorder.train_checkpoint()
@@ -186,6 +201,10 @@ class Trainer:
                         if recorder:
                             recorder.eval_checkpoint()
             model.zero_grad()
+
+            frame = pd.DataFrame(loss_records)
+            pd.to_pickle(frame, open(f'pd_record.{control_name}.pk', 'wb'))
+
             if (i_epoch + 1) % model_save_epoch == 0 and local_rank in [-1, self.main_local_rank]:
                 model_state_dict_save_name = model_save_path + '/checkpoint/' + f'save.state_dict.{control_name}.epoch-{i_epoch+1}.pth'
                 init_params_save_name = model_save_path + '/checkpoint/' + f'save.init_params.{control_name}.pk'
