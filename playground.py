@@ -1,9 +1,4 @@
-import pickle
-from utils import tokenize_tools
+import pandas as pd
 
-d = pickle.load(open('PLMEE_Trigger.averaged_loss-EvalResults.pk', 'rb'))
-
-preds = d['preds'][-1]
-gt = d['gts'][-1]
-
-
+d3 = pd.read_pickle('dual_training.train_records.pk')
+d3.plot()

@@ -56,8 +56,8 @@ class TriggerClassifier(nn.Module):
         start_digit = start_digit.squeeze(dim=-1)  # (bsz, C)
         end_digit = end_digit.squeeze(dim=-1)  # (bsz, C)
         
-        start_prob = self.softmax1(start_digit)  # (bsz, C)
-        end_prob = self.softmax1(end_digit)  # (bsz, C)
+        start_prob = F.sigmoid(start_digit)  # (bsz, C)
+        end_prob = F.sigmoid(end_digit)  # (bsz, C)
         
         start_prob = start_prob.masked_fill(mask=context_mask, value=torch.tensor(1e-10))
         end_prob = end_prob.masked_fill(mask=context_mask, value=torch.tensor(1e-10))
@@ -197,9 +197,9 @@ class DualQA_Trigger(nn.Module):
             trigger_word_pred = self.trigger_word_classifier(GTWord)  # (bsz, 2)
 
         return {
-            'start_probs': start_probs,
-            'end_probs': end_probs,
-            'trigger_word_pred': trigger_word_pred
+            'start_probs': start_probs,  # (bsz, C)
+            'end_probs': end_probs,  # (bsz, C)
+            'trigger_word_pred': trigger_word_pred  # (bsz, 2)
         }
 
     def get_optimizers(self):
@@ -249,8 +249,8 @@ class DualQA_Trigger_Loss(nn.Module):
         # 每次计算loss的时候，顺便记录分开的两个loss
         self.T_loss_value = float(T_loss)
         self.TWord_loss_value = float(TWord_loss)
-        # loss = T_loss + TWord_loss
-        loss = T_loss
+        loss = T_loss + TWord_loss
+        # loss = T_loss
 
         return loss
 
@@ -430,12 +430,35 @@ def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: in
 
 
 class train_callback_balance:
-    def forward(model, model_output, loss, loss_output, others) -> dict:
+    def __call__(self, model, model_output, loss, loss_output, others) -> dict:
         loss_record_dict = {}
         loss_record_dict['loss'] = float(loss_output)
         loss_record_dict['norm'] = float(others['norm'].cpu().item())
         loss_record_dict['T_loss'] = loss.T_loss_value
         loss_record_dict['TWord_loss'] = loss.TWord_loss_value
+
+        trigger_word_pred = model_output['trigger_word_pred']
+        tword_avg = float(np.average(trigger_word_pred.cpu().detach().numpy()))
+        tword_max = float(torch.max(trigger_word_pred))
+        tword_min = float(torch.min(trigger_word_pred))
+
+        start_probs = model_output['start_probs']
+        end_probs = model_output['end_probs']
+        start_avg, start_max, start_min = float(np.average(start_probs.cpu().detach().numpy())), float(torch.max(start_probs)), float(
+            torch.min(start_probs))
+        end_avg, end_max, end_min = float(np.average(end_probs.cpu().detach().numpy())), float(torch.max(end_probs)), float(
+            torch.min(end_probs))
+
+        loss_record_dict['tword_avg'] = tword_avg
+        loss_record_dict['tword_max'] = tword_max
+        loss_record_dict['tword_min'] = tword_min
+        loss_record_dict['start_avg'] = start_avg
+        loss_record_dict['start_max'] = start_max
+        loss_record_dict['start_min'] = start_min
+        loss_record_dict['end_avg'] = end_avg
+        loss_record_dict['end_max'] = end_max
+        loss_record_dict['end_min'] = end_min
+
         return loss_record_dict
 
 
