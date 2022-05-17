@@ -391,7 +391,11 @@ model_registry = {
 }
 
 
-if __name__ == '__main__':
+"""
+用于测试的一些函数
+"""
+
+def generate_trial_data():
     train_file = 'temp_data/train.PLMEE_Trigger.Duee.labeled.pk'
     valid_file = 'temp_data/valid.PLMEE_Trigger.Duee.gt.pk'
 
@@ -410,3 +414,13 @@ if __name__ == '__main__':
     for idx, (train_sample, valid_sample) in enumerate(list(zip(train_dataloader, valid_dataloader))):
         train_data.append(train_sample)
         valid_data.append(valid_sample)
+
+
+def predict_duee_test():
+    input_filename = '../../../data/NLP/EventExtraction/duee/duee_test2.json/duee_test2.json'
+    output_filename = '../../../checkpoint/duee_trigger_result.json'
+
+
+
+if __name__ == '__main__':
+    predict_duee_test()

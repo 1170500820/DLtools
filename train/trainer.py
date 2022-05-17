@@ -54,6 +54,42 @@ def print_dict_as_table(data_dict: Dict[str, Any]):
     console.print(table)
 
 
+def save_model(model: torch.nn.Module, control_name: str, model_save_path: str, extra_info: dict):
+    f"""
+    
+    模型的命名
+    
+    state_dict: save.state_dict.{control_name}.propt1.prop2.key1=value1.key2=value2.pth
+    init_params: save.init_params.{control_name}.prop1.prop2.key1=value1.key2=value2.pk
+    
+    :param model: 需要保存的模型本体
+    :param control_name: 模型的名字
+    :param model_save_path: 模型保存的路径
+    :param extra_info:额外的信息，将被加入到尾部
+        key为property，value必须为List，这些value将会被直接加在尾部
+        其余的key-value对将会以"{key}={value}"加在尾部
+        
+    """
+    suffix_contents = []
+    if 'property' in extra_info:
+        properties = extra_info['property']
+        if isinstance(properties, list):
+            for elem in properties:
+                suffix_contents.append(str(elem))
+    for key, value in extra_info.items():
+        if key == 'property':
+            continue
+        suffix_contents.append(str(key) + '=' + str(value))
+    suffix = '.'.join(suffix_contents)
+
+    model_state_dict_save_name = model_save_path + '/checkpoint/' + f'save.state_dict.{control_name}.{suffix}.pth'
+    init_params_save_name = model_save_path + '/checkpoint/' + f'save.init_params.{control_name}.{suffix}.pk'
+    logger.info(f'[保存模型]正在保存模型中，将state_dict保存为{model_state_dict_save_name}, 将init_params保存为{init_params_save_name}')
+    torch.save(model.state_dict(), model_state_dict_save_name)
+    pickle.dump(model.init_params, open(init_params_save_name, 'wb'))
+    logger.info(f'[保存模型]保存已完成')
+
+
 class Trainer:
     """
     一个通用的训练流程
@@ -203,12 +239,7 @@ class Trainer:
             pd.to_pickle(frame, open(f'{control_name}.train_records.pk', 'wb'))
 
             if (i_epoch + 1) % model_save_epoch == 0 and local_rank in [-1, self.main_local_rank]:
-                model_state_dict_save_name = model_save_path + '/checkpoint/' + f'save.state_dict.{control_name}.epoch-{i_epoch+1}.pth'
-                init_params_save_name = model_save_path + '/checkpoint/' + f'save.init_params.{control_name}.pk'
-                logger.info(f'[保存模型]正在保存模型中，将state_dict保存为{model_state_dict_save_name}, 将init_params保存为{init_params_save_name}')
-                torch.save(model.state_dict(), model_state_dict_save_name)
-                pickle.dump(model.init_params, open(init_params_save_name, 'wb'))
-                logger.info(f'[保存模型]保存已完成')
+                save_model(model, control_name, model_save_path, {'epoch': i_epoch})
         if recorder and local_rank in [-1, self.main_local_rank]:
             recorder.checkpoint()
 
