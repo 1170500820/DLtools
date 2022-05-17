@@ -55,7 +55,7 @@ def print_dict_as_table(data_dict: Dict[str, Any]):
 
 
 def save_model(model: torch.nn.Module, control_name: str, model_save_path: str, extra_info: dict):
-    f"""
+    """
     
     模型的命名
     
@@ -80,10 +80,10 @@ def save_model(model: torch.nn.Module, control_name: str, model_save_path: str, 
         if key == 'property':
             continue
         suffix_contents.append(str(key) + '=' + str(value))
-    suffix = '.'.join(suffix_contents)
+    suffix = '.' + '.'.join(suffix_contents)
 
-    model_state_dict_save_name = model_save_path + '/checkpoint/' + f'save.state_dict.{control_name}.{suffix}.pth'
-    init_params_save_name = model_save_path + '/checkpoint/' + f'save.init_params.{control_name}.{suffix}.pk'
+    model_state_dict_save_name = model_save_path + '/checkpoint/' + f'save.state_dict.{control_name}{suffix}.pth'
+    init_params_save_name = model_save_path + '/checkpoint/' + f'save.init_params.{control_name}{suffix}.pk'
     logger.info(f'[保存模型]正在保存模型中，将state_dict保存为{model_state_dict_save_name}, 将init_params保存为{init_params_save_name}')
     torch.save(model.state_dict(), model_state_dict_save_name)
     pickle.dump(model.init_params, open(init_params_save_name, 'wb'))
@@ -117,6 +117,7 @@ class Trainer:
             eval_start_epoch=1,
             eval_start_batch=10,
             model_save_epoch=100,
+            epoch_to_save_best=1,
             model_save_path='.',
             grad_acc_step=1,
             do_eval=True,
@@ -168,13 +169,21 @@ class Trainer:
         else:  # 可能是想用gpu训练吧
             optimizers = model.get_optimizers()
 
-        # 这里为DualQA_Trigger部分修改，用于分析loss的变化情况
         # 用于监测模型在训练时的状态
         train_records = []
+        # 用于记录模型的效果
+        score_record = {
+            'best_score': None,
+            'best_score_epoch': None,
+            'best_score_step': None,
+        }
+        # step为当前总batch的计数
+        step = 0
 
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
             for i_batch, train_sample in enumerate(iter(train_loader)):
+                step += 1
                 model.train()
                 loss_record_dict = {}
                 if recorder and local_rank in [-1, self.main_local_rank]:
@@ -228,6 +237,14 @@ class Trainer:
                         if recorder:
                             recorder.record_before_evaluate(evaluator)
                         eval_info = evaluator.eval_step()
+
+                        default_score = list(eval_info.values())[0]
+                        if score_record['best_score'] is None or score_record['best_score'] < default_score:
+                            score_record['best_score'] = default_score
+                            score_record['best_score_epoch'] = i_epoch
+                            score_record['best_score_step'] = step
+                            if i_epoch >= epoch_to_save_best:
+                                save_model(model, control_name, model_save_path, {'property': ['best']})
                         logger.info('\n' + dict2fstring(eval_info))
 
                         model.train()
