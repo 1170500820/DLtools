@@ -429,37 +429,36 @@ def dataset_factory(dataset_type: str, train_file: str, valid_file: str, bsz: in
     return train_dataloader, val_dataloader
 
 
-class train_callback_balance:
-    def __call__(self, model, model_output, loss, loss_output, others) -> dict:
-        loss_record_dict = {}
-        loss_record_dict['loss'] = float(loss_output)
-        loss_record_dict['norm'] = float(others['norm'].cpu().item())
-        loss_record_dict['T_loss'] = loss.T_loss_value
-        loss_record_dict['TWord_loss'] = loss.TWord_loss_value
+def train_callback_balance(self, model, model_output, loss, loss_output, others) -> dict:
+    loss_record_dict = {}
+    loss_record_dict['loss'] = float(loss_output)
+    loss_record_dict['norm'] = float(others['norm'].cpu().item())
+    loss_record_dict['T_loss'] = loss.T_loss_value
+    loss_record_dict['TWord_loss'] = loss.TWord_loss_value
 
-        trigger_word_pred = model_output['trigger_word_pred']
-        tword_avg = float(np.average(trigger_word_pred.cpu().detach().numpy()))
-        tword_max = float(torch.max(trigger_word_pred))
-        tword_min = float(torch.min(trigger_word_pred))
+    trigger_word_pred = model_output['trigger_word_pred']
+    tword_avg = float(np.average(trigger_word_pred.cpu().detach().numpy()))
+    tword_max = float(torch.max(trigger_word_pred))
+    tword_min = float(torch.min(trigger_word_pred))
 
-        start_probs = model_output['start_probs']
-        end_probs = model_output['end_probs']
-        start_avg, start_max, start_min = float(np.average(start_probs.cpu().detach().numpy())), float(torch.max(start_probs)), float(
-            torch.min(start_probs))
-        end_avg, end_max, end_min = float(np.average(end_probs.cpu().detach().numpy())), float(torch.max(end_probs)), float(
-            torch.min(end_probs))
+    start_probs = model_output['start_probs']
+    end_probs = model_output['end_probs']
+    start_avg, start_max, start_min = float(np.average(start_probs.cpu().detach().numpy())), float(torch.max(start_probs)), float(
+        torch.min(start_probs))
+    end_avg, end_max, end_min = float(np.average(end_probs.cpu().detach().numpy())), float(torch.max(end_probs)), float(
+        torch.min(end_probs))
 
-        loss_record_dict['tword_avg'] = tword_avg
-        loss_record_dict['tword_max'] = tword_max
-        loss_record_dict['tword_min'] = tword_min
-        loss_record_dict['start_avg'] = start_avg
-        loss_record_dict['start_max'] = start_max
-        loss_record_dict['start_min'] = start_min
-        loss_record_dict['end_avg'] = end_avg
-        loss_record_dict['end_max'] = end_max
-        loss_record_dict['end_min'] = end_min
+    loss_record_dict['tword_avg'] = tword_avg
+    loss_record_dict['tword_max'] = tword_max
+    loss_record_dict['tword_min'] = tword_min
+    loss_record_dict['start_avg'] = start_avg
+    loss_record_dict['start_max'] = start_max
+    loss_record_dict['start_min'] = start_min
+    loss_record_dict['end_avg'] = end_avg
+    loss_record_dict['end_max'] = end_max
+    loss_record_dict['end_min'] = end_min
 
-        return loss_record_dict
+    return loss_record_dict
 
 
 model_registry = {

@@ -123,7 +123,7 @@ class Trainer:
             do_eval=True,
             use_cuda=True,
             control_name: str = 'default',
-            train_callback: ... = default_train_callback):
+            train_callback: Callable = default_train_callback):
         if train_val_data is not None:
             train_loader, test_loader = train_val_data
         lossFunc = loss
