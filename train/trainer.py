@@ -253,7 +253,7 @@ class Trainer:
             model.zero_grad()
 
             frame = pd.DataFrame(train_records)
-            pd.to_pickle(frame, open(f'{control_name}.train_records.pk', 'wb'))
+            pd.to_pickle(frame, open(f'output/{control_name}.train_records.pk', 'wb'))
 
             if (i_epoch + 1) % model_save_epoch == 0 and local_rank in [-1, self.main_local_rank]:
                 save_model(model, control_name, model_save_path, {'epoch': i_epoch})
