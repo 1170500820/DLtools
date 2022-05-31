@@ -237,14 +237,23 @@ class Trainer:
                         if recorder:
                             recorder.record_before_evaluate(evaluator)
                         eval_info = evaluator.eval_step()
+                        eval_detail = eval_info.pop('info', None)
 
-                        default_score = list(eval_info.values())[0]
+                        if eval_detail is None or 'main' not in eval_detail:
+                            default_score = list(eval_info.values())[0]
+                            default_key = list(eval_info.keys())[0]
+                        else:
+                            default_key = eval_detail['main']
+                            default_score = eval_info[eval_detail['main']]
                         if score_record['best_score'] is None or score_record['best_score'] < default_score:
                             score_record['best_score'] = default_score
                             score_record['best_score_epoch'] = i_epoch
                             score_record['best_score_step'] = step
                             if i_epoch >= epoch_to_save_best:
                                 save_model(model, control_name, model_save_path, {'property': ['best']})
+
+                        eval_info['best ' + default_key] = score_record['best_score'] if score_record['best_score'] is not None else 0
+                        eval_info['epoch to achieve best'] = score_record['best_score_epoch'] if score_record['best_score_epoch'] is not None else 0
                         logger.info('\n' + dict2fstring(eval_info))
 
                         model.train()

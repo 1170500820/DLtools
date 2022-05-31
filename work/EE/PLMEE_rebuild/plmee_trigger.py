@@ -372,6 +372,9 @@ class PLMEE_Trigger_T_Evaluator(BaseEvaluator):
         self.f1_eval = F1_Evaluator()
         self.pred_lst = []
         self.gt_lst = []
+        self.info_dict = {
+            'main': 'f1-measure'
+        }
 
     def eval_single(self, trigger_start: torch.Tensor, trigger_end: torch.Tensor, attention_mask: torch.Tensor, sentence: str, offset_mapping: OffsetMapping, gt: dict):
         if self.dataset_type == 'FewFC':
@@ -407,6 +410,7 @@ class PLMEE_Trigger_T_Evaluator(BaseEvaluator):
         result = self.f1_eval.eval_step()
         self.pred_lst = []
         self.gt_lst = []
+        result['info'] = self.info_dict
         return result
 
 
