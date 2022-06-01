@@ -6,7 +6,7 @@ from . import EE_settings
 
 
 class ArgumentExtractionModel_woSyntactic(nn.Module):
-    def __init__(self, n_head, d_head, hidden_size, dropout_prob):
+    def __init__(self, n_head, d_head, hidden_size, dropout_prob, dataset_type: str = 'FewFC'):
         """
 
         :param n_head:
@@ -16,6 +16,12 @@ class ArgumentExtractionModel_woSyntactic(nn.Module):
         """
         super(ArgumentExtractionModel_woSyntactic, self).__init__()
 
+        if dataset_type == 'FewFC':
+            self.role_types = EE_settings.role_types
+        elif dataset_type == 'Duee':
+            self.role_types = EE_settings.duee_role_types
+        else:
+            raise Exception(f'{dataset_type}数据集不存在！')
         self.n_head = n_head
         self.hidden_size = hidden_size
         self.d_head = d_head
@@ -25,8 +31,8 @@ class ArgumentExtractionModel_woSyntactic(nn.Module):
         #   self-attention
         self.self_attn = nn.MultiheadAttention(embed_dim=self.hidden_size, num_heads=self.n_head, dropout=self.dropout_prob)
         #   FCN for finding triggers
-        self.fcn_start = nn.Linear(self.hidden_size, len(EE_settings.role_types))
-        self.fcn_end = nn.Linear(self.hidden_size, len(EE_settings.role_types))
+        self.fcn_start = nn.Linear(self.hidden_size, len(self.role_types))
+        self.fcn_end = nn.Linear(self.hidden_size, len(self.role_types))
         #   LSTM
         self.lstm = nn.LSTM(self.hidden_size * 2 + 1, self.hidden_size//2,
                             batch_first=True, dropout=self.dropout_prob, bidirectional=True)

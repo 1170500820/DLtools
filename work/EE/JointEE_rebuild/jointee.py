@@ -33,7 +33,8 @@ class JointEE(nn.Module):
                  plm_lr=EE_settings.plm_lr,
                  others_lr=EE_settings.others_lr,
                  trigger_threshold=jointee_settings.trigger_extraction_threshold,
-                 argument_threshold=jointee_settings.argument_extraction_threshold):
+                 argument_threshold=jointee_settings.argument_extraction_threshold,
+                 dataset_type: str = 'FewFC'):
         super(JointEE, self).__init__()
         self.init_params = get_init_params(locals())  # 默认模型中包含这个东西。也许是个不好的设计
         # store init params
@@ -63,7 +64,8 @@ class JointEE(nn.Module):
             n_head=self.n_head,
             d_head=self.d_head,
             hidden_size=self.hidden_size,
-            dropout_prob=self.hidden_dropout_prob)
+            dropout_prob=self.hidden_dropout_prob,
+            dataset_type=dataset_type)
 
         self.trigger_spanses = []
         self.argument_spanses = []
@@ -246,7 +248,7 @@ class JointEE_Evaluator(BaseEvaluator):
         self.ccks_evaluator = CcksEvaluator()
         self.f1_evaluator = EE_F1Evaluator()
         self.info_dict = {
-            'main': 'f1-measure'
+            'main': 'f1score'
         }
 
     def eval_single(self, pred, gt):
@@ -352,7 +354,7 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default
 
         sentence_lst = data_dict['content']
         input_ids = data_dict['input_ids']
-        max_seq_l = max(list(len(x) for x in input_ids))
+        max_seq_l = max(list(len(x) for x in input_ids)) - 2
         event_type_lst = data_dict['event_type']
         trigger_span_gt_lst = data_dict['trigger_token_span']
         arg_spans_lst = data_dict['argument_token_spans']
@@ -363,13 +365,13 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default
         for i_batch in range(bsz):
             # trigger
             trigger_span = trigger_span_gt_lst[i_batch]
-            trigger_label_start[i_batch][trigger_span[0]] = 1
-            trigger_label_end[i_batch][trigger_span[1]] = 1
+            trigger_label_start[i_batch][trigger_span[0] - 1] = 1
+            trigger_label_end[i_batch][trigger_span[1] - 1] = 1
             # argument
             for e_role in arg_spans_lst[i_batch]:
                 role_type_idx, role_span = e_role
-                argument_label_start[i_batch][role_span[0]][role_type_idx] = 1
-                argument_label_end[i_batch][role_span[1]][role_type_idx] = 1
+                argument_label_start[i_batch][role_span[0] - 1][role_type_idx] = 1
+                argument_label_end[i_batch][role_span[1] - 1][role_type_idx] = 1
 
         return {
             'sentences': sentence_lst,
@@ -426,11 +428,11 @@ def valid_dataset_factory(data_dicts: List[dict], dataset_type: str = 'Duee'):
             })
             event_types.extend(list(x['type'] for x in events))
         return {
-            'sentence': sentences,
+            'sentences': sentences,
             'event_types': event_types,
             'offset_mappings': offset_mappings
                }, {
-            'gt': gt
+            'gt': gt[0]
         }
 
     valid_dataloader = DataLoader(valid_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
@@ -447,6 +449,7 @@ def dataset_factory(train_file: str, valid_file: str, bsz: int = EE_settings.def
     valid_dataloader = valid_dataset_factory(valid_data_dicts, dataset_type=dataset_type)
 
     return train_dataloader, valid_dataloader
+
 
 def tokenspans2events(event_types: StrList, triggers: List[SpanList], arguments: List[List[List[SpanList]]],
                       role_types: List[str], content: str = '', offset_mapping = None) -> SentenceWithEvent:
@@ -542,7 +545,7 @@ model_registry = {
     'loss': JointEE_Loss,
     'evaluator': JointEE_Evaluator,
     'train_val_data': dataset_factory,
-    'recorder': JointEE_Recorder,
+    'recorder': NaiveRecorder,
     'use_model': UseModel
 }
 

@@ -165,10 +165,10 @@ def JointEE_main():
 
     logger.info(f'处理train数据中')
     logger.info(f'[Step 1]正在去除过长的句子')
-    # data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.{dataset_type}.filtered_length.jsonl')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.{dataset_type}.filtered_length.jsonl')
 
     logger.info(f'[Step 2]正在合并触发词相同的论元')
-    # merge_arguments_with_same_trigger(f'train.{dataset_type}.filtered_length.jsonl', f'train.{dataset_type}.merged_arguments.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+    merge_arguments_with_same_trigger(f'train.{dataset_type}.filtered_length.jsonl', f'train.{dataset_type}.merged_arguments.jsonl', temp_path=temp_path, dataset_type=dataset_type)
 
     logger.info(f'[Step 3]正在tokenize')
     tokenize_content(f'train.{dataset_type}.merged_arguments.jsonl', f'train.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
