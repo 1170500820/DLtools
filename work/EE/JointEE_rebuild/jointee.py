@@ -498,7 +498,7 @@ def tokenspans2events(event_types: StrList, triggers: List[SpanList], arguments:
     for i in range(len(triggers)):
         # triggers[i] = list(map(lambda x: span_converter(x, token2origin), triggers[i]))
         temp = list(map(lambda x: tokenize_tools.tokenSpan_to_charSpan((x[0] + 1, x[1] + 1), offset_mapping), triggers[i]))
-        new_temp = list(map((x[0], x[1] + 1) for x in temp))
+        new_temp = list((x[0], x[1] + 1) for x in temp)
         triggers[i] = new_temp
 
     # convert arguments span
@@ -509,7 +509,7 @@ def tokenspans2events(event_types: StrList, triggers: List[SpanList], arguments:
             for k in range(len(arguments[i][j])):
                 # arguments[i][j][k] = list(map(lambda x: span_converter(x, token2origin), arguments[i][j][k]))
                 temp = list(map(lambda x: tokenize_tools.tokenSpan_to_charSpan((x[0] + 1, x[1] + 1), offset_mapping), arguments[i][j][k]))
-                new_temp = list(map((x[0], x[1] + 1) for x in temp))
+                new_temp = list((x[0], x[1] + 1) for x in temp)
                 arguments[i][j][k] = new_temp
 
 
