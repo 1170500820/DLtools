@@ -426,7 +426,7 @@ def valid_dataset_factory(data_dicts: List[dict], dataset_type: str = 'Duee'):
                 'content': elem['content'],
                 'events': elem['events']
             })
-            event_types.extend(list(x['type'] for x in events))
+            event_types.append(list(x['type'] for x in events))
         return {
             'sentences': sentences,
             'event_types': event_types,
@@ -497,7 +497,7 @@ def tokenspans2events(event_types: StrList, triggers: List[SpanList], arguments:
     # convert triggers span
     for i in range(len(triggers)):
         # triggers[i] = list(map(lambda x: span_converter(x, token2origin), triggers[i]))
-        triggers[i] = list(map(lambda x: tokenize_tools.tokenSpan_to_charSpan(x, offset_mapping), triggers[i]))
+        triggers[i] = list(map(lambda x: tokenize_tools.tokenSpan_to_charSpan((x[0] + 1, x[1] + 1), offset_mapping), triggers[i]))
 
     # convert arguments span
     for i in range(len(arguments)):
@@ -506,7 +506,7 @@ def tokenspans2events(event_types: StrList, triggers: List[SpanList], arguments:
             # List[SpanList]
             for k in range(len(arguments[i][j])):
                 # arguments[i][j][k] = list(map(lambda x: span_converter(x, token2origin), arguments[i][j][k]))
-                arguments[i][j][k] = list(map(lambda x: tokenize_tools.tokenSpan_to_charSpan(x, offset_mapping), arguments[i][j][k]))
+                arguments[i][j][k] = list(map(lambda x: tokenize_tools.tokenSpan_to_charSpan((x[0] + 1, x[1] + 1), offset_mapping), arguments[i][j][k]))
 
     result = spans2events(event_types, triggers, arguments, role_types, content)
     return result
