@@ -28,6 +28,34 @@ def remove_illegal_characters_p(data_dict: dict):
     return data_dict
 
 
+def generate_event_detection_label_p(data_dict: dict, dataset_type: str):
+    if dataset_type == 'FewFC':
+        event_types = EE_settings.event_types_full
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+    else:
+        raise Exception(f'{dataset_type}数据集不存在！')
+    event_type_idx = {x: i for (i, x) in enumerate(event_types)}
+
+    data_dict['event_types_label'] = list(event_type_idx[x] for x in data_dict['event_types'])
+    return data_dict
+
+
+def tokenize_content(last_output_name: str, output_name: str, temp_path: str, dataset_type: str, plm_path: str = EE_settings.default_plm_path):
+    data_dicts = load_jsonl(temp_path + last_output_name)
+
+    # tokenize
+    data_dict = tools.transpose_list_of_dict(data_dicts)
+    lst_tokenizer = tokenize_tools.bert_tokenizer(plm_path=plm_path)
+    content_result = lst_tokenizer(data_dict['content'])
+    content_result = tools.transpose_list_of_dict(content_result)
+    data_dict.update(content_result)
+    data_dicts = tools.transpose_dict_of_list(data_dict)
+
+    # dump_jsonl(data_dicts, temp_path + output_name)
+    pickle.dump(data_dicts, open(temp_path + output_name, 'wb'))
+
+
 def remove_illegal_characters(last_output_name: str, output_name: str, temp_path: str, dataset_type: str):
     data_dicts = load_jsonl(temp_path + last_output_name)
 
@@ -36,6 +64,30 @@ def remove_illegal_characters(last_output_name: str, output_name: str, temp_path
         results.append(remove_illegal_characters_p(elem))
 
     dump_jsonl(results, temp_path + output_name)
+
+
+def extract_event_types(last_output_name: str, output_name: str, temp_path: str, dataset_type: str):
+    data_dicts = load_jsonl(temp_path + last_output_name)
+
+    for elem in data_dicts:
+        events = elem['events']
+        event_types = []
+        for elem_event in events:
+            event_types.append(elem_event['type'])
+        elem['event_types'] = event_types
+
+    dump_jsonl(data_dicts, temp_path + output_name)
+
+
+def generate_event_detection_label(last_output_name: str, output_name: str, temp_path: str, dataset_type: str):
+    data_dicts = load_jsonl(temp_path + last_output_name)
+
+    results = []
+    for elem in data_dicts:
+        results.append(generate_event_detection_label_p(elem, dataset_type))
+
+    dump_jsonl(results, temp_path + output_name)
+
 
 def event_detection_main():
     logger.info(f'正在处理{dataset_type}数据')
@@ -50,14 +102,40 @@ def event_detection_main():
                               f'train.{dataset_type}.ED.removed_illegal.jsonl', temp_path=temp_path,
                               dataset_type=dataset_type)
 
+    logger.info(f'[Step 3]提取句子中所包含的事件')
+    extract_event_types(f'train.{dataset_type}.ED.removed_illegal.jsonl',
+                        f'train.{dataset_type}.ED.extracted_type.jsonl', temp_path=temp_path,
+                        dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]为训练数据生成label')
+    generate_event_detection_label(f'train.{dataset_type}.ED.extracted_type.jsonl',
+                                   f'train.{dataset_type}.ED.labeled.jsonl', temp_path=temp_path,
+                                   dataset_type=dataset_type)
+
+    logger.info(f'[Step 5]tokenize')
+    tokenize_content(f'train.{dataset_type}.ED.labeled.jsonl',
+                     f'train.{dataset_type}.ED.tokenized.pk', temp_path=temp_path,
+                     dataset_type=dataset_type)
+
 
     logger.info(f'处理valid数据中')
     logger.info(f'[Step 1]正在去除过长的句子')
     data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.{dataset_type}.ED.filtered_length.jsonl')
 
     logger.info(f'[Step 2]正在去除空格以及非法字符')
-    remove_illegal_characters(f'valid.{dataset_type}.ED.filtered_length.jsonl', f'valid.{dataset_type}.ED.removed_illegal.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+    remove_illegal_characters(f'valid.{dataset_type}.ED.filtered_length.jsonl',
+                              f'valid.{dataset_type}.ED.removed_illegal.jsonl', temp_path=temp_path,
+                              dataset_type=dataset_type)
 
+    logger.info(f'[Step 3]提取句子中所包含的事件')
+    extract_event_types(f'valid.{dataset_type}.ED.removed_illegal.jsonl',
+                        f'valid.{dataset_type}.ED.extracted_type.jsonl', temp_path=temp_path,
+                        dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]tokenize')
+    tokenize_content(f'valid.{dataset_type}.ED.labeled.jsonl',
+                     f'valid.{dataset_type}.ED.tokenized.pk', temp_path=temp_path,
+                     dataset_type=dataset_type)
 
 if __name__ == '__main__':
-    pass
+    event_detection_main()
