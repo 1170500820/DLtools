@@ -5,13 +5,13 @@ from type_def import *
 
 
 class SentenceRepresentation(nn.Module):
-    def __init__(self, PLM_path):
+    def __init__(self, PLM_path, use_cuda):
         super(SentenceRepresentation, self).__init__()
         self.concatenation = SentenceTypeConcatenation(PLM_path)
         self.PLM = BertModel.from_pretrained(PLM_path)
         self.hidden_size = self.PLM.config.hidden_size
         self.CLN = ConditionalLayerNormalization(self.hidden_size)
-        self.to_cuda = True
+        self.to_cuda = use_cuda
 
     def forward(self, sentence, sentence_type):
         """
@@ -85,11 +85,11 @@ class SentenceTypeConcatenation(nn.Module):
 
 
 class TriggeredSentenceRepresentation(nn.Module):
-    def __init__(self, hidden_size):
+    def __init__(self, hidden_size, use_cuda):
         super(TriggeredSentenceRepresentation, self).__init__()
         self.hidden_size = hidden_size
         self.CLN = ConditionalLayerNormalization(hidden_size)
-        self.to_cuda = True
+        self.to_cuda = use_cuda
 
     def forward(self, embeds, trigger_spans: SpanList):
         """

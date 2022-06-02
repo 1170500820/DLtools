@@ -35,7 +35,8 @@ class JointEE(nn.Module):
                  others_lr=EE_settings.others_lr,
                  trigger_threshold=jointee_settings.trigger_extraction_threshold,
                  argument_threshold=jointee_settings.argument_extraction_threshold,
-                 dataset_type: str = 'FewFC'):
+                 dataset_type: str = 'FewFC',
+                 use_cuda: bool = False):
         super(JointEE, self).__init__()
         self.init_params = get_init_params(locals())  # 默认模型中包含这个东西。也许是个不好的设计
         # store init params
@@ -55,10 +56,11 @@ class JointEE(nn.Module):
         self.others_lr = others_lr
         self.trigger_threshold = trigger_threshold
         self.argument_threshold = argument_threshold
+        self.use_cuda = use_cuda
 
         # initiate network structures
         #   Sentence Representation
-        self.sentence_representation = SentenceRepresentation(self.plm_path)
+        self.sentence_representation = SentenceRepresentation(self.plm_path, self.use_cuda)
         self.hidden_size = self.sentence_representation.hidden_size
         #   Trigger Extraction
         self.tem = TriggerExtractionLayer_woSyntactic(
@@ -382,6 +384,7 @@ class UseModel:
     def __init__(self, state_dict_path: str, init_params_path: str, use_gpu: bool = False, plm_path: str = EE_settings.default_plm_path, dataset_type: str = 'Duee'):
         # 首先加载初始化模型所使用的参数
         init_params = pickle.load(open(init_params_path, 'rb'))
+        init_params['use_cuda'] = False
         self.model = JointEE(**init_params)
         if not use_gpu:
             self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cpu')))
