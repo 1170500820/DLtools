@@ -69,8 +69,7 @@ class JointEE(nn.Module):
             d_head=self.d_head,
             dropout_prob=self.hidden_dropout_prob)
         #   Triggered Sentence Representation
-        self.trigger_sentence_representation = TriggeredSentenceRepresentation(self.hidden_size)
-        #   Argument Extraction
+        self.trigger_sentence_representation = TriggeredSentenceRepresentation(self.hidden_size, self.use_cuda)
         self.aem = ArgumentExtractionModel_woSyntactic(
             n_head=self.n_head,
             d_head=self.d_head,
@@ -386,6 +385,7 @@ class UseModel:
         init_params = pickle.load(open(init_params_path, 'rb'))
         init_params['use_cuda'] = False
         self.model = JointEE(**init_params)
+        self.model.eval()
         if not use_gpu:
             self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cpu')))
         else:
