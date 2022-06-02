@@ -133,7 +133,7 @@ def event_detection_main():
                         dataset_type=dataset_type)
 
     logger.info(f'[Step 4]tokenize')
-    tokenize_content(f'valid.{dataset_type}.ED.labeled.jsonl',
+    tokenize_content(f'valid.{dataset_type}.ED.extracted_type.jsonl',
                      f'valid.{dataset_type}.ED.tokenized.pk', temp_path=temp_path,
                      dataset_type=dataset_type)
 

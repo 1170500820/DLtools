@@ -147,6 +147,9 @@ class AssembledEvaluator(BaseEvaluator):
         super(AssembledEvaluator, self).__init__()
         self.multi_label_evaluator = MultiLabelClsEvaluator()
         self.total_types, self.total_gt = [], []
+        self.info_dict = {
+            'main': 'f1'
+        }
 
     def eval_single(self, types: List[str], gts: List[str]):
         self.total_types.append(copy.deepcopy(types))
@@ -156,6 +159,7 @@ class AssembledEvaluator(BaseEvaluator):
     def eval_step(self) -> Dict[str, Any]:
         result = self.multi_label_evaluator.eval_step()
         self.total_types, self.total_gt = [], []
+        result['info'] = self.info_dict
         return result
 
 
@@ -237,7 +241,7 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = ED_settings.default
         label_rec = data_dict['event_types_label']
         for i_batch in range(bsz):
             for i_idx in label_rec[i_batch]:
-                label[bsz][i_idx] = 1
+                label[i_batch][i_idx] = 1
 
         return {
             'input_ids': input_ids,
