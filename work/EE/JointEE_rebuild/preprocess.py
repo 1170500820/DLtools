@@ -71,6 +71,13 @@ def merge_arguments_with_same_trigger_p(data_dict: dict):
     return results
 
 
+def remove_illegal_characters_p(data_dict: dict):
+    content = data_dict['content']
+    content = content.replace(' ', '_')
+    data_dict['content'] = content
+    return data_dict
+
+
 def tokenize_content(last_output_name: str, output_name: str, temp_path: str, dataset_type: str, plm_path: str = jointee_settings.plm_path):
     data_dicts = load_jsonl(temp_path + last_output_name)
 
@@ -157,6 +164,16 @@ def generate_label_for_trigger_and_argument(last_output_name: str, output_name: 
     pickle.dump(results, open(temp_path + output_name, 'wb'))
 
 
+def remove_illegal_characters(last_output_name: str, output_name: str, temp_path: str, dataset_type: str):
+    data_dicts = load_jsonl(temp_path + last_output_name)
+
+    results = []
+    for elem in data_dicts:
+        results.append(remove_illegal_characters_p(elem))
+
+    dump_jsonl(results, temp_path + output_name)
+
+
 # 完整的数据生成函数
 
 def JointEE_main():
@@ -167,21 +184,27 @@ def JointEE_main():
     logger.info(f'[Step 1]正在去除过长的句子')
     data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.{dataset_type}.filtered_length.jsonl')
 
-    logger.info(f'[Step 2]正在合并触发词相同的论元')
-    merge_arguments_with_same_trigger(f'train.{dataset_type}.filtered_length.jsonl', f'train.{dataset_type}.merged_arguments.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'train.{dataset_type}.filtered_length.jsonl', f'train.{dataset_type}.removed_illegal.jsonl', temp_path=temp_path, dataset_type=dataset_type)
 
-    logger.info(f'[Step 3]正在tokenize')
+    logger.info(f'[Step 3]正在合并触发词相同的论元')
+    merge_arguments_with_same_trigger(f'train.{dataset_type}.removed_illegal.jsonl', f'train.{dataset_type}.merged_arguments.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]正在tokenize')
     tokenize_content(f'train.{dataset_type}.merged_arguments.jsonl', f'train.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
 
-    logger.info(f'[Step 4]为trigger与argument生成label')
+    logger.info(f'[Step 5]为trigger与argument生成label')
     generate_label_for_trigger_and_argument(f'train.{dataset_type}.tokenized.pk', f'train.{dataset_type}.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
 
     logger.info(f'处理valid数据中')
     logger.info(f'[Step 1]正在去除过长的句子')
     data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.{dataset_type}.filtered_length.jsonl')
 
-    logger.info(f'[Step 2]正在tokenize')
-    tokenize_content(f'valid.{dataset_type}.filtered_length.jsonl', f'valid.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'valid.{dataset_type}.filtered_length.jsonl', f'valid.{dataset_type}.removed_illegal.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]正在tokenize')
+    tokenize_content(f'valid.{dataset_type}.removed_illegal.jsonl', f'valid.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
 
 
 

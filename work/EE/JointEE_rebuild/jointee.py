@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
+from transformers import BertTokenizerFast
 
 import numpy as np
 from itertools import chain
@@ -38,6 +39,14 @@ class JointEE(nn.Module):
         super(JointEE, self).__init__()
         self.init_params = get_init_params(locals())  # 默认模型中包含这个东西。也许是个不好的设计
         # store init params
+
+        if dataset_type == 'FewFC':
+            self.role_types = EE_settings.role_types
+        elif dataset_type == 'Duee':
+            self.role_types = EE_settings.duee_role_types
+        else:
+            raise Exception(f'{dataset_type}数据集不存在！')
+
         self.plm_path = plm_path
         self.n_head = n_head
         self.d_head = d_head
@@ -136,7 +145,7 @@ class JointEE(nn.Module):
                     argument_start_result = (argument_start_tensor > self.argument_threshold).int().tolist()
                     argument_end_result = (argument_end_tensor > self.argument_threshold).int().tolist()
                     argument_spans: List[SpanList] = []
-                    for idx_role in range(len(EE_settings.role_types)):
+                    for idx_role in range(len(self.role_types)):
                         cur_arg_spans: SpanList = tools.argument_span_determination(argument_start_result[idx_role], argument_end_result[idx_role], argument_start_tensor[idx_role].tolist(), argument_end_tensor[idx_role].tolist())
                         argument_spans.append(cur_arg_spans)
                     arg_spans.append(argument_spans)
@@ -144,7 +153,7 @@ class JointEE(nn.Module):
                 arg_spanses.append(arg_spans)
             self.trigger_spanses.append(cur_spanses)
             self.argument_spanses.append(arg_spanses)
-            result = tokenspans2events(event_types[0], cur_spanses, arg_spanses, EE_settings.role_types, sentences[0], offset_mappings[0])
+            result = tokenspans2events(event_types[0], cur_spanses, arg_spanses, self.role_types, sentences[0], offset_mappings[0])
             return {"pred": result}
 
     def get_optimizers(self):
@@ -164,7 +173,7 @@ class JointEE_Loss(nn.Module):
     2, weight
     3, RF·IEF weight
     """
-    def __init__(self, lambd=0.6, alpha=0.3, gamma=2):
+    def __init__(self, lambd=0.2, alpha=0.3, gamma=2):
         """
 
         :param lambd: loss = lambd * trigger + (1 - lambd) * argument
@@ -253,16 +262,44 @@ class JointEE_MaskLoss(nn.Module):
         :param trigger_start:
         :param trigger_end: (bsz, seq_l, 1)
         :param trigger_label_start:
-        :param trigger_label_end:
+        :param trigger_label_end: (bsz, seq_l)
         :param argument_start:
         :param argument_end: (bsz, seq_l, role_cnt)
         :param argument_label_start:
-        :param argument_label_end:
+        :param argument_label_end:  (bsz, seq_l, role_cnt)
         :param mask: (bsz, seq_l)
         :return:
         """
 
+        bsz = mask.shape[0]
+        concat_mask = mask[:, 1:-1]  # mask需要裁剪，因为原句没有CLS与SEP
+        role_cnt = argument_start.shape[-1]
 
+        trigger_start_losses, trigger_end_losses = [], []
+        # trigger loss
+        for i_batch in range(bsz):
+            start_loss = F.binary_cross_entropy(trigger_start[i_batch], trigger_label_start[i_batch], reduction='none')
+            end_loss = F.binary_cross_entropy(trigger_end[i_batch], trigger_label_end[i_batch], reduction='none')
+            start_loss = torch.sum(start_loss * concat_mask[i_batch]) / torch.sum(concat_mask[i_batch])
+            end_loss = torch.sum(end_loss * concat_mask[i_batch]) / torch.sum(concat_mask[i_batch])
+            trigger_start_losses.append(start_loss)
+            trigger_end_losses.append(end_loss)
+        trigger_loss = sum(trigger_start_losses) + sum(trigger_end_losses)
+
+        # argument loss
+        argument_start_losses, argument_end_losses = [], []
+        for i_batch in range(bsz):
+            start_loss = F.binary_cross_entropy(argument_start[i_batch], argument_label_start[i_batch], reduction='none')
+            end_loss = F.binary_cross_entropy(argument_end[i_batch], argument_label_end[i_batch], reduction='none')
+            start_loss = torch.sum(start_loss * concat_mask[i_batch]) / (torch.sum(concat_mask[i_batch]) * role_cnt)
+            end_loss = torch.sum(end_loss * concat_mask[i_batch]) / (torch.sum(concat_mask[i_batch]) * role_cnt)
+            argument_start_losses.append(start_loss)
+            argument_end_losses.append(end_loss)
+        argument_loss = sum(argument_start_losses) + sum(argument_end_losses)
+        # argument loss
+
+        loss = trigger_loss + argument_loss
+        return loss
 
 
 class JointEE_Evaluator(BaseEvaluator):
@@ -342,7 +379,33 @@ class JointEE_Recorder(NaiveRecorder):
 
 
 class UseModel:
-    pass
+    def __init__(self, state_dict_path: str, init_params_path: str, use_gpu: bool = False, plm_path: str = EE_settings.default_plm_path, dataset_type: str = 'Duee'):
+        # 首先加载初始化模型所使用的参数
+        init_params = pickle.load(open(init_params_path, 'rb'))
+        self.model = JointEE(**init_params)
+        if not use_gpu:
+            self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cpu')))
+        else:
+            self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cuda')))
+
+        if dataset_type == 'FewFC':
+            self.event_types = EE_settings.event_types_full
+            self.role_types = EE_settings.role_types
+        elif dataset_type == 'Duee':
+            self.event_types = EE_settings.duee_event_types
+            self.role_types = EE_settings.duee_role_types
+        else:
+            raise Exception(f'{dataset_type}数据集不存在！')
+
+        self.tokenizer = BertTokenizerFast.from_pretrained(plm_path)
+
+    def __call__(self, sentence: str, event_types: List[str]):
+        tokenized = self.tokenizer(sentence, padding=True, truncation=True, return_offsets_mapping=True)
+        token_seq = self.tokenizer.convert_ids_to_tokens(tokenized['input_ids'])
+        tokenized['token'] = token_seq
+
+        result = self.model(sentences=[sentence], event_types=[event_types], offset_mappings=[tokenized['offset_mapping']])['pred']
+        return result
 
 """
 data process part
@@ -401,10 +464,14 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default
                 argument_label_start[i_batch][role_span[0] - 1][role_type_idx] = 1
                 argument_label_end[i_batch][role_span[1] - 1][role_type_idx] = 1
 
+        new_trigger_span_list = []
+        for elem in trigger_span_gt_lst:
+            new_trigger_span_list.append([elem[0] - 1, elem[1] - 1])
+
         return {
             'sentences': sentence_lst,
             'event_types': event_type_lst,
-            'triggers': trigger_span_gt_lst
+            'triggers': new_trigger_span_list
                }, {
             'trigger_label_start': trigger_label_start,
             'trigger_label_end': trigger_label_end,
@@ -485,6 +552,9 @@ def tokenspans2events(event_types: StrList, triggers: List[SpanList], arguments:
     todo
     将token span转化为 origin span
     然后生成SentenceWithEvents
+
+    由于模型中AEM和TEM忽略了input_ids开头的<CLS>和结尾的<SEP>，因此预测出的span相对tokenize阶段的offset_mapping，是偏前一位的
+    因此需要给start与end均+1
     :param event_types:
     :param triggers:
     :param arguments:
