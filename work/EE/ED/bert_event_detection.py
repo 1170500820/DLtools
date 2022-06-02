@@ -137,7 +137,7 @@ class EventDetectionLoss(nn.Module):
         """
         reshaped_result = logits.squeeze()  # （bsz, num_labels）
         pos_weight = self.pos_pref_weight(labels)
-        loss = F.binary_cross_entropy(reshaped_result, labels.cuda(), pos_weight.cuda())
+        loss = F.binary_cross_entropy(reshaped_result, labels.cuda())
         return loss
 
 
