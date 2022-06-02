@@ -141,6 +141,24 @@ class EventDetectionLoss(nn.Module):
         return loss
 
 
+class EventDetectionFocalLoss(nn.Module):
+    def __init__(self, alpha=0.3, gamma=2):
+        super(EventDetectionFocalLoss, self).__init__()
+
+        self.focal = tools.FocalWeight(alpha, gamma)
+
+    def forward(self, logits: torch.Tensor, labels: torch.Tensor):
+        """
+
+        :param logits: (bsz, label_cnt)
+        :param labels: (bsz, label_cnt)
+        :return:
+        """
+        weight_foacl = self.focal(logits, labels)
+        loss = F.binary_cross_entropy(logits, labels, weight_foacl)
+
+        return loss
+
 # evaluator todo
 class AssembledEvaluator(BaseEvaluator):
     def __init__(self):
@@ -358,7 +376,7 @@ class UseModel:
 
 model_registry = {
     'model': EventDetection,
-    'loss': EventDetectionLoss,
+    'loss': EventDetectionFocalLoss,
     'evaluator': AssembledEvaluator,
     'train_val_data': dataset_factory,
     'recorder': NaiveRecorder,
@@ -367,8 +385,31 @@ model_registry = {
 
 
 def generate_trial_data(dataset_type: str):
-    pass
+    if dataset_type == 'Duee':
+        train_file = 'temp_data/train.Duee.ED.tokenized.pk'
+        valid_file = 'temp_data/valid.Duee.ED.tokenized.pk'
+    elif dataset_type == 'FewFC':
+        train_file = 'temp_data/train.PLMEE_Trigger.FewFC.labeled.pk'
+        valid_file = 'temp_data/valid.PLMEE_Trigger.FewFC.gt.pk'
+    else:
+        return None, None, None, None
+
+    bsz = 4
+    shuffle = False
+
+    train_data_dicts = pickle.load(open(train_file, 'rb'))
+    valid_data_dicts = pickle.load(open(valid_file, 'rb'))
+
+    train_dataloader = train_dataset_factory(train_data_dicts, bsz=bsz, shuffle=shuffle, dataset_type=dataset_type)
+    valid_dataloader = valid_dataset_factory(valid_data_dicts, dataset_type=dataset_type)
+
+    limit = 5
+    train_data, valid_data = [], []
+    for idx, (train_sample, valid_sample) in enumerate(list(zip(train_dataloader, valid_dataloader))):
+        train_data.append(train_sample)
+        valid_data.append(valid_sample)
+    return train_dataloader, train_data, valid_dataloader, valid_data
 
 
 if __name__ == '__main__':
-    pass
+    train_dataloader, train_data, valid_dataloader, valid_data = generate_trial_data('Duee')
