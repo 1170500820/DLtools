@@ -150,15 +150,20 @@ class AssembledEvaluator(BaseEvaluator):
         self.info_dict = {
             'main': 'f1'
         }
+        self.pred_lst, self.gt_lst = [], []
 
     def eval_single(self, types: List[str], gts: List[str]):
         self.total_types.append(copy.deepcopy(types))
         self.total_gt.append(copy.deepcopy(gts))
         self.multi_label_evaluator.eval_single(types, gts)
+        self.pred_lst.append(types)
+        self.gt_lst.append(gts)
 
     def eval_step(self) -> Dict[str, Any]:
         result = self.multi_label_evaluator.eval_step()
         self.total_types, self.total_gt = [], []
+        self.pred_lst = []
+        self.gt_lst = []
         result['info'] = self.info_dict
         return result
 
@@ -276,7 +281,7 @@ def valid_dataset_factory(data_dicts: List[dict], dataset_type: str = 'Duee'):
         attention_mask = torch.tensor(batch_tool.batchify_ndarray1d(data_dict['attention_mask']), dtype=torch.long)
         seq_l = input_ids.shape[1]
 
-        gts = data_dict['event_types_label']
+        gts = data_dict['event_types'][0]
 
         return {
             'input_ids': input_ids,
