@@ -237,6 +237,34 @@ class JointEE_Loss(nn.Module):
         return loss
 
 
+class JointEE_MaskLoss(nn.Module):
+    def forward(self,
+                trigger_start: torch.Tensor,
+                trigger_end: torch.Tensor,
+                trigger_label_start: torch.Tensor,
+                trigger_label_end: torch.Tensor,
+                argument_start: torch.Tensor,
+                argument_end: torch.Tensor,
+                argument_label_start: torch.Tensor,
+                argument_label_end: torch.Tensor,
+                mask: torch.Tensor):
+        """
+
+        :param trigger_start:
+        :param trigger_end: (bsz, seq_l, 1)
+        :param trigger_label_start:
+        :param trigger_label_end:
+        :param argument_start:
+        :param argument_end: (bsz, seq_l, role_cnt)
+        :param argument_label_start:
+        :param argument_label_end:
+        :param mask: (bsz, seq_l)
+        :return:
+        """
+
+
+
+
 class JointEE_Evaluator(BaseEvaluator):
     """
     f1 and ccks
