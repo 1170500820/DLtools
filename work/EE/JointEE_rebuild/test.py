@@ -1,7 +1,7 @@
 from jointee import UseModel
 
 
-state_dict_path = '../../../checkpoint/save.state_dict.JointEE.Duee.loss-trigger-02.best.pk'
+state_dict_path = '../../../checkpoint/save.state_dict.JointEE.Duee.loss-trigger-02.best.pth'
 init_params_path = '../../../checkpoint/save.init_params.JointEE.Duee.loss-trigger-02.best.pk'
 plm_path = 'bert-base-chinese'
 dataset_type = 'Duee'
