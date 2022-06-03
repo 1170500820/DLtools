@@ -99,7 +99,7 @@ class EventDetection(nn.Module):
         #  Bert output
         #   Tuple[embed (bsz, seq_l, hidden), pooled embed (bsz, hidden)]
         pooled_output = output[1]   # (bsz, hidden_size)
-        pooled_output = self.dropout(pooled_output)
+        # pooled_output = self.dropout(pooled_output)
         #  (bsz, hidden)
         logits = self.classifier(pooled_output)  # (bsz, num_labels)
         probs = F.sigmoid(logits)
