@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
-from transformers import BertModel
+from transformers import BertModel, BertTokenizerFast
 import copy
 import pickle
 
@@ -354,7 +354,32 @@ def train_output_to_loss_format(logits: torch.Tensor):
 
 # UseModel
 class UseModel:
-    pass
+    def __init__(self, state_dict_path: str, init_params_path: str, use_gpu: bool = False, plm_path: str = EE_settings.default_plm_path, dataset_type: str = 'FewFC'):
+        # 首先加载初始化模型所使用的参数
+        init_params = pickle.load(open(init_params_path, 'rb'))
+        self.model = EventDetection(**init_params)
+        self.model.eval()
+        if not use_gpu:
+            self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cpu')))
+        else:
+            self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cuda')))
+
+        if dataset_type == 'FewFC':
+            self.event_types = EE_settings.event_types_full
+        elif dataset_type == 'Duee':
+            self.event_types = EE_settings.duee_event_types
+        else:
+            raise Exception(f'{dataset_type}数据集不存在！')
+
+        self.tokenizer = BertTokenizerFast.from_pretrained(plm_path)
+
+    def __call__(self, sentence: str):
+        tokenized = self.tokenizer([sentence], padding=True, truncation=True, return_tensors='pt')
+
+        result = self.model(**tokenized)['types']
+        return result
+
+
 
 # 旧的设计，复杂而冗长，虽然确实有用，但应该更仔细考虑
 
