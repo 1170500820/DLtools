@@ -1,7 +1,7 @@
 from bert_event_detection import UseModel
 
 state_dict_path = '../../../checkpoint/save.state_dict.BertED.Duee.Default.best.pth'
-init_params_path = '../../../checkpoint/save.init_patams.BertED.Duee.Default.best.pk'
+init_params_path = '../../../checkpoint/save.init_params.BertED.Duee.Default.best.pk'
 plm_path = 'bert-base-chinese'
 dataset_type = 'Duee'
 
