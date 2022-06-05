@@ -174,7 +174,7 @@ class JointEE_Loss(nn.Module):
     2, weight
     3, RF·IEF weight
     """
-    def __init__(self, lambd=0.2, alpha=0.3, gamma=2):
+    def __init__(self, lambd=0.025, alpha=0.3, gamma=2):
         """
 
         :param lambd: loss = lambd * trigger + (1 - lambd) * argument

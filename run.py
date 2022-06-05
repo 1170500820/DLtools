@@ -128,7 +128,7 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     train_report_dict = report_tools.arrange_info(working_params, instance_return_info, task)
     meta_dict['train_records'] = train_report_dict
     control_name = working_params['control_name']
-    train_report_save_name = '/checkpoint/' + f'TrainReport.{control_name}.pk'
+    train_report_save_name = 'checkpoint/' + f'TrainReport.{control_name}.pk'
     pickle.dump(meta_dict, open(train_report_save_name, 'wb'))
     logger.info(f'将训练报告保存为{train_report_save_name}')
 
