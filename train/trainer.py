@@ -169,6 +169,7 @@ class Trainer:
         else:  # 可能是想用gpu训练吧
             optimizers = model.get_optimizers()
 
+        # 下面这些变量用于记录模型训练时的状态，以及各种参数信息
         # 用于监测模型在训练时的状态
         train_records = []
         # 用于记录模型的效果
@@ -179,6 +180,11 @@ class Trainer:
         }
         # step为当前总batch的计数
         step = 0
+        # 每一个step的loss
+        losses = []
+        # 每一次eval的指标，与对应的step
+        eval_results = []
+        eval_steps = []
 
         for i_epoch in range(total_epoch):  # todo 加入梯度累积
             epoch_avg_loss = 0.0
@@ -200,6 +206,7 @@ class Trainer:
                 loss = lossFunc(**model_output, **train_gt)
                 loss = loss / grad_acc_step
                 loss.backward()
+                losses.append(float(loss.float()))
                 norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 500)
 
                 train_record = train_callback(model, model_output, lossFunc, loss, {'norm': norm})
@@ -255,6 +262,8 @@ class Trainer:
                         eval_info['best ' + default_key] = score_record['best_score'] if score_record['best_score'] is not None else 0
                         eval_info['epoch to achieve best'] = score_record['best_score_epoch'] if score_record['best_score_epoch'] is not None else 0
                         logger.info('\n' + dict2fstring(eval_info))
+                        eval_results.append(eval_info)
+                        eval_steps.append(step)
 
                         model.train()
                         if recorder:
@@ -268,6 +277,12 @@ class Trainer:
                 save_model(model, control_name, model_save_path, {'epoch': i_epoch})
         if recorder and local_rank in [-1, self.main_local_rank]:
             recorder.checkpoint()
+
+        return {
+            'losses': losses,
+            'eval_results': eval_results,
+            'eval_steps': eval_steps
+        }
 
 
 class ExpandedTrainer:

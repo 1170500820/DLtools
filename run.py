@@ -1,3 +1,4 @@
+import pickle
 import sys
 import argparse
 from type_def import *
@@ -13,6 +14,7 @@ from utils import run_tools
 import settings
 from settings import task_registry
 from utils.run_tools import *
+from analysis import report_tools
 
 
 
@@ -63,6 +65,9 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     """
     logger.info('从命令行获取任务以及模型...')
 
+    # 用于记录训练信息的dict
+    meta_dict = {}
+
     # 如果local_rank不为-1，说明使用单机多卡的训练方式。此时先初始化环境
     if param_dict['local_rank'] != -1:
         torch.cuda.set_device(param_dict['local_rank'])
@@ -77,6 +82,7 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
 
     # 获取要执行的任务类型
     task = param_dict['task']  # ['train', 'ex_train', 'predict', ...]
+    meta_dict['task_type'] = task
     # if param_dict['local_rank'] in [-1, 0]:
     #     logger.info(f'[构建任务]任务类型：{task}')
     logger.info(f'[构建任务]任务类型：{task}')
@@ -113,7 +119,19 @@ def runCommand(param_dict: Dict[str, Any], model_args: StrList = None):
     task_model = instantiate_template_from_param_dict(task_template, working_params, working_model.model_registry)
     if param_dict['local_rank'] in [-1, 0]:
         logger.info('开始运行......')
-    run_template_from_param_dict(task_model, working_params, working_model.model_registry)
+    final_param_dict, instance_return_info = run_template_from_param_dict(task_model, working_params, working_model.model_registry)
+
+    # 组织模型涉及的参数
+    working_params.update(final_param_dict)
+
+    # 导出训练报告
+    train_report_dict = report_tools.arrange_info(working_params, instance_return_info, task)
+    meta_dict['train_records'] = train_report_dict
+    control_name = working_params['control_name']
+    train_report_save_name = '/checkpoint/' + f'TrainReport.{control_name}.pk'
+    pickle.dump(meta_dict, open(train_report_save_name, 'wb'))
+    logger.info(f'将训练报告保存为{train_report_save_name}')
+
 
 
 if __name__ == '__main__':

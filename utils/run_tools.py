@@ -391,8 +391,8 @@ def run_instance_with_dict(instance, param_dict):
         if elem_arg in param_dict:
             filtered_param_dict[elem_arg] = param_dict[elem_arg]
     print('[run_instance_with_dict]finished initializing all params and submodules, running task now')
-    instance_of_this_class = instance(**filtered_param_dict)
-    return instance_of_this_class
+    instance_return_info = instance(**filtered_param_dict)
+    return instance_return_info
 
 
 def run_template_from_param_dict(template, param_dict: Dict[str, Any], module_registry: dict):
@@ -414,7 +414,8 @@ def run_template_from_param_dict(template, param_dict: Dict[str, Any], module_re
         # 然后用子模块和参数运行当前模型
         param_dict.update(submodule_dict)
     # print('running')
-    run_instance_with_dict(template, param_dict)
+    instance_return_info = run_instance_with_dict(template, param_dict)
+    return param_dict, instance_return_info
 
 
 if __name__ == '__main__':
