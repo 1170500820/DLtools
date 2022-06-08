@@ -217,8 +217,8 @@ class JointEE_Loss(nn.Module):
         # calculate focal weight
         trigger_start_weight_focal = self.focal(trigger_start, trigger_label_start)
         trigger_end_weight_focal = self.focal(trigger_end, trigger_label_end)
-        argument_start_weight_focal = self.focal(argument_start, argument_label_start)
-        argument_end_weight_focal = self.focal(argument_end, argument_label_end)
+        argument_start_weight_focal = self.argument_focal(argument_start, argument_label_start)
+        argument_end_weight_focal = self.argument_focal(argument_end, argument_label_end)
 
         # combine weights
         trigger_start_weight = trigger_start_weight_focal
