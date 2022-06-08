@@ -12,6 +12,9 @@ class SentenceRepresentation(nn.Module):
         self.hidden_size = self.PLM.config.hidden_size
         self.CLN = ConditionalLayerNormalization(self.hidden_size)
         self.to_cuda = use_cuda
+        if self.to_cuda:
+            self.PLM.to('cuda')
+            self.CLN.to('cuda')
 
     def forward(self, sentence, sentence_type):
         """
@@ -90,6 +93,8 @@ class TriggeredSentenceRepresentation(nn.Module):
         self.hidden_size = hidden_size
         self.CLN = ConditionalLayerNormalization(hidden_size)
         self.to_cuda = use_cuda
+        if self.to_cuda:
+            self.CLN.to('cuda')
 
     def forward(self, embeds, trigger_spans: SpanList):
         """

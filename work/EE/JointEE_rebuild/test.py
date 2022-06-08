@@ -1,10 +1,16 @@
 from jointee import UseModel
+from work.EE.EE_utils import load_jsonl, dump_jsonl
+from work.EE import EE_settings
+from tqdm import tqdm
 
 
-state_dict_path = '../../../checkpoint/save.state_dict.JointEE.Duee.loss-trigger-02.best.pth'
-init_params_path = '../../../checkpoint/save.init_params.JointEE.Duee.loss-trigger-02.best.pk'
+state_dict_path = '../../../checkpoint/save.state_dict.JointEE.Duee.loss-trigger-005.best.pth'
+init_params_path = '../../../checkpoint/save.init_params.JointEE.Duee.loss-trigger-005.best.pk'
 plm_path = 'bert-base-chinese'
 dataset_type = 'Duee'
+
+test_file_dir = '../../../data/NLP/EventExtraction/duee/duee_test2.json/'
+test_file_name = 'test.type.duee.json'
 
 
 examples = [
@@ -20,6 +26,50 @@ examples = [
         'event_types': ["灾害/意外-车祸", "人生-死亡"]
     }
 ]
+
+
+def convert_for_submit(origin: dict):
+    event_list = []
+    content = origin['content'].replace(' ', '_')
+    for elem_e in origin['events']:
+        event_type = elem_e['type']
+        arguments = []
+        for elem_m in elem_e['mentions']:
+            role, span = elem_m['role'], elem_m['span']
+            if role == 'trigger':
+                 continue
+            if role not in EE_settings.duee_event_available_roles[event_type]:
+                continue
+            word = content[span[0]: span[1]]
+            arguments.append({
+                'role': role,
+                'argument': word
+            })
+        event_list.append({
+            'event_type': event_type,
+            'arguments': arguments
+        })
+    return event_list
+
+
+def predict_test():
+    test_data = load_jsonl(test_file_dir + test_file_name)
+    model = UseModel(
+        state_dict_path=state_dict_path,
+        init_params_path=init_params_path,
+        use_gpu=True,
+        plm_path=plm_path,
+        dataset_type=dataset_type)
+    results = []
+    for elem in tqdm(test_data):
+        text, cid, etypes = elem['text'], elem['id'], elem['type']
+        predicted = model(text, etypes)
+        converted = convert_for_submit(predicted)
+        results.append({
+            'id': cid,
+            'event_list': converted
+        })
+    dump_jsonl(results, test_file_dir + 'duee.005.json')
 
 
 def main():
@@ -41,4 +91,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    predict_test()

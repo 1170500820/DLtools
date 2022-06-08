@@ -359,10 +359,12 @@ class UseModel:
         init_params = pickle.load(open(init_params_path, 'rb'))
         self.model = EventDetection(**init_params)
         self.model.eval()
+        self.use_gpu = use_gpu
         if not use_gpu:
             self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cpu')))
         else:
             self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cuda')))
+            self.model.to('cuda')
 
         if dataset_type == 'FewFC':
             self.event_types = EE_settings.event_types_full
@@ -375,7 +377,10 @@ class UseModel:
 
     def __call__(self, sentence: str):
         tokenized = self.tokenizer([sentence], padding=True, truncation=True, return_tensors='pt')
-
+        if self.use_gpu:
+            tokenized['input_ids'] = tokenized['input_ids'].cuda()
+            tokenized['token_type_ids'] = tokenized['token_type_ids'].cuda()
+            tokenized['attention_mask'] = tokenized['attention_mask'].cuda()
         result = self.model(**tokenized)['types']
         return result
 

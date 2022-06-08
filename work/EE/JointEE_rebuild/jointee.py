@@ -174,7 +174,7 @@ class JointEE_Loss(nn.Module):
     2, weight
     3, RF·IEF weight
     """
-    def __init__(self, lambd=0.025, alpha=0.3, gamma=2):
+    def __init__(self, lambd=0.05, alpha=0.3, gamma=2):
         """
 
         :param lambd: loss = lambd * trigger + (1 - lambd) * argument
@@ -184,6 +184,7 @@ class JointEE_Loss(nn.Module):
         super(JointEE_Loss, self).__init__()
         self.lambd = lambd
         self.focal = tools.FocalWeight(alpha, gamma)
+        self.argument_focal = tools.FocalWeight(0.95, 2)
 
         # record
         self.last_trigger_loss, self.last_argument_loss = 0., 0.
@@ -248,6 +249,10 @@ class JointEE_Loss(nn.Module):
 
 
 class JointEE_MaskLoss(nn.Module):
+    def __init__(self, lambd=0.1):
+        super(JointEE_MaskLoss, self).__init__()
+        self.lambd = lambd
+
     def forward(self,
                 trigger_start: torch.Tensor,
                 trigger_end: torch.Tensor,
@@ -299,7 +304,7 @@ class JointEE_MaskLoss(nn.Module):
         argument_loss = sum(argument_start_losses) + sum(argument_end_losses)
         # argument loss
 
-        loss = trigger_loss + argument_loss
+        loss = self.lambd * trigger_loss + (1 - self.lambd) * argument_loss
         return loss
 
 
@@ -383,13 +388,16 @@ class UseModel:
     def __init__(self, state_dict_path: str, init_params_path: str, use_gpu: bool = False, plm_path: str = EE_settings.default_plm_path, dataset_type: str = 'Duee'):
         # 首先加载初始化模型所使用的参数
         init_params = pickle.load(open(init_params_path, 'rb'))
-        init_params['use_cuda'] = False
+        init_params['use_cuda'] = use_gpu
         self.model = JointEE(**init_params)
+        self.use_gpu = use_gpu
         self.model.eval()
         if not use_gpu:
             self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cpu')))
         else:
             self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cuda')))
+            self.model.aem.to('cuda')
+            self.model.tem.to('cuda')
 
         if dataset_type == 'FewFC':
             self.event_types = EE_settings.event_types_full

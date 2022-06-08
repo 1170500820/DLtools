@@ -1,9 +1,14 @@
 from bert_event_detection import UseModel
+from work.EE.EE_utils import load_jsonl, dump_jsonl
+from tqdm import tqdm
 
 state_dict_path = '../../../checkpoint/save.state_dict.BertED.Duee.Default.best.pth'
 init_params_path = '../../../checkpoint/save.init_params.BertED.Duee.Default.best.pk'
 plm_path = 'bert-base-chinese'
 dataset_type = 'Duee'
+
+test_file_dir = '../../../data/NLP/EventExtraction/duee/duee_test2.json/'
+test_file_name = 'duee_test2.json'
 
 examples = [
     "雀巢裁员4000人：时代抛弃你时，连招呼都不会打！",
@@ -12,12 +17,33 @@ examples = [
 ]
 
 
+def predict_test():
+    test_data = load_jsonl(test_file_dir + test_file_name)
+    model = UseModel(
+        state_dict_path=state_dict_path,
+        init_params_path=init_params_path,
+        use_gpu=True,
+        plm_path=plm_path,
+        dataset_type=dataset_type
+    )
+    results = []
+    for elem in tqdm(test_data):
+        content, cid = elem['text'], elem['id']
+        e_type = model(content)
+        results.append({
+            'text': content,
+            'id': cid,
+            "type": e_type
+        })
+    dump_jsonl(results, test_file_dir + 'test.type.duee.json')
+
+
 def main():
     print('加载模型中...', end='')
     model = UseModel(
         state_dict_path=state_dict_path,
         init_params_path=init_params_path,
-        use_gpu=False,
+        use_gpu=True,
         plm_path=plm_path,
         dataset_type=dataset_type
     )
@@ -31,5 +57,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    predict_test()
 
