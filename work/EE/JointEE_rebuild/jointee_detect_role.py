@@ -3,6 +3,7 @@
 """
 from work.EE.JointEE_rebuild.jointee import *
 from work.EE.PLMEE.argument_extraction_model import ArgumentDetectionModel_woSyntactic
+from evaluate.evaluator import fullword_f1_count_trigger
 
 
 def tokenspans2events_wo_role_type(event_types: StrList, triggers: List[SpanList], arguments: List[List[SpanList]], content: str = '', offset_mapping = None):
@@ -201,7 +202,7 @@ class JointEE_DetectRole(nn.Module):
 
 
 class JointEE_DetectRole_Loss(nn.Module):
-    def __init__(self, lambd=0.05, alpha=0.3, gamma=2):
+    def __init__(self, lambd=0.3, alpha=0.3, gamma=2):
         """
 
         :param lambd: loss = lambd * trigger + (1 - lambd) * argument
@@ -231,8 +232,8 @@ class JointEE_DetectRole_Loss(nn.Module):
         :param trigger_end: (bsz, seq_l, 1)
         :param trigger_label_start:
         :param trigger_label_end:
-        :param argument_start: (bsz, seq_l, role_cnt)
-        :param argument_end: (bsz, seq_l, role_cnt)
+        :param argument_start: (bsz, seq_l, 1)
+        :param argument_end: (bsz, seq_l, 1)
         :param argument_label_start:
         :param argument_label_end:
         :return: loss
@@ -272,4 +273,252 @@ class JointEE_DetectRole_Loss(nn.Module):
         self.last_argument_preds = (argument_start_np, argument_end_np)
 
         return loss
+
+
+class JointEE_DetectRole_Evaluator(BaseEvaluator):
+    """
+    f1 and ccks
+    """
+    def __init__(self):
+        super(JointEE_DetectRole_Evaluator, self).__init__()
+        self.gt_lst = []
+        self.pred_lst = []
+        self.info_dict = {
+            'main': 'argument f1'
+        }
+
+    def eval_single(self, pred, gt):
+        self.gt_lst.append(copy.deepcopy(gt))
+        self.pred_lst.append(copy.deepcopy(pred))
+
+    def eval_step(self) -> Dict[str, Any]:
+
+        # 评测计算过程
+        trig_total, trig_predict, trig_correct = 0, 0, 0
+        arg_total, arg_predict, arg_correct = 0, 0, 0
+        for idx, elem_gt in enumerate(self.gt_lst):
+            elem_pred = self.pred_lst[idx]
+            elem_trig_total, elem_trig_predict, elem_trig_correct = fullword_f1_count_trigger(elem_pred['events'],
+                                                                                              elem_gt['events'])
+            trig_total += elem_trig_total
+            trig_predict += elem_trig_predict
+            trig_correct += elem_trig_correct
+            pred_roles = set()
+            gt_roles = set()
+            for elem_event in elem_pred['events']:
+                for elem_mention in elem_event['mentions']:
+                    if elem_mention['role'] == '':
+                        pred_roles.add(tuple(elem_mention['span']))
+            for elem_event in elem_gt['events']:
+                for elem_mention in elem_event['mentions']:
+                    if elem_mention['role'] == '':
+                        gt_roles.add(tuple(elem_mention['span']))
+            arg_total += len(gt_roles)
+            arg_predict += len(pred_roles)
+            arg_correct += len(gt_roles.intersection(pred_roles))
+        trig_precision = trig_correct / trig_predict if trig_predict != 0 else 0
+        trig_recall = trig_correct / trig_total if trig_total != 0 else 0
+        trig_f1 = 2 * trig_precision * trig_recall / (trig_precision + trig_recall) if (
+                                                                                               trig_precision + trig_recall) != 0 else 0
+        arg_precision = arg_correct / arg_predict if arg_predict != 0 else 0
+        arg_recall = arg_correct / arg_total if arg_total != 0 else 0
+        arg_f1 = 2 * arg_precision * arg_recall / (arg_precision + arg_recall) if (
+                                                                                              arg_precision + arg_recall) != 0 else 0
+
+        f1_result = {
+            "trigger precision": trig_precision,
+            'trigger recall': trig_recall,
+            'trigger f1': trig_f1,
+            'argument precision': arg_precision,
+            'argument recall': arg_recall,
+            'argument f1': arg_f1
+        }
+        self.gt_lst = []
+        self.pred_lst = []
+        f1_result['info'] = self.info_dict
+        return f1_result
+
+
+def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default_bsz, shuffle: bool = EE_settings.default_shuffle, dataset_type: str = 'Duee'):
+    if dataset_type == 'FewFC':
+        event_types = EE_settings.event_types_full
+        role_types = EE_settings.role_types
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
+    else:
+        raise Exception(f'{dataset_type}数据集不存在！')
+    train_dataset = SimpleDataset(data_dicts)
+
+    def collate_fn(lst):
+        """
+        expect output:
+
+        {
+            sentence,
+            event_type,
+            trigger_span_gt,
+        }, {
+            trigger_label_start,
+            trigger_label_end,
+            argument_label_start,
+            argument_label_end,
+        }
+        :param lst:
+        :return:
+        """
+        data_dict = tools.transpose_list_of_dict(lst)
+        bsz = len(lst)
+
+        sentence_lst = data_dict['content']
+        input_ids = data_dict['input_ids']
+        max_seq_l = max(list(len(x) for x in input_ids)) - 2
+        event_type_lst = data_dict['event_type']
+        trigger_span_gt_lst = data_dict['trigger_token_span']
+        arg_spans_lst = data_dict['argument_token_spans']
+
+        trigger_label_start, trigger_label_end = torch.zeros((bsz, max_seq_l, 1)), torch.zeros((bsz, max_seq_l, 1))
+        argument_label_start, argument_label_end = torch.zeros((bsz, max_seq_l, 1)), torch.zeros((bsz, max_seq_l, 1))
+
+        for i_batch in range(bsz):
+            # trigger
+            trigger_span = trigger_span_gt_lst[i_batch]
+            trigger_label_start[i_batch][trigger_span[0] - 1][0] = 1
+            trigger_label_end[i_batch][trigger_span[1] - 1][0] = 1
+            # argument
+            for e_role in arg_spans_lst[i_batch]:
+                role_type_idx, role_span = e_role
+                argument_label_start[i_batch][role_span[0] - 1][0] = 1
+                argument_label_end[i_batch][role_span[1] - 1][0] = 1
+
+        new_trigger_span_list = []
+        for elem in trigger_span_gt_lst:
+            new_trigger_span_list.append([elem[0] - 1, elem[1] - 1])
+
+        return {
+            'sentences': sentence_lst,
+            'event_types': event_type_lst,
+            'triggers': new_trigger_span_list
+               }, {
+            'trigger_label_start': trigger_label_start,
+            'trigger_label_end': trigger_label_end,
+            'argument_label_start': argument_label_start,
+            'argument_label_end': argument_label_end
+        }
+
+    train_dataloader = DataLoader(train_dataset, batch_size=bsz, shuffle=shuffle, collate_fn=collate_fn)
+
+    return train_dataloader
+
+
+def valid_dataset_factory(data_dicts: List[dict], dataset_type: str = 'Duee'):
+    if dataset_type == 'FewFC':
+        event_types = EE_settings.event_types_full
+        role_types = EE_settings.role_types
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
+    else:
+        raise Exception(f'{dataset_type}数据集不存在！')
+    valid_dataset = SimpleDataset(data_dicts)
+
+    def collate_fn(lst):
+        """
+        input:
+            - sentences
+            - event_types
+            - offset_mapping
+        eval:
+            - gt
+        :param lst:
+        :return:
+        """
+        data_dict = tools.transpose_list_of_dict(lst)
+        bsz = len(lst)
+
+        sentences = data_dict['content']
+        events = data_dict['events'][0]
+        for elem_event in events:
+            mentions = elem_event['mentions']
+            for elem_mention in mentions:
+                if elem_mention['role'] != 'trigger':
+                    elem_mention['role'] = ''
+        event_types = []
+        offset_mappings = data_dict['offset_mapping']
+
+        gt = []
+        for elem in lst:
+            gt.append({
+                'id': '',
+                'content': elem['content'],
+                'events': elem['events']
+            })
+            event_types.append(list(x['type'] for x in events))
+        return {
+            'sentences': sentences,
+            'event_types': event_types,
+            'offset_mappings': offset_mappings
+               }, {
+            'gt': gt[0]
+        }
+
+    valid_dataloader = DataLoader(valid_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
+
+    return valid_dataloader
+
+
+def dataset_factory(train_file: str, valid_file: str, bsz: int = EE_settings.default_bsz, shuffle: bool = EE_settings.default_shuffle, dataset_type: str = 'Duee'):
+    train_data_dicts = pickle.load(open(train_file, 'rb'))
+    valid_data_dicts = pickle.load(open(valid_file, 'rb'))
+    print(f'dataset_type: {dataset_type}')
+
+    train_dataloader = train_dataset_factory(train_data_dicts, bsz=bsz, shuffle=shuffle, dataset_type=dataset_type)
+    valid_dataloader = valid_dataset_factory(valid_data_dicts, dataset_type=dataset_type)
+
+    return train_dataloader, valid_dataloader
+
+
+def generate_trial_data(dataset_type: str):
+    if dataset_type == 'Duee':
+        train_file = 'temp_data/train.Duee.labeled.pk'
+        valid_file = 'temp_data/valid.Duee.tokenized.pk'
+    elif dataset_type == 'FewFC':
+        # train_file = 'temp_data/train.PLMEE_Trigger.FewFC.labeled.pk'
+        # valid_file = 'temp_data/valid.PLMEE_Trigger.FewFC.gt.pk'
+        pass
+    else:
+        return None, None, None, None
+
+    bsz = 4
+    shuffle = False
+
+    train_data_dicts = pickle.load(open(train_file, 'rb'))
+    valid_data_dicts = pickle.load(open(valid_file, 'rb'))
+
+    train_dataloader = train_dataset_factory(train_data_dicts, bsz=bsz, shuffle=shuffle, dataset_type=dataset_type)
+    valid_dataloader = valid_dataset_factory(valid_data_dicts, dataset_type=dataset_type)
+
+    limit = 5
+    train_data, valid_data = [], []
+    for idx, (train_sample, valid_sample) in enumerate(list(zip(train_dataloader, valid_dataloader))):
+        train_data.append(train_sample)
+        valid_data.append(valid_sample)
+    return train_dataloader, train_data, valid_dataloader, valid_data
+
+
+class UseModel:
+    pass
+
+model_registry = {
+    'model': JointEE_DetectRole,
+    'loss': JointEE_DetectRole_Loss,
+    'evaluator': JointEE_DetectRole_Evaluator,
+    'train_val_data': dataset_factory,
+    'recorder': NaiveRecorder,
+    'use_model': UseModel
+}
+
+
+if __name__ == '__main__':
+    train_dataloader, train_data, valid_dataloader, valid_data = generate_trial_data('Duee')
 
