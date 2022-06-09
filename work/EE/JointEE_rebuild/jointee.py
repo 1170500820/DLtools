@@ -319,7 +319,7 @@ class JointEE_Evaluator(BaseEvaluator):
         self.ccks_evaluator = CcksEvaluator()
         self.f1_evaluator = EE_F1Evaluator()
         self.info_dict = {
-            'main': 'f1score'
+            'main': 'argument f1'
         }
 
     def eval_single(self, pred, gt):
