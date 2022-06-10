@@ -64,9 +64,9 @@ class JointEE_Mask(nn.Module):
         #   Sentence Representation
         #self.sentence_representation = SentenceRepresentation(self.plm_path, self.use_cuda)
         self.tokenizer = BertTokenizerFast.from_pretrained(plm_path)
-        self.PLM = BertModel(plm_path)
+        self.PLM = BertModel.from_pretrained(plm_path)
 
-        self.hidden_size = self.sentence_representation.hidden_size
+        self.hidden_size = self.PLM.config.hidden_size
 
         #   Conditional Layer Normalization
         self.weight_map = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
@@ -151,7 +151,8 @@ class JointEE_Mask(nn.Module):
         # tokenize
         tokenized = self.tokenizer(concated, padding=True, truncation=True, return_tensors='pt',
                                    return_offsets_mapping=True)
-        offsets_mapping = tokenized['offset_mapping']
+        offsets_mapping = tokenized['offset_mapping'].tolist()
+        offsets_mapping = list(tuple(x) for x in offsets_mapping)
         if self.use_cuda:
             input_ids, token_type_ids, attention_mask = tokenized['input_ids'].cuda(), tokenized[
                 'token_type_ids'].cuda(), \
@@ -237,7 +238,7 @@ class JointEE_Mask(nn.Module):
             pooled_cur_H_c = torch.mean(cur_H_c, dim=0)  # (1, hidden)
             H_cs.append(pooled_cur_H_c)
             H_ss.append(embed[i_batch])
-        H_c = torch.stack(H_cs)  # (bsz, 1, hidden)
+        H_c = torch.stack(H_cs).unsqueeze(1)  # (bsz, 1, hidden)
         H_s = torch.stack(H_ss)  # (bsz, max_real_seq_l, hidden)
 
         H_s_type = self._conditional_layer_normalization(H_s, H_c, attention_mask)  # (bsz, max_real_seq_l, hidden)
@@ -254,7 +255,7 @@ class JointEE_Mask(nn.Module):
                     rpe[idx] = idx - cur_span[1]
             rpes.append(rpe.unsqueeze(dim=1))   # (seq_l, 1)
         RPE = torch.stack(rpes)  # (bsz, seq_l, 1)
-        if self.to_cuda:
+        if self.use_cuda:
             RPE = RPE.cuda()
         # todo 还需要生成relative positional embeddings
         return H_s_type, RPE
@@ -263,7 +264,8 @@ class JointEE_Mask(nn.Module):
     def forward(self,
                 sentences: List[str],
                 event_types: Union[List[str], List[StrList]],
-                triggers: SpanList = None):
+                triggers: SpanList = None,
+                offset_mappings = None):
         """
         Train Phase:
             event_types为List[str]，与sentences中的句子一一对应，也与triggers中的每个span一一对应。
@@ -303,14 +305,15 @@ class JointEE_Mask(nn.Module):
             # arg_H_s_type: (bsz, max_real_seq_l, hidden)
 
             # Argument Extraction
-            arg_start, arg_end = self.aem(arg_H_s_type, attention_mask)
+            arg_start, arg_end = self.aem(arg_H_s_type, rpes, attention_mask)
             # both (bsz, max_real_seq_l, len(role_types))
 
             return {
                 'trigger_start': trigger_start,  # (bsz, max_real_seq_l, 1)
                 'trigger_end': trigger_end,
                 'argument_start': arg_start,  # (bsz, max_real_seq_l, role_cnt)
-                'argument_end': arg_end
+                'argument_end': arg_end,
+                'mask': attention_mask
             }
 
         else:  # eval phase
@@ -323,13 +326,12 @@ class JointEE_Mask(nn.Module):
             for elem_sentence_type in event_types[0]:
                 # elem_sentence_type: str
                 embed, tokenized = self._sentence_representation(sentences, [elem_sentence_type])  # (bsz, max_real_seq_l, hidden)
-                offset_mapping = tokenized['offset_mapping']
-                offset_mappings.append(offset_mapping)
+                offset_mappings = tokenized['offset_mapping']
                 H_s, H_c, attention_mask = self._slice_embedding(embed, tokenized)
                 H_s_type = self._conditional_layer_normalization(H_s, H_c, attention_mask)  # (bsz, max_real_seq_l, hidden)
 
                 # Trigger Extraction
-                trigger_start_tensor, trigger_end_tensor = self.tem(H_s_type)  # (bsz, max_seq_l, 1)
+                trigger_start_tensor, trigger_end_tensor = self.tem(H_s_type, attention_mask)  # (bsz, max_seq_l, 1)
                 trigger_start_tensor, trigger_end_tensor = trigger_start_tensor.squeeze(), trigger_end_tensor.squeeze()
                 # (max_seq_l)
                 trigger_start_result = (trigger_start_tensor > self.trigger_threshold).int().tolist()
@@ -340,7 +342,7 @@ class JointEE_Mask(nn.Module):
                 arg_spans: List[List[SpanList]] = []
                 for elem_trigger_span in cur_spans:
                     arg_H_s_type, rpes = self._trigger_sentence_representation(H_s_type, [elem_trigger_span], attention_mask)
-                    argument_start_tensor, argument_end_tensor = self.aem(arg_H_s_type, rpes)
+                    argument_start_tensor, argument_end_tensor = self.aem(arg_H_s_type, rpes, attention_mask)
                     # (1, max_seq_l, len(role_types))
                     argument_start_tensor = argument_start_tensor.squeeze().T  # (role cnt, max_seq_l)
                     argument_end_tensor = argument_end_tensor.squeeze().T  # (role cnt, max_seq_l)
@@ -465,7 +467,7 @@ class ArgumentExtractionModelMask_woSyntactic(nn.Module):
 
         # initiate network structures
         #   self-attention
-        self.self_attn = nn.MultiheadAttention(embed_dim=self.hidden_size, num_heads=self.n_head, dropout=self.dropout_prob)
+        self.self_attn = nn.MultiheadAttention(embed_dim=self.hidden_size, num_heads=self.n_head, dropout=self.dropout_prob, batch_first=True)
         #   FCN for finding triggers
         self.fcn_start = nn.Linear(self.hidden_size * 2 + 1, len(self.role_types))
         self.fcn_end = nn.Linear(self.hidden_size * 2 + 1, len(self.role_types))
@@ -496,7 +498,7 @@ class ArgumentExtractionModelMask_woSyntactic(nn.Module):
         :return:
         """
         # self attention (multihead attention)
-        attn_out, attn_out_weights = self.self_attn(cln_embeds, cln_embeds, cln_embeds, key_padding_mask = attention_mask)
+        attn_out, attn_out_weights = self.self_attn(cln_embeds, cln_embeds, cln_embeds, key_padding_mask=attention_mask)
         # attn_out: (bsz, seq_l, hidden)
 
         # concatenation
@@ -534,7 +536,7 @@ class JointEE_MaskLoss(nn.Module):
         :param trigger_start:
         :param trigger_end: (bsz, seq_l, 1)
         :param trigger_label_start:
-        :param trigger_label_end: (bsz, seq_l)
+        :param trigger_label_end: (bsz, seq_l, 1)
         :param argument_start:
         :param argument_end: (bsz, seq_l, role_cnt)
         :param argument_label_start:
@@ -542,9 +544,9 @@ class JointEE_MaskLoss(nn.Module):
         :param mask: (bsz, seq_l)
         :return:
         """
-
+        mask = mask.unsqueeze(-1)
         bsz = mask.shape[0]
-        concat_mask = mask[:, 1:-1]  # mask需要裁剪，因为原句没有CLS与SEP
+        #concat_mask = mask[:, 1:-1]  # mask需要裁剪，因为原句没有CLS与SEP
         role_cnt = argument_start.shape[-1]
 
         trigger_start_losses, trigger_end_losses = [], []
@@ -552,8 +554,8 @@ class JointEE_MaskLoss(nn.Module):
         for i_batch in range(bsz):
             start_loss = F.binary_cross_entropy(trigger_start[i_batch], trigger_label_start[i_batch], reduction='none')
             end_loss = F.binary_cross_entropy(trigger_end[i_batch], trigger_label_end[i_batch], reduction='none')
-            start_loss = torch.sum(start_loss * concat_mask[i_batch]) / torch.sum(concat_mask[i_batch])
-            end_loss = torch.sum(end_loss * concat_mask[i_batch]) / torch.sum(concat_mask[i_batch])
+            start_loss = torch.sum(start_loss * mask[i_batch]) / torch.sum(mask[i_batch])
+            end_loss = torch.sum(end_loss * mask[i_batch]) / torch.sum(mask[i_batch])
             trigger_start_losses.append(start_loss)
             trigger_end_losses.append(end_loss)
         trigger_loss = sum(trigger_start_losses) + sum(trigger_end_losses)
@@ -563,8 +565,8 @@ class JointEE_MaskLoss(nn.Module):
         for i_batch in range(bsz):
             start_loss = F.binary_cross_entropy(argument_start[i_batch], argument_label_start[i_batch], reduction='none')
             end_loss = F.binary_cross_entropy(argument_end[i_batch], argument_label_end[i_batch], reduction='none')
-            start_loss = torch.sum(start_loss * concat_mask[i_batch]) / (torch.sum(concat_mask[i_batch]) * role_cnt)
-            end_loss = torch.sum(end_loss * concat_mask[i_batch]) / (torch.sum(concat_mask[i_batch]) * role_cnt)
+            start_loss = torch.sum(start_loss * mask[i_batch]) / (torch.sum(mask[i_batch]) * role_cnt)
+            end_loss = torch.sum(end_loss * mask[i_batch]) / (torch.sum(mask[i_batch]) * role_cnt)
             argument_start_losses.append(start_loss)
             argument_end_losses.append(end_loss)
         argument_loss = sum(argument_start_losses) + sum(argument_end_losses)
