@@ -341,6 +341,20 @@ def convert_dict_to_cuda(dict_of_tensor: Dict[str, Any]):
     return dict_of_tensor
 
 
+def padded_stack(list_of_tensor: List[torch.Tensor], pad_value: float = 0):
+    """
+    在长度较短的tensor后面pad，然后stack
+    :param list_of_tensor: (*, x, y, ...) 第一维度可以不一样，其余维度必须一样
+    :param pad_value:
+    :return:
+    """
+    shapes = list(list(x.shape) for x in list_of_tensor)
+    shape_lengths = set(len(x) for x in shapes)
+    if len(shape_lengths) > 1:
+        raise Exception(f'[padded_stack]list_of_tensor中所有tensor的维度数应该相同。得到的维度数：{shape_lengths}')
+    # todo
+
+
 """
 Task Oriented - Modified Data in Dict
 此处的部分function是通用的，也有一些function是针对由Dict组织的数据进行处理的。

@@ -44,7 +44,7 @@ class ConditionalLayerNormalization(nn.Module):
         repr_mean = torch.mean(representation, dim=-1, keepdim=True)   # (bsz, 1, hidden)
         repr_var = torch.var(representation, dim=-1, unbiased=False, keepdim=True)  # (bsz, 1, hidden)
         normed_repr = (representation - repr_mean) / torch.sqrt(repr_var + self.eps)  # (bsz, seq_l, hidden)
-        denormed_repr = torch.multiply(weight, normed_repr) + bias # weight and bias (bsz, 1, hidden_size)
+        denormed_repr = torch.multiply(weight, normed_repr) + bias  # weight and bias (bsz, 1, hidden_size)
 
         # 这个CLN可以手动实现吗
         return denormed_repr

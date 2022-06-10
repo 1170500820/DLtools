@@ -45,7 +45,7 @@ class SentenceRepresentation(nn.Module):
         seq_ls = []
         for s in range(bsz):
             cur_H_c = output[0][s][1:sep_positions[s * 2]] # (type_l, hidden)
-            pooled_cur_H_c = torch.div(torch.sum(cur_H_c, dim=0), cur_H_c.size()[0]).unsqueeze(dim=0)    # (1, hidden)
+            pooled_cur_H_c = torch.div(torch.sum(cur_H_c, dim=0), cur_H_c.size()[0]).unsqueeze(dim=0)  # (1, hidden)
             # pooled_cur_H_c = torch.ones(pooled_cur_H_c.size())
             H_cs.append(pooled_cur_H_c)
             H_ss.append(output[0][s][sep_positions[s * 2] + 1: sep_positions[s * 2 + 1]]) # (seq_l, hidden)

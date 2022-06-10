@@ -248,65 +248,6 @@ class JointEE_Loss(nn.Module):
         return loss
 
 
-class JointEE_MaskLoss(nn.Module):
-    def __init__(self, lambd=0.1):
-        super(JointEE_MaskLoss, self).__init__()
-        self.lambd = lambd
-
-    def forward(self,
-                trigger_start: torch.Tensor,
-                trigger_end: torch.Tensor,
-                trigger_label_start: torch.Tensor,
-                trigger_label_end: torch.Tensor,
-                argument_start: torch.Tensor,
-                argument_end: torch.Tensor,
-                argument_label_start: torch.Tensor,
-                argument_label_end: torch.Tensor,
-                mask: torch.Tensor):
-        """
-
-        :param trigger_start:
-        :param trigger_end: (bsz, seq_l, 1)
-        :param trigger_label_start:
-        :param trigger_label_end: (bsz, seq_l)
-        :param argument_start:
-        :param argument_end: (bsz, seq_l, role_cnt)
-        :param argument_label_start:
-        :param argument_label_end:  (bsz, seq_l, role_cnt)
-        :param mask: (bsz, seq_l)
-        :return:
-        """
-
-        bsz = mask.shape[0]
-        concat_mask = mask[:, 1:-1]  # mask需要裁剪，因为原句没有CLS与SEP
-        role_cnt = argument_start.shape[-1]
-
-        trigger_start_losses, trigger_end_losses = [], []
-        # trigger loss
-        for i_batch in range(bsz):
-            start_loss = F.binary_cross_entropy(trigger_start[i_batch], trigger_label_start[i_batch], reduction='none')
-            end_loss = F.binary_cross_entropy(trigger_end[i_batch], trigger_label_end[i_batch], reduction='none')
-            start_loss = torch.sum(start_loss * concat_mask[i_batch]) / torch.sum(concat_mask[i_batch])
-            end_loss = torch.sum(end_loss * concat_mask[i_batch]) / torch.sum(concat_mask[i_batch])
-            trigger_start_losses.append(start_loss)
-            trigger_end_losses.append(end_loss)
-        trigger_loss = sum(trigger_start_losses) + sum(trigger_end_losses)
-
-        # argument loss
-        argument_start_losses, argument_end_losses = [], []
-        for i_batch in range(bsz):
-            start_loss = F.binary_cross_entropy(argument_start[i_batch], argument_label_start[i_batch], reduction='none')
-            end_loss = F.binary_cross_entropy(argument_end[i_batch], argument_label_end[i_batch], reduction='none')
-            start_loss = torch.sum(start_loss * concat_mask[i_batch]) / (torch.sum(concat_mask[i_batch]) * role_cnt)
-            end_loss = torch.sum(end_loss * concat_mask[i_batch]) / (torch.sum(concat_mask[i_batch]) * role_cnt)
-            argument_start_losses.append(start_loss)
-            argument_end_losses.append(end_loss)
-        argument_loss = sum(argument_start_losses) + sum(argument_end_losses)
-        # argument loss
-
-        loss = self.lambd * trigger_loss + (1 - self.lambd) * argument_loss
-        return loss
-
 
 class JointEE_Evaluator(BaseEvaluator):
     """
