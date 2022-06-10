@@ -151,8 +151,9 @@ class JointEE_Mask(nn.Module):
         # tokenize
         tokenized = self.tokenizer(concated, padding=True, truncation=True, return_tensors='pt',
                                    return_offsets_mapping=True)
-        offsets_mapping = tokenized['offset_mapping'].tolist()
-        offsets_mapping = list(tuple(x) for x in offsets_mapping)
+        # 对不包含类型对原句进行tokenize。只需要其中的offset_mapping
+        tokenized_no_type = self.tokenizer(sentences, padding=True, truncation=True, return_offsets_mapping=True)
+        offsets_mapping = tokenized_no_type['offset_mapping']
         if self.use_cuda:
             input_ids, token_type_ids, attention_mask = tokenized['input_ids'].cuda(), tokenized[
                 'token_type_ids'].cuda(), \

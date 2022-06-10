@@ -248,7 +248,6 @@ class JointEE_Loss(nn.Module):
         return loss
 
 
-
 class JointEE_Evaluator(BaseEvaluator):
     """
     f1 and ccks
