@@ -371,6 +371,7 @@ class JointEE_Mask(nn.Module):
         others_optimizer = AdamW(params=chain(aem_params, tem_params, cln_bias_params, cln_weight_params, [self.t, self.bias]), lr=self.others_lr)
         return [plm_optimizer, others_optimizer]
 
+
 class TriggerExtractionLayerMask_woSyntactic(nn.Module):
     """
     初始化参数:
@@ -440,7 +441,7 @@ class TriggerExtractionLayerMask_woSyntactic(nn.Module):
             start_logits = start_logits.unsqueeze(dim=0)
             end_logits = end_logits.unsqueeze(dim=0)
         # sigmoid
-        starts, ends = F.sigmoid(start_logits).unsqueeze(dim=-1), F.sigmoid(end_logits).unsqueeze(dim=-1)  # got both (bsz, seq_l)
+        starts, ends = torch.sigmoid(start_logits).unsqueeze(dim=-1), torch.sigmoid(end_logits).unsqueeze(dim=-1)  # got both (bsz, seq_l)
         return starts, ends
 
 
@@ -512,7 +513,7 @@ class ArgumentExtractionModelMask_woSyntactic(nn.Module):
         start_logits, end_logits = self.fcn_start(final_repr), self.fcn_end(final_repr)
         # start_logits and end_logits: (bsz, seq_l, len(role_types))
 
-        starts, ends = F.sigmoid(start_logits), F.sigmoid(end_logits)
+        starts, ends = torch.sigmoid(start_logits), torch.sigmoid(end_logits)
         # starts and ends: (bsz, seq_l, len(role_types))
         return starts, ends
 
