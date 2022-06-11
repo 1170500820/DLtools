@@ -276,7 +276,8 @@ class JointEE_RoleOnly(nn.Module):
 
             return {
                 "argument_start": argument_start,
-                "argument_end": argument_end
+                "argument_end": argument_end,
+                'mask': attention_mask
             }
         else:  # eval phase
             if len(sentences) != 1:
@@ -450,8 +451,66 @@ class JointEE_RoleOnly_Evaluator(BaseEvaluator):
         for idx, elem_gt in enumerate(self.gt_lst):
             elem_pred = self.pred_lst[idx]
 
-            # 首先计算都有的事件类型
+            # 对于FewFC格式的数据，先讲同事件类型的数据合并，然后整理成event_list的格式。
+            gt_event_list = []
+            event_dict = {}
+            for elem_event in elem_gt['events']:
+                event_type = elem_event['type']
+                arguments = set()
+                for elem_mention in elem_event['mentions']:
+                    if elem_mention['role'] == 'trigger':
+                        continue
+                    arguments.add((elem_mentions['role'], elem_mention['word']))
+                if event_type not in event_dict:
+                    event_dict[event_type] = arguments
+                else:
+                    event_dict[event_type] = event_dict[event_type].union(arguments)
+            for key, value in event_dict.items():
+                gt_event_list.append({
+                    'event_type': key,
+                    'arguments': list({'role': x[0], 'argument': x[1]} for x in value)
+                })
+            
+            # 然后计算匹配值。
+            #   先找出二者预测的事件类型。
+            pred, total, corr = 0, 0, 0
+            gt_event_types = set(x['event_type'] for x in gt_event_list)
+            pred_event_types = set(x['event_type'] for x in elem_pred)
+            pred_event_dict = {x['event_type']: x['arguments'] for x in pred_event_types}
+            gt_event_dict = {x['event_type']: x['arguments'] for x in gt_event_types}
+            both_contains = gt_event_types.intersection(pred_event_types)
+            gt_extra = gt_event_types - pred_event_types
+            pred_extra = pred_event_types - gt_event_types
+            #   首先对重合的类型进行计算
+            for e_type in both_contains:
+                pred_words = set((x['role'], x['argument']) for x in pred_event_dict[e_type])
+                gt_words = set((x['role'], x['argument']) for x in gt_event_dict[e_type])
+                pred += len(pred_words)
+                total += len(gt_words)
+                corr += len(pred_words.intersection(gt_words))
+            # 然后分别计算各有的
+            for e_type in gt_extra:
+                total += len(gt_event_dict[e_type])
+            for e_type in pred_extra:
+                pred += len(pred_event_dict[e_type])
+            
+            arg_total += total
+            arg_predict += pred
+            arg_correct += corr
+        
+                arg_precision = arg_correct / arg_predict if arg_predict != 0 else 0
+        arg_recall = arg_correct / arg_total if arg_total != 0 else 0
+        arg_f1 = 2 * arg_precision * arg_recall / (arg_precision + arg_recall) if (arg_precision + arg_recall) != 0 else 0
 
+        result = {
+            'argument precision': arg_precision,
+            'argument recall': arg_recall,
+            'argument f1': arg_f1
+        }    
+        self.gt_lst = []
+        self.pred_lst = []
+        result['info'] = self.info_dict
+        return result
 
 
 def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default_bsz, shuffle: bool = EE_settings.default_shuffle, dataset_type: str = 'Duee'):
@@ -489,34 +548,21 @@ def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default
         input_ids = data_dict['input_ids']
         max_seq_l = max(list(len(x) for x in input_ids)) - 2
         event_type_lst = data_dict['event_type']
-        trigger_span_gt_lst = data_dict['trigger_token_span']
         arg_spans_lst = data_dict['argument_token_spans']
 
-        trigger_label_start, trigger_label_end = torch.zeros((bsz, max_seq_l, 1)), torch.zeros((bsz, max_seq_l, 1))
         argument_label_start, argument_label_end = torch.zeros((bsz, max_seq_l, len(role_types))), torch.zeros((bsz, max_seq_l, len(role_types)))
 
         for i_batch in range(bsz):
-            # trigger
-            trigger_span = trigger_span_gt_lst[i_batch]
-            trigger_label_start[i_batch][trigger_span[0] - 1] = 1
-            trigger_label_end[i_batch][trigger_span[1] - 1] = 1
             # argument
             for e_role in arg_spans_lst[i_batch]:
                 role_type_idx, role_span = e_role
                 argument_label_start[i_batch][role_span[0] - 1][role_type_idx] = 1
                 argument_label_end[i_batch][role_span[1] - 1][role_type_idx] = 1
 
-        new_trigger_span_list = []
-        for elem in trigger_span_gt_lst:
-            new_trigger_span_list.append([elem[0] - 1, elem[1] - 1])
-
         return {
             'sentences': sentence_lst,
             'event_types': event_type_lst,
-            'triggers': new_trigger_span_list
                }, {
-            'trigger_label_start': trigger_label_start,
-            'trigger_label_end': trigger_label_end,
             'argument_label_start': argument_label_start,
             'argument_label_end': argument_label_end
         }
