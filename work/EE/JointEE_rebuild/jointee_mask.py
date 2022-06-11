@@ -519,9 +519,10 @@ class ArgumentExtractionModelMask_woSyntactic(nn.Module):
 
 
 class JointEE_MaskLoss(nn.Module):
-    def __init__(self, lambd=0.1):
+    def __init__(self, lambd=0.1, pref=2):
         super(JointEE_MaskLoss, self).__init__()
         self.lambd = lambd
+        self.arg_pos_pref_weight = tools.PosPrefWeight(pref)
 
     def forward(self,
                 trigger_start: torch.Tensor,
@@ -565,8 +566,10 @@ class JointEE_MaskLoss(nn.Module):
         # argument loss
         argument_start_losses, argument_end_losses = [], []
         for i_batch in range(bsz):
-            start_loss = F.binary_cross_entropy(argument_start[i_batch], argument_label_start[i_batch], reduction='none')
-            end_loss = F.binary_cross_entropy(argument_end[i_batch], argument_label_end[i_batch], reduction='none')
+            start_weight = self.arg_pos_pref_weight(argument_label_start[i_batch])
+            end_weight = self.arg_pos_pref_weight(argument_label_end[i_batch])
+            start_loss = F.binary_cross_entropy(argument_start[i_batch], argument_label_start[i_batch], start_weight, reduction='none')
+            end_loss = F.binary_cross_entropy(argument_end[i_batch], argument_label_end[i_batch], end_weight, reduction='none')
             start_loss = torch.sum(start_loss * mask[i_batch]) / (torch.sum(mask[i_batch]) * role_cnt)
             end_loss = torch.sum(end_loss * mask[i_batch]) / (torch.sum(mask[i_batch]) * role_cnt)
             argument_start_losses.append(start_loss)
