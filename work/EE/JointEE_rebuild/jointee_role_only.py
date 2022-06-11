@@ -24,6 +24,7 @@ from work.EE.JointEE_rebuild.jointee_mask import TriggerExtractionLayerMask_woSy
 from models.model_utils import get_init_params
 from analysis.recorder import NaiveRecorder
 from utils import tools, tokenize_tools
+from utils.data import SimpleDataset
 
 
 def output_convert(event_types: StrList, arguments: List[List[SpanList]], role_types: List[str], content: str, offset_mapping=None):
@@ -47,7 +48,7 @@ def output_convert(event_types: StrList, arguments: List[List[SpanList]], role_t
         predicted_arguments = []
         for i_roletype in range(len(arguments[i_event])):
             cur_roletype = role_types[i_roletype]
-            temp = list(map(lambda x: tokenize_tools.tokenSpan_to_charSpan((x[0] + 1, x[1] + 1), offset_mapping), arguments[i][j][k]))
+            temp = list(map(lambda x: tokenize_tools.tokenSpan_to_charSpan((x[0] + 1, x[1] + 1), offset_mapping), arguments[i_event][i_roletype]))
             new_temp = list((x[0], x[1] + 1) for x in temp)
             arguments[i_event][i_roletype] = new_temp
             for elem_span in new_temp:
@@ -95,6 +96,7 @@ class JointEE_RoleOnly(nn.Module):
         self.others_lr = others_lr
         self.argument_threshold = argument_threshold
         self.use_cuda = use_cuda
+        self.dataset_type = dataset_type
 
         # initiate network structures
         #   Sentence Representation
@@ -114,11 +116,12 @@ class JointEE_RoleOnly(nn.Module):
 
         #   Argument Extraction
         #       因为这里是把
-        self.aem = TriggerExtractionLayerMask_woSyntactic(
+        self.aem = ArgumentExtractionLayerMask_Direct(
             num_heads=self.n_head,
             hidden_size=self.hidden_size,
             d_head=self.d_head,
-            dropout_prob=self.hidden_dropout_prob)
+            dropout_prob=self.hidden_dropout_prob,
+            dataset_type=dataset_type)
         #   Triggered Sentence Representation
         #     不需要
 
@@ -287,7 +290,7 @@ class JointEE_RoleOnly(nn.Module):
             for elem_sentence_type in event_types[0]:
                 # elem_sentence_type: str
                 embed, tokenized = self._sentence_representation(sentences, [elem_sentence_type])  # (bsz, max_real_seq_l, hidden)
-                offset_mappings = tokenized['offset_mapping']
+                offset_mappings = tokenized['offset_mapping'][0]
                 H_s, H_c, attention_mask = self._slice_embedding(embed, tokenized)
                 H_s_type = self._conditional_layer_normalization(H_s, H_c, attention_mask)  # (bsz, max_real_seq_l, hidden)
 
@@ -307,10 +310,19 @@ class JointEE_RoleOnly(nn.Module):
                     role_for_cur_type.append(cur_arg_spans)
                 cur_spanses.append(role_for_cur_type)  # List[List[SpanList]]
 
-            result = output_convert(event_types[0], cur_spanses, self.role_types, sentences[0])
+            result = output_convert(event_types[0], cur_spanses, self.role_types, sentences[0], offset_mappings)
             return {
                 'pred': result
             }
+
+    def get_optimizers(self):
+        repr_plm_params = self.PLM.parameters()
+        cln_weight_params = self.weight_map.parameters()
+        cln_bias_params = self.bias_map.parameters()
+        aem_params = self.aem.parameters()
+        plm_optimizer = AdamW(params=repr_plm_params, lr=self.plm_lr)
+        others_optimizer = AdamW(params=chain(aem_params, cln_bias_params, cln_weight_params, [self.t, self.bias]), lr=self.others_lr)
+        return [plm_optimizer, others_optimizer]
 
 
 class ArgumentExtractionLayerMask_Direct(nn.Module):
@@ -418,8 +430,8 @@ class JointEE_RoleOnly_Loss(nn.Module):
 
         argument_start_losses, argument_end_losses = [], []
         for i_batch in range(bsz):
-            start_weight = self.arg_pos_pref_weight(argument_label_start[i_batch]).cuda()
-            end_weight = self.arg_pos_pref_weight(argument_label_end[i_batch]).cuda()
+            start_weight = self.pos_pref_weight(argument_label_start[i_batch]).cuda()
+            end_weight = self.pos_pref_weight(argument_label_end[i_batch]).cuda()
             start_loss = F.binary_cross_entropy(argument_start[i_batch], argument_label_start[i_batch], start_weight,
                                                 reduction='none')
             end_loss = F.binary_cross_entropy(argument_end[i_batch], argument_label_end[i_batch], end_weight,
@@ -449,7 +461,7 @@ class JointEE_RoleOnly_Evaluator(BaseEvaluator):
     def eval_step(self) -> Dict[str, Any]:
         arg_total, arg_predict, arg_correct = 0, 0, 0
         for idx, elem_gt in enumerate(self.gt_lst):
-            elem_pred = self.pred_lst[idx]
+            elem_pred = self.pred_lst[idx]['event_list']
 
             # 对于FewFC格式的数据，先讲同事件类型的数据合并，然后整理成event_list的格式。
             gt_event_list = []
@@ -460,7 +472,7 @@ class JointEE_RoleOnly_Evaluator(BaseEvaluator):
                 for elem_mention in elem_event['mentions']:
                     if elem_mention['role'] == 'trigger':
                         continue
-                    arguments.add((elem_mentions['role'], elem_mention['word']))
+                    arguments.add((elem_mention['role'], elem_mention['word']))
                 if event_type not in event_dict:
                     event_dict[event_type] = arguments
                 else:
@@ -476,8 +488,8 @@ class JointEE_RoleOnly_Evaluator(BaseEvaluator):
             pred, total, corr = 0, 0, 0
             gt_event_types = set(x['event_type'] for x in gt_event_list)
             pred_event_types = set(x['event_type'] for x in elem_pred)
-            pred_event_dict = {x['event_type']: x['arguments'] for x in pred_event_types}
-            gt_event_dict = {x['event_type']: x['arguments'] for x in gt_event_types}
+            pred_event_dict = {x['event_type']: x['arguments'] for x in elem_pred}
+            gt_event_dict = {x['event_type']: x['arguments'] for x in gt_event_list}
             both_contains = gt_event_types.intersection(pred_event_types)
             gt_extra = gt_event_types - pred_event_types
             pred_extra = pred_event_types - gt_event_types
@@ -613,7 +625,6 @@ def valid_dataset_factory(data_dicts: List[dict], dataset_type: str = 'Duee'):
         return {
             'sentences': sentences,
             'event_types': event_types,
-            'offset_mappings': offset_mappings
                }, {
             'gt': gt[0]
         }
