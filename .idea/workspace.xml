@@ -1,0 +1,677 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="ea7cc512-aa64-46cf-8f6b-3689fcff2350" name="Changes" comment="fixed untracked files" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="DjangoConsoleOptions" custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)">
+    <option name="myCustomStartScript" value="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FlaskConsoleOptions" custom-start-script="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))">
+    <envs>
+      <env key="FLASK_APP" value="app" />
+    </envs>
+    <option name="myCustomStartScript" value="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))" />
+    <option name="myEnvs">
+      <map>
+        <entry key="FLASK_APP" value="app" />
+      </map>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="PREVIOUS_COMMIT_AUTHORS">
+      <list>
+        <option value="giere" />
+      </list>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="SIGN_OFF_COMMIT" value="true" />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="GitToolBoxStore">
+    <option name="projectConfigVersion" value="5" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/data/NLP/huggingface_dataset/msra_ner/msra_ner_preprocess.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/evaluate/evaluator.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/playground.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/train/predictor.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/train/trainer.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/utils/data.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/utils/format_convert.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/utils/stanza_tools.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/utils/tokenize_tools.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/utils/tools.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/work/EE/PLMEE/joint.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/work/NER/NER_utils.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/work/NewsCorrelation/newsco_settings.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/work/NewsCorrelation/newsco_utils.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/work/NewsCorrelation/raw_BERT.py" root0="FORCE_HIGHLIGHTING" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="1wlYt7c0W39mw3yv2w6fQIdhSF5" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <OptionsSetting value="false" id="Update" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/zhoushuzhe/Code/DLtools/data/NLP/translate_evaluate&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/data/NLP/translate_evaluate" />
+      <recent name="$PROJECT_DIR$/data/NLP/translate/news_commentary" />
+      <recent name="$PROJECT_DIR$/data/NLP/translate/FM-IQA" />
+      <recent name="$PROJECT_DIR$/data/NLP/translate/ASPEC" />
+      <recent name="$PROJECT_DIR$/data/NLP/translate/BUCC" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate" />
+      <recent name="$PROJECT_DIR$/work/NewsCorrelation" />
+      <recent name="$PROJECT_DIR$/data/NLP/news_sim/data" />
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/work/EE" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.playground">
+    <configuration name="bert_event_detection" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DLtools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/work/EE/ED" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/work/EE/ED/bert_event_detection.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="jointee" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DLtools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="jointee_detect_role" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DLtools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee_detect_role.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="DLtools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="playground" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="DLtools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/playground.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="preprocess (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DLtools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/work/EE/JointEE_rebuild/preprocess.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="preprocess (2)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DLtools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/work/EE/ED" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/work/EE/ED/preprocess.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="run" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="DLtools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/run.py" />
+      <option name="PARAMETERS" value="--task train --model work.EE.PLMEE_rebuild.plmee_trigger + --dataset_type Duee --plm_path bert-base-chinese --train_file work/EE/PLMEE_rebuild/temp_data/train.PLMEE_Trigger.Duee.labeled.pk --valid_file work/EE/PLMEE_rebuild/temp_data/valid.PLMEE_Trigger.Duee.gt.pk --bsz 16 --use_cuda --epoch 20 --control_name PLMEE_Trigger.Duee.Default" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.playground" />
+      <item itemvalue="Python.run" />
+      <item itemvalue="Python.main" />
+      <item itemvalue="Python.jointee_detect_role" />
+      <item itemvalue="Python.bert_event_detection" />
+      <item itemvalue="Python.preprocess (2)" />
+      <item itemvalue="Python.jointee" />
+      <item itemvalue="Python.preprocess (1)" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.jointee_detect_role" />
+        <item itemvalue="Python.bert_event_detection" />
+        <item itemvalue="Python.preprocess (2)" />
+        <item itemvalue="Python.jointee" />
+        <item itemvalue="Python.preprocess (1)" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration">
+    <configuration>$USER_HOME$/.subversion</configuration>
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="添加了用于处理图的一些工具函数" />
+    <MESSAGE value="加入了对多GPU运行的支持" />
+    <MESSAGE value="initial" />
+    <MESSAGE value="更新了数据集加载相关" />
+    <MESSAGE value="加入了对FewFC中role的中文翻译" />
+    <MESSAGE value="修改了modify_key_of_dict中对dict遍历时没有使用dict.items()的bug" />
+    <MESSAGE value="修改了batchify_ndarray1d的bug" />
+    <MESSAGE value="修正了网络结构，并对空预测结果做了调整，使[SEP]不会出现在预测结果中了" />
+    <MESSAGE value="添加了生成1：1数据的选项" />
+    <MESSAGE value="CASREL复现中" />
+    <MESSAGE value="重新实现了PLMEE" />
+    <MESSAGE value="加入了新的char span与token span的转换" />
+    <MESSAGE value="将部分函数移到EE_utils.py" />
+    <MESSAGE value="JointEE创建目录" />
+    <MESSAGE value="改bug，不能直接在模型的中间变量tensor上修改值" />
+    <MESSAGE value="plmee的trigger抽取部分的模型" />
+    <MESSAGE value="PLMEE_Trigger支持Duee数据集" />
+    <MESSAGE value="修正了tokenSpan_to_charSpan的bug" />
+    <MESSAGE value="change loss to average" />
+    <MESSAGE value="加入了加载模型并输出预测结果的部分" />
+    <MESSAGE value="修正了递归调用子模块时，初始化顺序相反的bug" />
+    <MESSAGE value="修正了tokenSpan_to_charSpan在token_span处于句子结尾时会产生非法的span导致生成的word为空的情况" />
+    <MESSAGE value="将trainer中的callback改为callable类型" />
+    <MESSAGE value="update" />
+    <MESSAGE value="fixed untracked files" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixed untracked files" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/main.py</url>
+          <line>8</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/process/data_processor_type.py</url>
+          <line>452</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/simil.py</url>
+          <line>17</line>
+          <option name="timeStamp" value="17" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/similarity/baseline_model.py</url>
+          <line>33</line>
+          <option name="timeStamp" value="20" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/process/typed_processor_utils.py</url>
+          <line>321</line>
+          <option name="timeStamp" value="29" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/process/data_processor_type.py</url>
+          <line>259</line>
+          <option name="timeStamp" value="34" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/EE/PLMEE/joint.py</url>
+          <line>646</line>
+          <option name="timeStamp" value="36" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/EE/PLMEE/joint.py</url>
+          <line>659</line>
+          <option name="timeStamp" value="37" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/analysis/converter.py</url>
+          <line>7</line>
+          <option name="timeStamp" value="43" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/NER/BERT/bert_ner.py</url>
+          <line>239</line>
+          <option name="timeStamp" value="44" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/NER/BERT/bert_ner.py</url>
+          <line>240</line>
+          <option name="timeStamp" value="45" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/PR_Lab/mnist_setting.py</url>
+          <option name="timeStamp" value="46" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/data/NLP/InformationExtraction/generate.py</url>
+          <line>99</line>
+          <option name="timeStamp" value="53" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/RE/RE_utils.py</url>
+          <line>311</line>
+          <option name="timeStamp" value="61" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/NotInFrame/Semeval8NewsCorrelation-main/main.py</url>
+          <line>58</line>
+          <option name="timeStamp" value="62" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/utils/infer.py</url>
+          <line>229</line>
+          <option name="timeStamp" value="65" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/utils/infer.py</url>
+          <line>175</line>
+          <option name="timeStamp" value="66" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/NewsCorrelation/templatecode/NewsCorrelation/model/xlmr_only.py</url>
+          <line>4</line>
+          <option name="timeStamp" value="73" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$USER_HOME$/Downloads/Baseline.py</url>
+          <line>62</line>
+          <option name="timeStamp" value="76" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$USER_HOME$/Downloads/Baseline.py</url>
+          <line>27</line>
+          <option name="timeStamp" value="77" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/NewsCorrelation/raw_BERT.py</url>
+          <line>272</line>
+          <option name="timeStamp" value="100" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/data/NLP/paperswithcode_dataset/ChineseClassifierDataset-master/data/ChineseClassifier_preprocess.py</url>
+          <line>82</line>
+          <option name="timeStamp" value="123" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/data/NLP/huggingface_dataset/msra_ner/msra_ner_preprocess.py</url>
+          <line>44</line>
+          <option name="timeStamp" value="124" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/data/NLP/paperswithcode_dataset/ChineseClassifierDataset-master/data/ChineseClassifier_preprocess.py</url>
+          <line>42</line>
+          <option name="timeStamp" value="125" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/data/NLP/paperswithcode_dataset/ChFinAnn/Data/ChFinAnn_preprocess.py</url>
+          <line>118</line>
+          <option name="timeStamp" value="126" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/train/trainer.py</url>
+          <line>209</line>
+          <option name="timeStamp" value="168" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/data/NLP/translate/infos.py</url>
+          <line>63</line>
+          <option name="timeStamp" value="169" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/Translate/translate_all.py</url>
+          <line>64</line>
+          <option name="timeStamp" value="177" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/Cascade/get_statistics.py</url>
+          <line>61</line>
+          <option name="timeStamp" value="181" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/Cascade/get_statistics.py</url>
+          <line>16</line>
+          <option name="timeStamp" value="182" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$USER_HOME$/Downloads/offline.py</url>
+          <line>1059</line>
+          <option name="timeStamp" value="183" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/EE/JointEE_rebuild/preprocess.py</url>
+          <line>50</line>
+          <option name="timeStamp" value="186" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee.py</url>
+          <line>467</line>
+          <option name="timeStamp" value="192" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/EE/ED/bert_event_detection.py</url>
+          <line>264</line>
+          <option name="timeStamp" value="193" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/run.py</url>
+          <line>121</line>
+          <option name="timeStamp" value="194" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/run.py</url>
+          <line>118</line>
+          <option name="timeStamp" value="195" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/utils/run_tools.py</url>
+          <line>416</line>
+          <option name="timeStamp" value="196" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/EE/PLMEE/sentence_representation_layer.py</url>
+          <line>30</line>
+          <option name="timeStamp" value="198" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+    <watches-manager>
+      <configuration name="PythonConfigurationType">
+        <watch expression="model." language="Python" />
+        <watch expression="model.shared_encoder.bert" language="Python" />
+      </configuration>
+    </watches-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/DLtools$check__1_.coverage" NAME="check (1) Coverage Results" MODIFIED="1649853541468" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/WikiMatrix" />
+    <SUITE FILE_PATH="coverage/DLtools$plmee_argument.coverage" NAME="plmee_argument Coverage Results" MODIFIED="1649412699707" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/PLMEE_rebuild" />
+    <SUITE FILE_PATH="coverage/DLtools$EE_utils.coverage" NAME="EE_utils Coverage Results" MODIFIED="1649246500757" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE" />
+    <SUITE FILE_PATH="coverage/DLtools$bert_ner.coverage" NAME="bert_ner Coverage Results" MODIFIED="1637627435801" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/NER/BERT" />
+    <SUITE FILE_PATH="coverage/DLtools$para_pat_preprocess.coverage" NAME="para_pat_preprocess Coverage Results" MODIFIED="1649699938249" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/para_pat" />
+    <SUITE FILE_PATH="coverage/DLtools$XL_R2R_preprocess.coverage" NAME="XL-R2R_preprocess Coverage Results" MODIFIED="1649823168368" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/XL-R2R" />
+    <SUITE FILE_PATH="coverage/DLtools$chid_preprocess.coverage" NAME="chid_preprocess Coverage Results" MODIFIED="1643210127943" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/CLUE/chid_public" />
+    <SUITE FILE_PATH="coverage/DLtools$newsco_utils.coverage" NAME="newsco_utils Coverage Results" MODIFIED="1643385952433" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/NewsCorrelation" />
+    <SUITE FILE_PATH="coverage/DLtools$opus_infopankki_preprocess.coverage" NAME="opus_infopankki_preprocess Coverage Results" MODIFIED="1649699788422" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/opus_infopankki" />
+    <SUITE FILE_PATH="coverage/DLtools$tokenize_tools.coverage" NAME="tokenize_tools Coverage Results" MODIFIED="1648370011394" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
+    <SUITE FILE_PATH="coverage/DLtools$simil.coverage" NAME="simil Coverage Results" MODIFIED="1630933343000" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work" />
+    <SUITE FILE_PATH="coverage/DLtools$CHIP_STS_preprocess.coverage" NAME="CHIP-STS_preprocess Coverage Results" MODIFIED="1645514584087" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CBLUE/CHIP-STS" />
+    <SUITE FILE_PATH="coverage/DLtools$xcopa_preprocess.coverage" NAME="xcopa_preprocess Coverage Results" MODIFIED="1649695511087" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/xcopa" />
+    <SUITE FILE_PATH="coverage/DLtools$SPR_preprocess.coverage" NAME="SPR_preprocess Coverage Results" MODIFIED="1646301182790" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言理解能力-篇章级_幽默检测_SPR_SPR" />
+    <SUITE FILE_PATH="coverage/DLtools$ted_iwlst2013_preprocess.coverage" NAME="ted_iwlst2013_preprocess Coverage Results" MODIFIED="1649728065674" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/ted_iwlst2013" />
+    <SUITE FILE_PATH="coverage/DLtools$basic.coverage" NAME="basic Coverage Results" MODIFIED="1632034844562" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/PLMEE" />
+    <SUITE FILE_PATH="coverage/DLtools$LCQMC_preprocess.coverage" NAME="LCQMC_preprocess Coverage Results" MODIFIED="1645502531590" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/LCQMC/lcqmc" />
+    <SUITE FILE_PATH="coverage/DLtools$WordSeg_Weibo_preprocess.coverage" NAME="WordSeg-Weibo_preprocess Coverage Results" MODIFIED="1645403838686" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言理解能力-词句级_中文分词_WordSeg-Weibo_WordSeg-Weibo" />
+    <SUITE FILE_PATH="coverage/DLtools$get_walk_statistics.coverage" NAME="get_walk_statistics Coverage Results" MODIFIED="1650421253654" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/Cascade" />
+    <SUITE FILE_PATH="coverage/DLtools$baseline_model.coverage" NAME="baseline_model Coverage Results" MODIFIED="1631413983813" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/similarity" />
+    <SUITE FILE_PATH="coverage/DLtools$RRS_preprocess.coverage" NAME="RRS_preprocess Coverage Results" MODIFIED="1645194388367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/restoration-200k-dataset" />
+    <SUITE FILE_PATH="coverage/DLtools$CHIP_CDN_preprocess.coverage" NAME="CHIP-CDN_preprocess Coverage Results" MODIFIED="1645450213487" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CBLUE/CHIP-CDN" />
+    <SUITE FILE_PATH="coverage/DLtools$E_Reviews_preprocess.coverage" NAME="E-Reviews_preprocess Coverage Results" MODIFIED="1645437650704" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言生成能力_数据到文本生成_E-Reviews_E-Reviews" />
+    <SUITE FILE_PATH="coverage/DLtools$wmt20_mlqe_task1_preprocess.coverage" NAME="wmt20_mlqe_task1_preprocess Coverage Results" MODIFIED="1649726325900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/wmt20_mlqe_task1" />
+    <SUITE FILE_PATH="coverage/DLtools$MATINF_preprocess.coverage" NAME="MATINF_preprocess Coverage Results" MODIFIED="1646350102281" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/MATINF" />
+    <SUITE FILE_PATH="coverage/DLtools$tanzil_preprocess.coverage" NAME="tanzil_preprocess Coverage Results" MODIFIED="1649728923500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/tanzil" />
+    <SUITE FILE_PATH="coverage/DLtools$test1.coverage" NAME="test1 Coverage Results" MODIFIED="1639014700726" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/news_sim" />
+    <SUITE FILE_PATH="coverage/DLtools$preprocess.coverage" NAME="preprocess Coverage Results" MODIFIED="1651680294029" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/DualQA" />
+    <SUITE FILE_PATH="coverage/DLtools$Helsinki_NLP_tatoeba_mt_preprocess.coverage" NAME="Helsinki-NLP-tatoeba_mt_preprocess Coverage Results" MODIFIED="1649751701060" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/Helsinki-NLP-tatoeba_mt" />
+    <SUITE FILE_PATH="coverage/DLtools$xtreme_preprocess.coverage" NAME="xtreme_preprocess Coverage Results" MODIFIED="1649759968026" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/xtreme" />
+    <SUITE FILE_PATH="coverage/DLtools$generate_random_walk.coverage" NAME="generate_random_walk Coverage Results" MODIFIED="1650419760016" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/Cascade" />
+    <SUITE FILE_PATH="coverage/DLtools$.coverage" NAME=" Coverage Results" MODIFIED="1630758762226" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/process" />
+    <SUITE FILE_PATH="coverage/DLtools$bert_event_detection.coverage" NAME="bert_event_detection Coverage Results" MODIFIED="1654212637142" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/ED" />
+    <SUITE FILE_PATH="coverage/DLtools$similarity_model.coverage" NAME="similarity_model Coverage Results" MODIFIED="1647446454438" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/DualQA/varify" />
+    <SUITE FILE_PATH="coverage/DLtools$converter.coverage" NAME="converter Coverage Results" MODIFIED="1635002976925" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/analysis" />
+    <SUITE FILE_PATH="coverage/DLtools$conventer.coverage" NAME="conventer Coverage Results" MODIFIED="1634547087145" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/analysis" />
+    <SUITE FILE_PATH="coverage/DLtools$flat_script.coverage" NAME="flat_script Coverage Results" MODIFIED="1635766501849" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/NER/FLAT" />
+    <SUITE FILE_PATH="coverage/DLtools$GCRC_preprocess.coverage" NAME="GCRC_preprocess Coverage Results" MODIFIED="1645752322195" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言理解能力-篇章级_阅读理解_GCRC_GCRC" />
+    <SUITE FILE_PATH="coverage/DLtools$dual_qa.coverage" NAME="dual_qa Coverage Results" MODIFIED="1647502978378" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/DualQA" />
+    <SUITE FILE_PATH="coverage/DLtools$simple_server.coverage" NAME="simple_server Coverage Results" MODIFIED="1648086407370" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DLtools$FinRE_preprocess.coverage" NAME="FinRE_preprocess Coverage Results" MODIFIED="1646314628980" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言理解能力-词句级_实体关系抽取_FinRE_FinRE" />
+    <SUITE FILE_PATH="coverage/DLtools$xSID_preprocess.coverage" NAME="xSID_preprocess Coverage Results" MODIFIED="1649835814160" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/xSID" />
+    <SUITE FILE_PATH="coverage/DLtools$ASPEC_preprocess.coverage" NAME="ASPEC_preprocess Coverage Results" MODIFIED="1649843486644" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/ASPEC" />
+    <SUITE FILE_PATH="coverage/DLtools$CCPM_preprocess.coverage" NAME="CCPM_preprocess Coverage Results" MODIFIED="1646316810674" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CCPM-master" />
+    <SUITE FILE_PATH="coverage/DLtools$build_data.coverage" NAME="build_data Coverage Results" MODIFIED="1638170513188" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/InformationExtraction/NYT" />
+    <SUITE FILE_PATH="coverage/DLtools$generate.coverage" NAME="generate Coverage Results" MODIFIED="1638169997707" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/InformationExtraction/NYT" />
+    <SUITE FILE_PATH="coverage/DLtools$translate_all.coverage" NAME="translate_all Coverage Results" MODIFIED="1650260211928" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/Translate" />
+    <SUITE FILE_PATH="coverage/DLtools$ChFinAnn_preprocess.coverage" NAME="ChFinAnn_preprocess Coverage Results" MODIFIED="1646277329755" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/ChFinAnn/Data" />
+    <SUITE FILE_PATH="coverage/DLtools$gsarti_wmt_vat_preprocess.coverage" NAME="gsarti-wmt_vat_preprocess Coverage Results" MODIFIED="1649746863950" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/gsarti-wmt_vat" />
+    <SUITE FILE_PATH="coverage/DLtools$loader.coverage" NAME="loader Coverage Results" MODIFIED="1647046806803" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/dataset" />
+    <SUITE FILE_PATH="coverage/DLtools$xquad_preprocess.coverage" NAME="xquad_preprocess Coverage Results" MODIFIED="1649728229469" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/xquad" />
+    <SUITE FILE_PATH="coverage/DLtools$main__1_.coverage" NAME="main (1) Coverage Results" MODIFIED="1638872680620" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/NotInFrame/Semeval8NewsCorrelation-main" />
+    <SUITE FILE_PATH="coverage/DLtools$un_pc_preprocess.coverage" NAME="un_pc_preprocess Coverage Results" MODIFIED="1649702025553" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/un_pc" />
+    <SUITE FILE_PATH="coverage/DLtools$stsb_multi_mt_preprocess.coverage" NAME="stsb_multi_mt_preprocess Coverage Results" MODIFIED="1649689005457" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/stsb_multi_mt" />
+    <SUITE FILE_PATH="coverage/DLtools$stanza_tools.coverage" NAME="stanza_tools Coverage Results" MODIFIED="1643387350145" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
+    <SUITE FILE_PATH="coverage/DLtools$generate__1_.coverage" NAME="generate (1) Coverage Results" MODIFIED="1638317978005" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/InformationExtraction" />
+    <SUITE FILE_PATH="coverage/DLtools$preprocess__1_.coverage" NAME="preprocess (1) Coverage Results" MODIFIED="1654089570310" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
+    <SUITE FILE_PATH="coverage/DLtools$CMRC2019_preprocess.coverage" NAME="CMRC2019_preprocess Coverage Results" MODIFIED="1645183165005" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/cmrc2019-master/data" />
+    <SUITE FILE_PATH="coverage/DLtools$ChineseClassifier_preprocess.coverage" NAME="ChineseClassifier_preprocess Coverage Results" MODIFIED="1646312661277" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/ChineseClassifierDataset-master/data" />
+    <SUITE FILE_PATH="coverage/DLtools$test.coverage" NAME="test Coverage Results" MODIFIED="1650636356654" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE" />
+    <SUITE FILE_PATH="coverage/DLtools$smith.coverage" NAME="smith Coverage Results" MODIFIED="1636506065965" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DLtools$preprocess_xSID.coverage" NAME="preprocess_xSID Coverage Results" MODIFIED="1646296793389" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/xSID/data" />
+    <SUITE FILE_PATH="coverage/DLtools$joint.coverage" NAME="joint Coverage Results" MODIFIED="1632648701270" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/PLMEE" />
+    <SUITE FILE_PATH="coverage/DLtools$PKU_SEG_preprocess.coverage" NAME="PKU-SEG_preprocess Coverage Results" MODIFIED="1646300653519" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言理解能力-词句级_中文分词_PKU-SEG_PKU-SEG" />
+    <SUITE FILE_PATH="coverage/DLtools$ee_dataset.coverage" NAME="ee_dataset Coverage Results" MODIFIED="1639382291165" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/dataset" />
+    <SUITE FILE_PATH="coverage/DLtools$score.coverage" NAME="score Coverage Results" MODIFIED="1650295695662" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate_evaluate" />
+    <SUITE FILE_PATH="coverage/DLtools$task_preprocess.coverage" NAME="task_preprocess Coverage Results" MODIFIED="1646791453013" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/EventExtraction/ChFinAnn" />
+    <SUITE FILE_PATH="coverage/DLtools$BiPaR_preprocess.coverage" NAME="BiPaR_preprocess Coverage Results" MODIFIED="1649813764054" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/BiPaR" />
+    <SUITE FILE_PATH="coverage/DLtools$Baseline.coverage" NAME="Baseline Coverage Results" MODIFIED="1642226833938" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/Downloads" />
+    <SUITE FILE_PATH="coverage/DLtools$msra_ner_preprocess.coverage" NAME="msra_ner_preprocess Coverage Results" MODIFIED="1645493398101" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/msra_ner" />
+    <SUITE FILE_PATH="coverage/DLtools$jointee.coverage" NAME="jointee Coverage Results" MODIFIED="1654090145344" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
+    <SUITE FILE_PATH="coverage/DLtools$opus100_preprocess.coverage" NAME="opus100_preprocess Coverage Results" MODIFIED="1649698269958" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/opus100" />
+    <SUITE FILE_PATH="coverage/DLtools$plmee_trigger.coverage" NAME="plmee_trigger Coverage Results" MODIFIED="1649238253042" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/PLMEE_rebuild" />
+    <SUITE FILE_PATH="coverage/DLtools$format_convert.coverage" NAME="format_convert Coverage Results" MODIFIED="1637135985014" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
+    <SUITE FILE_PATH="coverage/DLtools$RE_utils.coverage" NAME="RE_utils Coverage Results" MODIFIED="1647708173158" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/RE" />
+    <SUITE FILE_PATH="coverage/DLtools$ClozeT_preprocess.coverage" NAME="ClozeT_preprocess Coverage Results" MODIFIED="1645412736333" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言理解能力-篇章级_故事情节完形填空_ClozeT_ClozeT" />
+    <SUITE FILE_PATH="coverage/DLtools$Movie_test.coverage" NAME="Movie test Coverage Results" MODIFIED="1641995545382" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/Downloads" />
+    <SUITE FILE_PATH="coverage/DLtools$Fashion_MMT_preprocess.coverage" NAME="Fashion-MMT_preprocess Coverage Results" MODIFIED="1649820255128" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/Fashion-MMT" />
+    <SUITE FILE_PATH="coverage/DLtools$evaluate.coverage" NAME="evaluate Coverage Results" MODIFIED="1650293874900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/Translate" />
+    <SUITE FILE_PATH="coverage/DLtools$check.coverage" NAME="check Coverage Results" MODIFIED="1649851215540" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/news_commentary" />
+    <SUITE FILE_PATH="coverage/DLtools$BMELD_preprocess.coverage" NAME="BMELD_preprocess Coverage Results" MODIFIED="1649812320644" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/BMELD" />
+    <SUITE FILE_PATH="coverage/DLtools$WantWords_preprocess.coverage" NAME="WantWords_preprocess Coverage Results" MODIFIED="1645776665803" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_信息获取及问答能力_反向词典_WantWords_WantWords" />
+    <SUITE FILE_PATH="coverage/DLtools$data_processor.coverage" NAME="data_processor Coverage Results" MODIFIED="1629093277666" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/process" />
+    <SUITE FILE_PATH="coverage/DLtools$cascade_utils.coverage" NAME="cascade_utils Coverage Results" MODIFIED="1649924036611" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/Cascade" />
+    <SUITE FILE_PATH="coverage/DLtools$CJRC_preprocess.coverage" NAME="CJRC_preprocess Coverage Results" MODIFIED="1645180992615" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CJRC" />
+    <SUITE FILE_PATH="coverage/DLtools$news_commentary_preprocess.coverage" NAME="news_commentary_preprocess Coverage Results" MODIFIED="1649851469998" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/news_commentary" />
+    <SUITE FILE_PATH="coverage/DLtools$un_multi_preprocess.coverage" NAME="un_multi_preprocess Coverage Results" MODIFIED="1649726596566" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/un_multi" />
+    <SUITE FILE_PATH="coverage/DLtools$PKU_SEGPOS_preprocess.coverage" NAME="PKU-SEGPOS_preprocess Coverage Results" MODIFIED="1645406465358" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言理解能力-词句级_中文分词和词性标注_PKU-SEGPOS_PKU-SEGPOS" />
+    <SUITE FILE_PATH="coverage/DLtools$ParaCrawl_preprocess.coverage" NAME="ParaCrawl_preprocess Coverage Results" MODIFIED="1649860474225" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/ParaCrawl" />
+    <SUITE FILE_PATH="coverage/DLtools$record_tools.coverage" NAME="record_tools Coverage Results" MODIFIED="1637201736516" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/analysis" />
+    <SUITE FILE_PATH="coverage/DLtools$code_x_glue_tt_text_to_text_preprocess.coverage" NAME="code_x_glue_tt_text_to_text_preprocess Coverage Results" MODIFIED="1649728411253" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/code_x_glue_tt_text_to_text" />
+    <SUITE FILE_PATH="coverage/DLtools$infos.coverage" NAME="infos Coverage Results" MODIFIED="1649860752299" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate" />
+    <SUITE FILE_PATH="coverage/DLtools$run.coverage" NAME="run Coverage Results" MODIFIED="1654309938431" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DLtools$run_tools.coverage" NAME="run_tools Coverage Results" MODIFIED="1647587302169" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
+    <SUITE FILE_PATH="coverage/DLtools$mkqa_preprocess.coverage" NAME="mkqa_preprocess Coverage Results" MODIFIED="1649730120680" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/mkqa" />
+    <SUITE FILE_PATH="coverage/DLtools$preprocess__2_.coverage" NAME="preprocess (2) Coverage Results" MODIFIED="1654195790759" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/ED" />
+    <SUITE FILE_PATH="coverage/DLtools$jointee_detect_role.coverage" NAME="jointee_detect_role Coverage Results" MODIFIED="1654711317939" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
+    <SUITE FILE_PATH="coverage/DLtools$un_ga_preprocess.coverage" NAME="un_ga_preprocess Coverage Results" MODIFIED="1649727941640" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/un_ga" />
+    <SUITE FILE_PATH="coverage/DLtools$spc_preprocess.coverage" NAME="spc_preprocess Coverage Results" MODIFIED="1649729055531" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/spc" />
+    <SUITE FILE_PATH="coverage/DLtools$infer.coverage" NAME="infer Coverage Results" MODIFIED="1639141526529" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
+    <SUITE FILE_PATH="coverage/DLtools$CHIP_CTC_preprocess.coverage" NAME="CHIP-CTC_preprocess Coverage Results" MODIFIED="1646302508150" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CBLUE/CHIP-CTC" />
+    <SUITE FILE_PATH="coverage/DLtools$alt_preprocess.coverage" NAME="alt_preprocess Coverage Results" MODIFIED="1649701903098" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/alt" />
+    <SUITE FILE_PATH="coverage/DLtools$merge_file.coverage" NAME="merge_file Coverage Results" MODIFIED="1652700482537" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate" />
+    <SUITE FILE_PATH="coverage/DLtools$cluener_preprocess.coverage" NAME="cluener_preprocess Coverage Results" MODIFIED="1643191011754" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/CLUE/cluener_public" />
+    <SUITE FILE_PATH="coverage/DLtools$c3_preprocess.coverage" NAME="c3_preprocess Coverage Results" MODIFIED="1642734569729" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/CLUE/c3_public" />
+    <SUITE FILE_PATH="coverage/DLtools$BUCC_preprocess.coverage" NAME="BUCC_preprocess Coverage Results" MODIFIED="1649842503653" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/BUCC" />
+    <SUITE FILE_PATH="coverage/DLtools$CEPSUM_preprocess.coverage" NAME="CEPSUM_preprocess Coverage Results" MODIFIED="1646362836475" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言生成能力_摘要生成_CEPSUM_CEPSUM" />
+    <SUITE FILE_PATH="coverage/DLtools$NER_utils.coverage" NAME="NER_utils Coverage Results" MODIFIED="1638024632923" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/NER" />
+    <SUITE FILE_PATH="coverage/DLtools$WikiMatrix_preprocess.coverage" NAME="WikiMatrix_preprocess Coverage Results" MODIFIED="1649853695081" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/translate/WikiMatrix" />
+    <SUITE FILE_PATH="coverage/DLtools$playground.coverage" NAME="playground Coverage Results" MODIFIED="1650450264938" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/Cascade" />
+    <SUITE FILE_PATH="coverage/DLtools$ODSQA_preprocess.coverage" NAME="ODSQA_preprocess Coverage Results" MODIFIED="1646317335518" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/ODSQA-master" />
+    <SUITE FILE_PATH="coverage/DLtools$XQA_preprocess.coverage" NAME="XQA_preprocess Coverage Results" MODIFIED="1645699124758" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/XQA/zh" />
+    <SUITE FILE_PATH="coverage/DLtools$mnist.coverage" NAME="mnist Coverage Results" MODIFIED="1638075414906" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/PR_Lab" />
+  </component>
+  <component name="regexState">
+    <option name="map">
+      <map>
+        <entry key="flags" value="0" />
+        <entry key="mode" value="0" />
+        <entry key="regex" value="&lt;/?\w+&gt;" />
+        <entry key="replacement" value="____" />
+        <entry key="text" value="左上 是 一 &lt;CL&gt; 据 目测 1m 多 的 芦荟 , 左下 为 她 生出 的 小 &lt;h&gt;侧芽&lt;/h&gt; , 两 年 来 没 管 她 长成 这样 。" />
+      </map>
+    </option>
+  </component>
+</project>
