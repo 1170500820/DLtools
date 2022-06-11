@@ -1,11 +1,11 @@
-from jointee import UseModel
+from jointee_mask import UseModel
 from work.EE.EE_utils import load_jsonl, dump_jsonl
 from work.EE import EE_settings
 from tqdm import tqdm
 
 
-state_dict_path = '../../../checkpoint/save.state_dict.JointEE.Duee.lambda-05.argfocal_glpha_6.best.pth'
-init_params_path = '../../../checkpoint/save.init_params.JointEE.Duee.lambda-05.argfocal_glpha_6.best.pk'
+state_dict_path = '../../../checkpoint/save.state_dict.JointEE.Duee.mask.lambda-05.best.pth'
+init_params_path = '../../../checkpoint/save.init_params.JointEE.Duee.mask.lambda-05.best.pk'
 plm_path = 'bert-base-chinese'
 dataset_type = 'Duee'
 
@@ -69,7 +69,7 @@ def predict_test():
             'id': cid,
             'event_list': converted
         })
-    dump_jsonl(results, test_file_dir + 'duee.005.6.json')
+    dump_jsonl(results, test_file_dir + 'duee.mask.json')
 
 
 def main():

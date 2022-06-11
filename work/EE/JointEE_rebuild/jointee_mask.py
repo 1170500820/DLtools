@@ -17,7 +17,7 @@ import copy
 
 from work.EE.EE_utils import *
 from work.EE.JointEE_rebuild import jointee_settings
-from work.EE.JointEE_rebuild.jointee import JointEE_Evaluator, tokenspans2events, dataset_factory, UseModel, \
+from work.EE.JointEE_rebuild.jointee import JointEE_Evaluator, tokenspans2events, dataset_factory, \
     train_dataset_factory, valid_dataset_factory
 from utils import tools
 from utils.data import SimpleDataset
@@ -327,7 +327,7 @@ class JointEE_Mask(nn.Module):
             for elem_sentence_type in event_types[0]:
                 # elem_sentence_type: str
                 embed, tokenized = self._sentence_representation(sentences, [elem_sentence_type])  # (bsz, max_real_seq_l, hidden)
-                offset_mappings = tokenized['offset_mapping']
+                offset_mappings = tokenized['offset_mapping'][0]
                 H_s, H_c, attention_mask = self._slice_embedding(embed, tokenized)
                 H_s_type = self._conditional_layer_normalization(H_s, H_c, attention_mask)  # (bsz, max_real_seq_l, hidden)
 
@@ -358,7 +358,7 @@ class JointEE_Mask(nn.Module):
                 arg_spanses.append(arg_spans)
             self.trigger_spanses.append(cur_spanses)
             self.argument_spanses.append(arg_spanses)
-            result = tokenspans2events(event_types[0], cur_spanses, arg_spanses, self.role_types, sentences[0], offset_mappings[0])
+            result = tokenspans2events(event_types[0], cur_spanses, arg_spanses, self.role_types, sentences[0], offset_mappings)
             return {"pred": result}
 
     def get_optimizers(self):
@@ -609,6 +609,42 @@ def generate_trial_data(dataset_type: str):
         train_data.append(train_sample)
         valid_data.append(valid_sample)
     return train_dataloader, train_data, valid_dataloader, valid_data
+
+
+class UseModel:
+    def __init__(self, state_dict_path: str, init_params_path: str, use_gpu: bool = False, plm_path: str = EE_settings.default_plm_path, dataset_type: str = 'Duee'):
+        # 首先加载初始化模型所使用的参数
+        init_params = pickle.load(open(init_params_path, 'rb'))
+        init_params['use_cuda'] = use_gpu
+        self.model = JointEE_Mask(**init_params)
+        self.use_gpu = use_gpu
+        self.model.eval()
+        if not use_gpu:
+            self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cpu')))
+        else:
+            self.model.load_state_dict(torch.load(open(state_dict_path, 'rb'), map_location=torch.device('cuda')))
+            self.model.aem.to('cuda')
+            self.model.tem.to('cuda')
+            self.model.to('cuda')
+
+        if dataset_type == 'FewFC':
+            self.event_types = EE_settings.event_types_full
+            self.role_types = EE_settings.role_types
+        elif dataset_type == 'Duee':
+            self.event_types = EE_settings.duee_event_types
+            self.role_types = EE_settings.duee_role_types
+        else:
+            raise Exception(f'{dataset_type}数据集不存在！')
+
+        self.tokenizer = BertTokenizerFast.from_pretrained(plm_path)
+
+    def __call__(self, sentence: str, event_types: List[str]):
+        tokenized = self.tokenizer(sentence, padding=True, truncation=True, return_offsets_mapping=True)
+        token_seq = self.tokenizer.convert_ids_to_tokens(tokenized['input_ids'])
+        tokenized['token'] = token_seq
+
+        result = self.model(sentences=[sentence], event_types=[event_types], offset_mappings=[tokenized['offset_mapping']])['pred']
+        return result
 
 
 model_registry = {
