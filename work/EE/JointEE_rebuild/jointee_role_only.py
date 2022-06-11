@@ -498,7 +498,7 @@ class JointEE_RoleOnly_Evaluator(BaseEvaluator):
             arg_predict += pred
             arg_correct += corr
         
-                arg_precision = arg_correct / arg_predict if arg_predict != 0 else 0
+        arg_precision = arg_correct / arg_predict if arg_predict != 0 else 0
         arg_recall = arg_correct / arg_total if arg_total != 0 else 0
         arg_f1 = 2 * arg_precision * arg_recall / (arg_precision + arg_recall) if (arg_precision + arg_recall) != 0 else 0
 
