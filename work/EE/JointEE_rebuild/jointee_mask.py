@@ -548,7 +548,6 @@ class JointEE_MaskLoss(nn.Module):
         :param mask: (bsz, seq_l)
         :return:
         """
-        print(f'pref: {self.pref}')
         mask = mask.unsqueeze(-1)
         bsz = mask.shape[0]
         #concat_mask = mask[:, 1:-1]  # mask需要裁剪，因为原句没有CLS与SEP
