@@ -1,9 +1,6 @@
+
 # 忽略data下的所有数据，但是保留data目录
 data/*
-
-# 所有模型运行产生的输出文件存放在这里。只保留目录
-output/*
-.idea/
 
 # 忽略所有pickle文件
 *.pk
@@ -20,6 +17,9 @@ work/NotInFrame/*
 
 # 忽略用来对照的template
 work/NewsCorrelation/templatecode
+
+# 忽略从别人的库复制的代码
+Reference/
 
 # 该链接的推荐屏蔽项 https://github.com/github/gitignore/blob/master/Python.gitignore
 # Byte-compiled / optimized / DLL files
@@ -160,3 +160,4 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+fold_files/kfold-0-train.csv

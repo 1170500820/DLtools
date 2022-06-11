@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" persistUploadOnCheckin="false" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="huawei">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/szzhou/DLtools" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="matpool">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/mnt/deploy/DLtools" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="root@hz-t2.matpool.com:26549 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/mnt/deploy/DLtools" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="root@hz-t3.matpool.com:26874 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/mnt/deploy/DLtools" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="root@hz.matpool.com:29406 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/mnt/deploy/DLtools" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

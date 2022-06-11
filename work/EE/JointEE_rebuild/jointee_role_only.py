@@ -17,11 +17,51 @@ from itertools import chain
 import pickle
 import copy
 
+from evaluate.evaluator import BaseEvaluator
 from work.EE import EE_settings
 from work.EE.JointEE_rebuild import jointee_settings
 from work.EE.JointEE_rebuild.jointee_mask import TriggerExtractionLayerMask_woSyntactic
 from models.model_utils import get_init_params
-from utils import tools
+from analysis.recorder import NaiveRecorder
+from utils import tools, tokenize_tools
+
+
+def output_convert(event_types: StrList, arguments: List[List[SpanList]], role_types: List[str], content: str, offset_mapping=None):
+    """
+    将模型输出转换为DuEE比赛的输出格式
+    :param event_types:
+    :param arguments:
+    :param role_types:
+    :param content:
+    :param offset_mapping:
+    :return:
+    """
+    result = {
+        'id': None,
+        'event_list': None
+    }
+    event_list = []
+    # convert arguments span
+    for i_event in range(len(arguments)):
+        cur_event_type = event_types[i_event]
+        predicted_arguments = []
+        for i_roletype in range(len(arguments[i_event])):
+            cur_roletype = role_types[i_roletype]
+            temp = list(map(lambda x: tokenize_tools.tokenSpan_to_charSpan((x[0] + 1, x[1] + 1), offset_mapping), arguments[i][j][k]))
+            new_temp = list((x[0], x[1] + 1) for x in temp)
+            arguments[i_event][i_roletype] = new_temp
+            for elem_span in new_temp:
+                word = content[elem_span[0]: elem_span[1]]
+                predicted_arguments.append({
+                    'argument': word,
+                    'role': cur_roletype
+                })
+        event_list.append({
+            'event_type': cur_event_type,
+            'arguments': predicted_arguments
+        })
+    result['event_list'] = event_list
+    return result
 
 
 class JointEE_RoleOnly(nn.Module):
@@ -236,7 +276,8 @@ class JointEE_RoleOnly(nn.Module):
 
             return {
                 "argument_start": argument_start,
-                "argument_end": argument_end
+                "argument_end": argument_end,
+                'mask': attention_mask
             }
         else:  # eval phase
             if len(sentences) != 1:
@@ -251,16 +292,25 @@ class JointEE_RoleOnly(nn.Module):
                 H_s_type = self._conditional_layer_normalization(H_s, H_c, attention_mask)  # (bsz, max_real_seq_l, hidden)
 
                 # Argument Extraction
-                trigger_start_tensor, trigger_end_tensor = self.aem(H_s_type, attention_mask)  # (bsz, max_seq_l, role_cnt)
-                trigger_start_tensor, trigger_end_tensor = trigger_start_tensor.squeeze(), trigger_end_tensor.squeeze()
-                # (max_seq_l)
-                trigger_start_result = (trigger_start_tensor > self.trigger_threshold).int().tolist()
-                trigger_end_result = (trigger_end_tensor > self.trigger_threshold).int().tolist()
+                argument_start_tensor, argument_end_tensor = self.aem(H_s_type, attention_mask)  # (bsz, max_seq_l, role_cnt)
+                argument_start_tensor = argument_start_tensor.squeeze(0).T
+                argument_end_tensor = argument_end_tensor.squeeze(0).T
+                # both (role_cnt, max_real_seq_l)
 
+                # (max_seq_l)
+                argument_start_result = (argument_start_tensor > self.argument_threshold).int().tolist()
+                argument_end_result = (argument_end_tensor > self.argument_threshold).int().tolist()
+
+                role_for_cur_type: List[SpanList] = []
                 for i_role in range(len(self.role_types)):
-                    cur_arg_spans = tools.argument_span_determination()
-                cur_spans = tools.argument_span_determination(trigger_start_result, trigger_end_result, trigger_start_tensor, trigger_end_tensor)
-                # cur_spans: SpanList, triggers extracted from current sentence
+                    cur_arg_spans = tools.argument_span_determination(argument_start_result[i_role], argument_end_result[i_role], argument_start_tensor[i_role], argument_end_tensor[i_role])
+                    role_for_cur_type.append(cur_arg_spans)
+                cur_spanses.append(role_for_cur_type)  # List[List[SpanList]]
+
+            result = output_convert(event_types[0], cur_spanses, self.role_types, sentences[0])
+            return {
+                'pred': result
+            }
 
 
 class ArgumentExtractionLayerMask_Direct(nn.Module):
@@ -340,3 +390,291 @@ class ArgumentExtractionLayerMask_Direct(nn.Module):
         # both (bsz, seq_l, role_cnt)
         return starts, ends
 
+
+class JointEE_RoleOnly_Loss(nn.Module):
+    def __init__(self, pref: float = 2):
+        super(JointEE_RoleOnly_Loss, self).__init__()
+        self.pref = pref
+        self.pos_pref_weight = tools.PosPrefWeight(pref)
+
+    def forward(self,
+                argument_start: torch.Tensor,
+                argument_end: torch.Tensor,
+                argument_label_start: torch.Tensor,
+                argument_label_end: torch.Tensor,
+                mask: torch.Tensor):
+        """
+
+        :param argument_start:
+        :param argument_end: (bsz, max_real_seq_l, role_cnt)
+        :param argument_label_start:
+        :param argument_label_end: (bsz, max_real_seq_l, role_cnt)
+        :param mask: (bsz, seq_l)
+        :return:
+        """
+        mask = mask.unsqueeze(-1)  # (bsz, seq_l, 1)
+        bsz = mask.shape[0]
+        role_cnt = argument_start.shape[-1]
+
+        argument_start_losses, argument_end_losses = [], []
+        for i_batch in range(bsz):
+            start_weight = self.arg_pos_pref_weight(argument_label_start[i_batch]).cuda()
+            end_weight = self.arg_pos_pref_weight(argument_label_end[i_batch]).cuda()
+            start_loss = F.binary_cross_entropy(argument_start[i_batch], argument_label_start[i_batch], start_weight,
+                                                reduction='none')
+            end_loss = F.binary_cross_entropy(argument_end[i_batch], argument_label_end[i_batch], end_weight,
+                                              reduction='none')
+            start_loss = torch.sum(start_loss * mask[i_batch]) / (torch.sum(mask[i_batch]) * role_cnt)
+            end_loss = torch.sum(end_loss * mask[i_batch]) / (torch.sum(mask[i_batch]) * role_cnt)
+            argument_start_losses.append(start_loss)
+            argument_end_losses.append(end_loss)
+        loss = sum(argument_start_losses) + sum(argument_end_losses)
+
+        return loss
+
+
+class JointEE_RoleOnly_Evaluator(BaseEvaluator):
+    def __init__(self):
+        super(JointEE_RoleOnly_Evaluator, self).__init__()
+        self.gt_lst = []
+        self.pred_lst = []
+        self.info_dict = {
+            'main': 'argument f1'
+        }
+
+    def eval_single(self, pred, gt):
+        self.gt_lst.append(copy.deepcopy(gt))
+        self.pred_lst.append(copy.deepcopy(pred))
+
+    def eval_step(self) -> Dict[str, Any]:
+        arg_total, arg_predict, arg_correct = 0, 0, 0
+        for idx, elem_gt in enumerate(self.gt_lst):
+            elem_pred = self.pred_lst[idx]
+
+            # 对于FewFC格式的数据，先讲同事件类型的数据合并，然后整理成event_list的格式。
+            gt_event_list = []
+            event_dict = {}
+            for elem_event in elem_gt['events']:
+                event_type = elem_event['type']
+                arguments = set()
+                for elem_mention in elem_event['mentions']:
+                    if elem_mention['role'] == 'trigger':
+                        continue
+                    arguments.add((elem_mentions['role'], elem_mention['word']))
+                if event_type not in event_dict:
+                    event_dict[event_type] = arguments
+                else:
+                    event_dict[event_type] = event_dict[event_type].union(arguments)
+            for key, value in event_dict.items():
+                gt_event_list.append({
+                    'event_type': key,
+                    'arguments': list({'role': x[0], 'argument': x[1]} for x in value)
+                })
+            
+            # 然后计算匹配值。
+            #   先找出二者预测的事件类型。
+            pred, total, corr = 0, 0, 0
+            gt_event_types = set(x['event_type'] for x in gt_event_list)
+            pred_event_types = set(x['event_type'] for x in elem_pred)
+            pred_event_dict = {x['event_type']: x['arguments'] for x in pred_event_types}
+            gt_event_dict = {x['event_type']: x['arguments'] for x in gt_event_types}
+            both_contains = gt_event_types.intersection(pred_event_types)
+            gt_extra = gt_event_types - pred_event_types
+            pred_extra = pred_event_types - gt_event_types
+            #   首先对重合的类型进行计算
+            for e_type in both_contains:
+                pred_words = set((x['role'], x['argument']) for x in pred_event_dict[e_type])
+                gt_words = set((x['role'], x['argument']) for x in gt_event_dict[e_type])
+                pred += len(pred_words)
+                total += len(gt_words)
+                corr += len(pred_words.intersection(gt_words))
+            # 然后分别计算各有的
+            for e_type in gt_extra:
+                total += len(gt_event_dict[e_type])
+            for e_type in pred_extra:
+                pred += len(pred_event_dict[e_type])
+            
+            arg_total += total
+            arg_predict += pred
+            arg_correct += corr
+        
+                arg_precision = arg_correct / arg_predict if arg_predict != 0 else 0
+        arg_recall = arg_correct / arg_total if arg_total != 0 else 0
+        arg_f1 = 2 * arg_precision * arg_recall / (arg_precision + arg_recall) if (arg_precision + arg_recall) != 0 else 0
+
+        result = {
+            'argument precision': arg_precision,
+            'argument recall': arg_recall,
+            'argument f1': arg_f1
+        }    
+        self.gt_lst = []
+        self.pred_lst = []
+        result['info'] = self.info_dict
+        return result
+
+
+def train_dataset_factory(data_dicts: List[dict], bsz: int = EE_settings.default_bsz, shuffle: bool = EE_settings.default_shuffle, dataset_type: str = 'Duee'):
+    if dataset_type == 'FewFC':
+        event_types = EE_settings.event_types_full
+        role_types = EE_settings.role_types
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
+    else:
+        raise Exception(f'{dataset_type}数据集不存在！')
+    train_dataset = SimpleDataset(data_dicts)
+
+    def collate_fn(lst):
+        """
+        expect output:
+
+        {
+            sentence,
+            event_type,
+            trigger_span_gt,
+        }, {
+            trigger_label_start,
+            trigger_label_end,
+            argument_label_start,
+            argument_label_end,
+        }
+        :param lst:
+        :return:
+        """
+        data_dict = tools.transpose_list_of_dict(lst)
+        bsz = len(lst)
+
+        sentence_lst = data_dict['content']
+        input_ids = data_dict['input_ids']
+        max_seq_l = max(list(len(x) for x in input_ids)) - 2
+        event_type_lst = data_dict['event_type']
+        arg_spans_lst = data_dict['argument_token_spans']
+
+        argument_label_start, argument_label_end = torch.zeros((bsz, max_seq_l, len(role_types))), torch.zeros((bsz, max_seq_l, len(role_types)))
+
+        for i_batch in range(bsz):
+            # argument
+            for e_role in arg_spans_lst[i_batch]:
+                role_type_idx, role_span = e_role
+                argument_label_start[i_batch][role_span[0] - 1][role_type_idx] = 1
+                argument_label_end[i_batch][role_span[1] - 1][role_type_idx] = 1
+
+        return {
+            'sentences': sentence_lst,
+            'event_types': event_type_lst,
+               }, {
+            'argument_label_start': argument_label_start,
+            'argument_label_end': argument_label_end
+        }
+
+    train_dataloader = DataLoader(train_dataset, batch_size=bsz, shuffle=shuffle, collate_fn=collate_fn)
+
+    return train_dataloader
+
+
+def valid_dataset_factory(data_dicts: List[dict], dataset_type: str = 'Duee'):
+    if dataset_type == 'FewFC':
+        event_types = EE_settings.event_types_full
+        role_types = EE_settings.role_types
+    elif dataset_type == 'Duee':
+        event_types = EE_settings.duee_event_types
+        role_types = EE_settings.duee_role_types
+    else:
+        raise Exception(f'{dataset_type}数据集不存在！')
+    valid_dataset = SimpleDataset(data_dicts)
+
+    def collate_fn(lst):
+        """
+        input:
+            - sentences
+            - event_types
+            - offset_mapping
+        eval:
+            - gt
+        :param lst:
+        :return:
+        """
+        data_dict = tools.transpose_list_of_dict(lst)
+        bsz = len(lst)
+
+        sentences = data_dict['content']
+        events = data_dict['events'][0]
+        event_types = []
+        offset_mappings = data_dict['offset_mapping']
+
+        gt = []
+        for elem in lst:
+            gt.append({
+                'id': '',
+                'content': elem['content'],
+                'events': elem['events']
+            })
+            event_types.append(list(x['type'] for x in events))
+        return {
+            'sentences': sentences,
+            'event_types': event_types,
+            'offset_mappings': offset_mappings
+               }, {
+            'gt': gt[0]
+        }
+
+    valid_dataloader = DataLoader(valid_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
+
+    return valid_dataloader
+
+
+def dataset_factory(train_file: str, valid_file: str, bsz: int = EE_settings.default_bsz, shuffle: bool = EE_settings.default_shuffle, dataset_type: str = 'Duee'):
+    train_data_dicts = pickle.load(open(train_file, 'rb'))
+    valid_data_dicts = pickle.load(open(valid_file, 'rb'))
+    print(f'dataset_type: {dataset_type}')
+
+    train_dataloader = train_dataset_factory(train_data_dicts, bsz=bsz, shuffle=shuffle, dataset_type=dataset_type)
+    valid_dataloader = valid_dataset_factory(valid_data_dicts, dataset_type=dataset_type)
+
+    return train_dataloader, valid_dataloader
+
+
+def generate_trial_data(dataset_type: str):
+    if dataset_type == 'Duee':
+        train_file = 'temp_data/train.Duee.labeled.pk'
+        valid_file = 'temp_data/valid.Duee.tokenized.pk'
+    elif dataset_type == 'FewFC':
+        # train_file = 'temp_data/train.PLMEE_Trigger.FewFC.labeled.pk'
+        # valid_file = 'temp_data/valid.PLMEE_Trigger.FewFC.gt.pk'
+        pass
+    else:
+        return None, None, None, None
+
+    bsz = 4
+    shuffle = False
+
+    train_data_dicts = pickle.load(open(train_file, 'rb'))
+    valid_data_dicts = pickle.load(open(valid_file, 'rb'))
+
+    train_dataloader = train_dataset_factory(train_data_dicts, bsz=bsz, shuffle=shuffle, dataset_type=dataset_type)
+    valid_dataloader = valid_dataset_factory(valid_data_dicts, dataset_type=dataset_type)
+
+    limit = 5
+    train_data, valid_data = [], []
+    for idx, (train_sample, valid_sample) in enumerate(list(zip(train_dataloader, valid_dataloader))):
+        train_data.append(train_sample)
+        valid_data.append(valid_sample)
+    return train_dataloader, train_data, valid_dataloader, valid_data
+
+
+class UseModel:
+    pass
+
+
+model_registry = {
+    'model': JointEE_RoleOnly,
+    'loss': JointEE_RoleOnly_Loss,
+    'evaluator': JointEE_RoleOnly_Evaluator,
+    'train_val_data': dataset_factory,
+    'recorder': NaiveRecorder,
+    'use_model': UseModel
+}
+
+
+if __name__ == '__main__':
+    pass
