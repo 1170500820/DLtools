@@ -14,11 +14,11 @@ from work.EE import EE_settings
 
 temp_path = 'temp_data/'
 
-# initial_dataset_path = '../../../data/NLP/EventExtraction/FewFC-main'
-# dataset_type = 'FewFC'
+initial_dataset_path = '../../../data/NLP/EventExtraction/FewFC-main'
+dataset_type = 'FewFC'
 
-initial_dataset_path = '../../../data/NLP/EventExtraction/duee'
-dataset_type = 'Duee'
+# initial_dataset_path = '../../../data/NLP/EventExtraction/duee'
+# dataset_type = 'Duee'
 
 
 def merge_arguments_with_same_trigger_p(data_dict: dict):

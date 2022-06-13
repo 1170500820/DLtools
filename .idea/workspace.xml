@@ -4,12 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ea7cc512-aa64-46cf-8f6b-3689fcff2350" name="Changes" comment="fixed untracked files">
-      <change beforePath="$PROJECT_DIR$/.idea/DLtools.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/DLtools.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="ea7cc512-aa64-46cf-8f6b-3689fcff2350" name="Changes" comment="update">
+      <change beforePath="$PROJECT_DIR$/.idea/git_toolbox_prj.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/git_toolbox_prj.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee_role_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee_role_only.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/work/EE/JointEE_rebuild/preprocess.py" beforeDir="false" afterPath="$PROJECT_DIR$/work/EE/JointEE_rebuild/preprocess.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -121,7 +119,7 @@
       <recent name="$PROJECT_DIR$/work/EE" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.run">
+  <component name="RunManager" selected="Python.preprocess (1)">
     <configuration name="bert_event_detection" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="DLtools" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -310,11 +308,11 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.preprocess (1)" />
         <item itemvalue="Python.jointee_detect_role" />
         <item itemvalue="Python.bert_event_detection" />
         <item itemvalue="Python.preprocess (2)" />
         <item itemvalue="Python.jointee" />
-        <item itemvalue="Python.preprocess (1)" />
       </list>
     </recent_temporary>
   </component>
@@ -323,6 +321,14 @@
     <configuration>$USER_HOME$/.subversion</configuration>
   </component>
   <component name="TaskManager">
+    <task id="LOCAL-00001" summary="update">
+      <created>1654951658442</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1654951658442</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -363,9 +369,9 @@
     <MESSAGE value="修正了递归调用子模块时，初始化顺序相反的bug" />
     <MESSAGE value="修正了tokenSpan_to_charSpan在token_span处于句子结尾时会产生非法的span导致生成的word为空的情况" />
     <MESSAGE value="将trainer中的callback改为callable类型" />
-    <MESSAGE value="update" />
     <MESSAGE value="fixed untracked files" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixed untracked files" />
+    <MESSAGE value="update" />
+    <option name="LAST_COMMIT_MESSAGE" value="update" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -587,7 +593,7 @@
     <SUITE FILE_PATH="coverage/DLtools$WantWords_preprocess.coverage" NAME="WantWords_preprocess Coverage Results" MODIFIED="1645776665803" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_信息获取及问答能力_反向词典_WantWords_WantWords" />
     <SUITE FILE_PATH="coverage/DLtools$CMRC2019_preprocess.coverage" NAME="CMRC2019_preprocess Coverage Results" MODIFIED="1645183165005" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/cmrc2019-master/data" />
     <SUITE FILE_PATH="coverage/DLtools$loader.coverage" NAME="loader Coverage Results" MODIFIED="1647046806803" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/dataset" />
-    <SUITE FILE_PATH="coverage/DLtools$preprocess__1_.coverage" NAME="preprocess (1) 覆盖结果" MODIFIED="1654194287535" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/ED" />
+    <SUITE FILE_PATH="coverage/DLtools$preprocess__1_.coverage" NAME="preprocess (1) 覆盖结果" MODIFIED="1655046330053" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
     <SUITE FILE_PATH="coverage/DLtools$fill_blank.coverage" NAME="fill_blank 覆盖结果" MODIFIED="1649873198403" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/BMinf_Experiment" />
     <SUITE FILE_PATH="coverage/DLtools$simple_server.coverage" NAME="simple_server Coverage Results" MODIFIED="1648086407370" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/DLtools$plmee_trigger.coverage" NAME="plmee_trigger Coverage Results" MODIFIED="1649238253042" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/PLMEE_rebuild" />
