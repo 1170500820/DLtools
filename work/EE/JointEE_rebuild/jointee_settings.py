@@ -1,5 +1,5 @@
 # self attan
-n_head = 6
+n_head = 8
 d_head = 1024
 
 # alpha越高，召回越高
