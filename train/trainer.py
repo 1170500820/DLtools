@@ -300,6 +300,7 @@ class Trainer:
                         else:
                             default_key = eval_detail['main']
                             default_score = eval_info[eval_detail['main']]
+                        last_score = default_score
                         if score_record['best_score'] is None or score_record['best_score'] < default_score:
                             score_record['best_score'] = default_score
                             score_record['best_score_epoch'] = i_epoch
