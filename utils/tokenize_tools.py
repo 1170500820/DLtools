@@ -19,7 +19,7 @@ OffsetMapping，由BertTokenizerFast得到的mapping，
 
 class bert_tokenizer:
     def __init__(self, max_len=256, plm_path='bert-base-chinese'):
-        self.tokenizer = BertTokenizerFast.from_pretrained('bert-base-chinese')
+        self.tokenizer = BertTokenizerFast.from_pretrained(plm_path)
         self.max_len = max_len
 
     def __call__(self, input_lst: List[Union[str,List[str]]]):
