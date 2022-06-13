@@ -13,6 +13,7 @@ from work.EE import EE_settings
 
 
 temp_path = 'temp_data/'
+pretrain_path = 'hfl/chinese-roberta-wwm-ext-large'
 
 initial_dataset_path = '../../../data/NLP/EventExtraction/FewFC-main'
 dataset_type = 'FewFC'
@@ -191,10 +192,10 @@ def JointEE_main():
     merge_arguments_with_same_trigger(f'train.{dataset_type}.removed_illegal.jsonl', f'train.{dataset_type}.merged_arguments.jsonl', temp_path=temp_path, dataset_type=dataset_type)
 
     logger.info(f'[Step 4]正在tokenize')
-    tokenize_content(f'train.{dataset_type}.merged_arguments.jsonl', f'train.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
+    tokenize_content(f'train.{dataset_type}.merged_arguments.jsonl', f'train.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path=pretrain_path)
 
     logger.info(f'[Step 5]为trigger与argument生成label')
-    generate_label_for_trigger_and_argument(f'train.{dataset_type}.tokenized.pk', f'train.{dataset_type}.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
+    generate_label_for_trigger_and_argument(f'train.{dataset_type}.RoBERTa.tokenized.pk', f'train.{dataset_type}.RoBERTa.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
 
     logger.info(f'处理valid数据中')
     logger.info(f'[Step 1]正在去除过长的句子')
@@ -204,7 +205,7 @@ def JointEE_main():
     remove_illegal_characters(f'valid.{dataset_type}.filtered_length.jsonl', f'valid.{dataset_type}.removed_illegal.jsonl', temp_path=temp_path, dataset_type=dataset_type)
 
     logger.info(f'[Step 3]正在tokenize')
-    tokenize_content(f'valid.{dataset_type}.removed_illegal.jsonl', f'valid.{dataset_type}.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type)
+    tokenize_content(f'valid.{dataset_type}.removed_illegal.jsonl', f'valid.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path=pretrain_path)
 
 
 

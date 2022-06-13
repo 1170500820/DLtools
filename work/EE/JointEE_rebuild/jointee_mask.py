@@ -587,13 +587,13 @@ def generate_trial_data(dataset_type: str):
         train_file = 'temp_data/train.Duee.labeled.pk'
         valid_file = 'temp_data/valid.Duee.tokenized.pk'
     elif dataset_type == 'FewFC':
-        # train_file = 'temp_data/train.PLMEE_Trigger.FewFC.labeled.pk'
-        # valid_file = 'temp_data/valid.PLMEE_Trigger.FewFC.gt.pk'
+        train_file = 'temp_data/train.FewFC.RoBERTa.labeled.pk'
+        valid_file = 'temp_data/valid.FewFC.RoBERTa.tokenized.pk'
         pass
     else:
         return None, None, None, None
 
-    bsz = 4
+    bsz = 8
     shuffle = False
 
     train_data_dicts = pickle.load(open(train_file, 'rb'))
@@ -656,4 +656,4 @@ model_registry = {
 }
 
 if __name__ == '__main__':
-    pass
+    train_dataloader, train_data, valid_dataloader, valid_data = generate_trial_data('FewFC')

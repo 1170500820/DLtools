@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ea7cc512-aa64-46cf-8f6b-3689fcff2350" name="Changes" comment="update" />
+    <list default="true" id="ea7cc512-aa64-46cf-8f6b-3689fcff2350" name="Changes" comment="update">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee_mask.py" beforeDir="false" afterPath="$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee_mask.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/work/EE/JointEE_rebuild/preprocess.py" beforeDir="false" afterPath="$PROJECT_DIR$/work/EE/JointEE_rebuild/preprocess.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -115,7 +119,7 @@
       <recent name="$PROJECT_DIR$/work/EE" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.preprocess (1)">
+  <component name="RunManager" selected="Python.jointee_mask">
     <configuration name="bert_event_detection" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="DLtools" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -138,28 +142,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="jointee" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="DLtools" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="true" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="jointee_detect_role" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="DLtools" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -174,6 +156,28 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee_detect_role.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="jointee_mask" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DLtools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee_mask.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -284,7 +288,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/run.py" />
-      <option name="PARAMETERS" value="--task train --model work.EE.JointEE_rebuild.jointee_role_only + --dataset_type Duee --plm_path bert-base-chinese --train_file work/EE/JointEE_rebuild/temp_data/train.Duee.labeled.pk --valid_file work/EE/JointEE_rebuild/temp_data/valid.Duee.tokenized.pk --bsz 16 --use_cuda --total_epoch 50 --control_name JointEE.Duee.role_only --eval_start_epoch 1" />
+      <option name="PARAMETERS" value="--task train --model work.EE.JointEE_rebuild.jointee_mask + --dataset_type FewFC --plm_path hfl/chinese-roberta-wwm-ext-large --train_file work/EE/JointEE_rebuild/temp_data/train.FewFC.RoBERTa.labeled.pk --valid_file work/EE/JointEE_rebuild/temp_data/valid.FewFC.RoBERTa.tokenized.pk --bsz 8 --use_cuda --total_epoch 50 --control_name JointEE.FewFC.mask.RoBERTa --eval_start_epoch 1" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -296,19 +300,19 @@
       <item itemvalue="Python.playground" />
       <item itemvalue="Python.run" />
       <item itemvalue="Python.main" />
+      <item itemvalue="Python.jointee_mask" />
       <item itemvalue="Python.jointee_detect_role" />
       <item itemvalue="Python.bert_event_detection" />
       <item itemvalue="Python.preprocess (2)" />
-      <item itemvalue="Python.jointee" />
       <item itemvalue="Python.preprocess (1)" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.jointee_mask" />
         <item itemvalue="Python.preprocess (1)" />
         <item itemvalue="Python.jointee_detect_role" />
         <item itemvalue="Python.bert_event_detection" />
         <item itemvalue="Python.preprocess (2)" />
-        <item itemvalue="Python.jointee" />
       </list>
     </recent_temporary>
   </component>
@@ -331,7 +335,14 @@
       <option name="project" value="LOCAL" />
       <updated>1655085031298</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="update">
+      <created>1655085351871</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1655085351871</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -530,7 +541,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/work/EE/JointEE_rebuild/preprocess.py</url>
-          <line>50</line>
+          <line>51</line>
           <option name="timeStamp" value="186" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -552,6 +563,17 @@
           <url>file://$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee_role_only.py</url>
           <line>463</line>
           <option name="timeStamp" value="200" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <condition expression="i_batch == 4" language="Python" />
+          <url>file://$PROJECT_DIR$/train/trainer.py</url>
+          <line>196</line>
+          <option name="timeStamp" value="203" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/work/EE/JointEE_rebuild/jointee_mask.py</url>
+          <line>291</line>
+          <option name="timeStamp" value="205" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -596,7 +618,7 @@
     <SUITE FILE_PATH="coverage/DLtools$WantWords_preprocess.coverage" NAME="WantWords_preprocess Coverage Results" MODIFIED="1645776665803" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_信息获取及问答能力_反向词典_WantWords_WantWords" />
     <SUITE FILE_PATH="coverage/DLtools$CMRC2019_preprocess.coverage" NAME="CMRC2019_preprocess Coverage Results" MODIFIED="1645183165005" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/cmrc2019-master/data" />
     <SUITE FILE_PATH="coverage/DLtools$loader.coverage" NAME="loader Coverage Results" MODIFIED="1647046806803" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/dataset" />
-    <SUITE FILE_PATH="coverage/DLtools$preprocess__1_.coverage" NAME="preprocess (1) 覆盖结果" MODIFIED="1655046330053" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
+    <SUITE FILE_PATH="coverage/DLtools$preprocess__1_.coverage" NAME="preprocess (1) 覆盖结果" MODIFIED="1655087487500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
     <SUITE FILE_PATH="coverage/DLtools$fill_blank.coverage" NAME="fill_blank 覆盖结果" MODIFIED="1649873198403" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/BMinf_Experiment" />
     <SUITE FILE_PATH="coverage/DLtools$simple_server.coverage" NAME="simple_server Coverage Results" MODIFIED="1648086407370" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/DLtools$plmee_trigger.coverage" NAME="plmee_trigger Coverage Results" MODIFIED="1649238253042" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/PLMEE_rebuild" />
@@ -664,6 +686,7 @@
     <SUITE FILE_PATH="coverage/DLtools$para_pat_preprocess.coverage" NAME="para_pat_preprocess Coverage Results" MODIFIED="1649699938249" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/para_pat" />
     <SUITE FILE_PATH="coverage/DLtools$plmee.coverage" NAME="plmee 覆盖结果" MODIFIED="1653707170068" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/PLMEE_rebuild" />
     <SUITE FILE_PATH="coverage/DLtools$ChineseClassifier_preprocess.coverage" NAME="ChineseClassifier_preprocess Coverage Results" MODIFIED="1646312661277" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/ChineseClassifierDataset-master/data" />
+    <SUITE FILE_PATH="coverage/DLtools$jointee_mask.coverage" NAME="jointee_mask 覆盖结果" MODIFIED="1655089123549" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/EE/JointEE_rebuild" />
     <SUITE FILE_PATH="coverage/DLtools$LCQMC_preprocess.coverage" NAME="LCQMC_preprocess Coverage Results" MODIFIED="1645502531590" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/LCQMC/lcqmc" />
     <SUITE FILE_PATH="coverage/DLtools$format_convert.coverage" NAME="format_convert Coverage Results" MODIFIED="1637135985014" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
     <SUITE FILE_PATH="coverage/DLtools$get_walk_statistics.coverage" NAME="get_walk_statistics Coverage Results" MODIFIED="1650421253654" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/Cascade" />
@@ -681,7 +704,7 @@
     <SUITE FILE_PATH="coverage/DLtools$GCRC_preprocess.coverage" NAME="GCRC_preprocess Coverage Results" MODIFIED="1645752322195" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言理解能力-篇章级_阅读理解_GCRC_GCRC" />
     <SUITE FILE_PATH="coverage/DLtools$FinRE_preprocess.coverage" NAME="FinRE_preprocess Coverage Results" MODIFIED="1646314628980" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/paperswithcode_dataset/CUGE/data_datasets_语言理解能力-词句级_实体关系抽取_FinRE_FinRE" />
     <SUITE FILE_PATH="coverage/DLtools$conventer.coverage" NAME="conventer Coverage Results" MODIFIED="1634547087145" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/analysis" />
-    <SUITE FILE_PATH="coverage/DLtools$run.coverage" NAME="run 覆盖结果" MODIFIED="1654948774264" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DLtools$run.coverage" NAME="run 覆盖结果" MODIFIED="1655088414651" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/DLtools$xquad_preprocess.coverage" NAME="xquad_preprocess Coverage Results" MODIFIED="1649728229469" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/NLP/huggingface_dataset/translate/xquad" />
     <SUITE FILE_PATH="coverage/DLtools$basic.coverage" NAME="basic Coverage Results" MODIFIED="1632034844562" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/PLMEE" />
     <SUITE FILE_PATH="coverage/DLtools$main__1_.coverage" NAME="main (1) Coverage Results" MODIFIED="1638872680620" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/work/NotInFrame/Semeval8NewsCorrelation-main" />
