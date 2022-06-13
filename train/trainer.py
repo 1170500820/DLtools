@@ -90,6 +90,56 @@ def save_model(model: torch.nn.Module, control_name: str, model_save_path: str, 
     logger.info(f'[保存模型]保存已完成')
 
 
+def whether_evaluate(
+        i_epoch: int,
+        i_batch: int,
+        eval_start_epoch: int,
+        eval_freq_batch: int,
+        local_rank: int,
+        main_local_rank: int,
+        best_score: float,
+        last_score: float,
+        min_eval_freq: int = 1,
+        reverse: bool = False,
+        ):
+    """
+    当eval获得新的最高分数后，可以假设目前模型处于一个较高的结果，那么接下来的几次backward也有可能产生更高的结果
+
+    如果上次eval的结果是最高分，则实际的eval freq变为min_eval_freq
+    当上次eval的结果不是最高分后，eval freq变回原先的freq
+    :param i_epoch:
+    :param i_batch:
+    :param eval_start_epoch:
+    :param eval_freq_batch:
+    :param local_rank:
+    :param main_local_rank:
+    :param best_score: 评测的最高分数
+    :param last_score: 上一次评测的分数
+    :param min_eval_freq: 最小的eval频率
+    :param reverse: 分数是否越高越好。若为True，则越低越好。
+    :return:
+    """
+    # 先确定eval_freq是否需要变化
+    if last_score is None or best_score is None:  # 如果有一个为None，则无法判断，直接用默认值
+        final_freq = eval_freq_batch
+    elif reverse:
+        if last_score < best_score:
+            final_freq = min(min_eval_freq, eval_freq_batch)
+        else:
+            final_freq = eval_freq_batch
+    else:
+        if last_score > best_score:
+            final_freq = min(min_eval_freq, eval_freq_batch)
+        else:
+            final_freq = eval_freq_batch
+    # 执行判断条件
+    if local_rank in [-1, main_local_rank]:  # 只在主进程打印
+        if (i_epoch + 1) >= eval_start_epoch:  #
+            if (i_batch + 1) % final_freq == 0:
+                return True
+    return False
+
+
 class Trainer:
     """
     一个通用的训练流程
@@ -113,9 +163,7 @@ class Trainer:
             total_epoch=40,
             print_info_freq=50,
             eval_freq_batch=250,
-            eval_freq_epoch=1,
             eval_start_epoch=1,
-            eval_start_batch=10,
             model_save_epoch=100,
             epoch_to_save_best=1,
             model_save_path='.',
@@ -149,8 +197,6 @@ class Trainer:
                 '输出训练信息的频次/batch': print_info_freq,
                 # 模型评价相关
                 '开始评测模型的epoch': eval_start_epoch,
-                '开始评测模型的batch': eval_start_batch,
-                '评测模型的频次/epoch': eval_freq_epoch,
                 '评测模型的频次/batch': eval_freq_batch,
                 # 训练相关
                 '是否使用CUDA': use_cuda,
@@ -178,6 +224,7 @@ class Trainer:
             'best_score_epoch': None,
             'best_score_step': None,
         }
+        last_score = None
         # step为当前总batch的计数
         step = 0
         # 每一个step的loss
@@ -225,10 +272,11 @@ class Trainer:
                     for opt in optimizers:
                         opt.step()
                     model.zero_grad()
-                    if ((i_batch + 1) % eval_freq_batch == 0
-                        and (i_epoch + 1) >= eval_start_epoch) \
-                            and ((i_epoch + 1) % eval_freq_epoch == 0) \
-                            and (((i_epoch + 1) < eval_start_epoch) or ((i_batch + 1) >= eval_start_batch)) and local_rank in [-1, self.main_local_rank]:
+                    # if ((i_batch + 1) % eval_freq_batch == 0 and (i_epoch + 1) >= eval_start_epoch) and (((i_epoch + 1
+                    # ) < eval_start_epoch) or ((i_batch + 1) >= eval_start_batch)) \
+                    #         and local_rank in [-1, self.main_local_rank]:
+                    if whether_evaluate(i_epoch, i_batch, eval_start_epoch, eval_freq_batch, local_rank,
+                                        self.main_local_rank, score_record['best_score'], last_score):
                         # evaluate
                         model.eval()
                         if recorder:
