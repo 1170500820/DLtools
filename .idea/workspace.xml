@@ -4,11 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ea7cc512-aa64-46cf-8f6b-3689fcff2350" name="Changes" comment="update">
-      <change beforePath="$PROJECT_DIR$/.idea/DLtools.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/DLtools.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="ea7cc512-aa64-46cf-8f6b-3689fcff2350" name="Changes" comment="更新了eval freq更新机制">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/trainer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -358,7 +356,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="添加了用于处理图的一些工具函数" />
     <MESSAGE value="加入了对多GPU运行的支持" />
     <MESSAGE value="initial" />
     <MESSAGE value="更新了数据集加载相关" />
@@ -383,7 +380,8 @@
     <MESSAGE value="将trainer中的callback改为callable类型" />
     <MESSAGE value="fixed untracked files" />
     <MESSAGE value="update" />
-    <option name="LAST_COMMIT_MESSAGE" value="update" />
+    <MESSAGE value="更新了eval freq更新机制" />
+    <option name="LAST_COMMIT_MESSAGE" value="更新了eval freq更新机制" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

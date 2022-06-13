@@ -4,10 +4,18 @@ data/*
 
 # 忽略所有pickle文件
 *.pk
+
 # 忽略所有checkpoint
 *.pth
+
 # 忽略所有的临时数据
 temp_data/
+
+# 忽略ide的数据
+.idea/
+.vscode/
+.ipynb_checkpoints/
+
 tempdata/
 # 忽略所有的checkpoint文件
 checkpoint/
