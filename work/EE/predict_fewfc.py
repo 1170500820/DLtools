@@ -23,10 +23,10 @@ use_gpu = True
 
 # 文件读取配置部分
 test_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
-test_file_name = 'test.json'
+test_file_name = 'val.json'
 gt_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
-gt_file_name = 'test.json'
-result_file_name = 'predicted.json'
+gt_file_name = 'val.json'
+result_file_name = 'valid_predicted.json'
 
 examples = []
 
@@ -112,10 +112,10 @@ def event_extraction_metric(pred: dict, gt: dict):
     # 先计算非公共的
     for e_type in pred_only:
         for e_mentions in pred_dict[e_type]:
-            predict += len(e_mentions)
+            predict += 1
     for e_type in gt_only:
         for e_mentions in gt_dict[e_type]:
-            total += len(e_mentions)
+            total += 1
 
     # 计算公共的
     for e_type in common_events_set:
@@ -135,23 +135,26 @@ def evaluate_result():
         如果gt与pred有多个相同的事件类型，则找到结果分最高的匹配
     :return:
     """
+    scores = []
     gts = load_jsonl(gt_file_dir + gt_file_name)
     results = load_jsonl(gt_file_dir + result_file_name)
     total, predict, correct = 0, 0, 0
-    for elem_gt, elem_result in zip(gts, results):
+    for i, (elem_gt, elem_result) in enumerate(zip(gts, results)):
         p_total, p_predict, p_correct = event_extraction_metric(elem_result, elem_gt)
         total += p_total
         predict += p_predict
         correct += p_correct
+        scores.append([p_total, p_predict, p_correct])
 
     precision = correct / predict if predict != 0 else 0
     recall = correct / total if total != 0 else 0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) != 0 else 0
 
     print(f'precision: {precision}\nrecall: {recall}\nf1: {f1}')
+    return scores
 
 
 
 if __name__ == '__main__':
     # predict_test()
-    evaluate_result()
+    scores = evaluate_result()
