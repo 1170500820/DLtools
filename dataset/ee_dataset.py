@@ -157,6 +157,23 @@ def load_FewFC_ee(file_dir: str, splitted=True):
         raise NotImplementedError
 
 
+def load_FewFC_ee_full(file_dir: str, splitted=True):
+    if file_dir[-1] != '/':
+        file_dir += '/'
+    if splitted:
+        val_file = 'test.json'
+        train_file = 'full_train.json'
+        # test_data = list(json.loads(x) for x in open(file_dir + test_file, 'r', encoding='utf-8').read().strip().split('\n'))
+        train_data = list(json.loads(x) for x in open(file_dir + train_file, 'r', encoding='utf-8').read().strip().split('\n'))
+        val_data = list(json.loads(x) for x in open(file_dir + val_file, 'r', encoding='utf-8').read().strip().split('\n'))
+        return {
+            "train": train_data,
+            "valid": val_data
+        }
+    else:
+        raise NotImplementedError
+
+
 def load_Duee_ee(file_dir: str):
     if file_dir[-1] != '/':
         file_dir += '/'

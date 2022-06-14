@@ -3,7 +3,7 @@ import functools
 import json
 
 from type_def import *
-from dataset.ee_dataset import load_FewFC_ee, load_Duee_ee_formated
+from dataset.ee_dataset import load_FewFC_ee, load_Duee_ee_formated, load_FewFC_ee_full
 from work.EE import EE_settings
 
 
@@ -167,7 +167,7 @@ def split_by_content_type_trigger(data_dict: Dict[str, Any]):
 """
 
 
-def data_filter(data_path: str, dataset_type: str, temp_path: str, subset_name: str = 'train', output_name: str = 'filtered'):
+def data_filter(data_path: str, dataset_type: str, temp_path: str, subset_name: str = 'train', output_name: str = 'filtered', full: bool = False):
     """
     该函数对数据进行过滤
 
@@ -176,7 +176,9 @@ def data_filter(data_path: str, dataset_type: str, temp_path: str, subset_name: 
     :param dataset_type:
     :return:
     """
-    if dataset_type == 'FewFC':
+    if dataset_type == 'FewFC' and full:
+        loaded = load_FewFC_ee_full(data_path)
+    elif dataset_type == 'FewFC' and not full:
         loaded = load_FewFC_ee(data_path)
     elif dataset_type == 'Duee':
         loaded = load_Duee_ee_formated(data_path)
