@@ -373,7 +373,7 @@ default_plm_path = 'bert-base-chinese'
 
 # train
 plm_lr = 2e-5
-others_lr = 2e-5
+others_lr = 1e-4
 
 default_dropout_prob = 0.3
 
