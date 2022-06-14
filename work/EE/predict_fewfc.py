@@ -16,8 +16,8 @@ plm_path = 'hfl/chinese-roberta-wwm-ext-large'
 
 arg_init_params_path = '../../checkpoint/save.init_params.JointEE.FewFC.mask.RoBERTa.best.pk'
 arg_state_dict_path = '../../checkpoint/save.state_dict.JointEE.FewFC.mask.RoBERTa.best.pth'
-event_state_dict_path = '../../checkpoint/save.state_dict.BertED.Duee.Default.best.pth'
-event_init_params_path = '../../checkpoint/save.init_params.BertED.Duee.Default.best.pk'
+event_state_dict_path = '../../checkpoint/save.state_dict.BertED.FewFC.RoBERTa.not_focal.best.pth'
+event_init_params_path = '../../checkpoint/save.init_params.BertED.FewFC.RoBERTa.not_focal.best.pk'
 
 use_gpu = True
 
@@ -87,14 +87,14 @@ def event_extraction_metric(pred: dict, gt: dict):
     # 构造event_type -> mentions dict
     pred_dict, gt_dict = {}, {}
     for elem in pred['events']:
-        event_type, mentions = elem['event_type'], elem['mentions']
+        event_type, mentions = elem['type'], elem['mentions']
         words = set(f'{x["role"]}-{x["word"]}' for x in mentions)
         if event_type not in pred_dict:
             pred_dict[event_type] = words
         else:
             pred_dict[event_type] = pred_dict[event_type].union(words)
     for elem in gt['events']:
-        event_type, mentions = elem['event_type'], elem['mentions']
+        event_type, mentions = elem['type'], elem['mentions']
         words = set(f'{x["role"]}-{x["word"]}' for x in mentions)
         if event_type not in gt_dict:
             gt_dict[event_type] = words
@@ -153,5 +153,5 @@ def evaluate_result():
 
 
 if __name__ == '__main__':
-    predict_test()
+    # predict_test()
     evaluate_result()
