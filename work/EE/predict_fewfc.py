@@ -14,8 +14,8 @@ dataset_type = 'FewFC'  # 不要更改
 # 模型配置部分
 plm_path = 'hfl/chinese-roberta-wwm-ext-large'
 
-arg_init_params_path = '../../checkpoint/save.init_params.JointEE.FewFC.mask.RoBERTa.linear-1e-4.best.pk'
-arg_state_dict_path = '../../checkpoint/save.state_dict.JointEE.FewFC.mask.RoBERTa.linear-1e-4.best.[pth'
+arg_init_params_path = '../../checkpoint/save.init_params.JointEE.FewFC.mask.RoBERTa.best.pk'
+arg_state_dict_path = '../../checkpoint/save.state_dict.JointEE.FewFC.mask.RoBERTa.best.pth'
 event_state_dict_path = '../../checkpoint/save.state_dict.BertED.Duee.Default.best.pth'
 event_init_params_path = '../../checkpoint/save.init_params.BertED.Duee.Default.best.pk'
 
@@ -24,7 +24,7 @@ use_gpu = True
 # 文件读取配置部分
 test_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
 test_file_name = 'test.json'
-gt_file_dir = '../../data/NLP/EventExtraction/FewFC-main'
+gt_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
 gt_file_name = 'test.json'
 result_file_name = 'predicted.json'
 
@@ -68,7 +68,8 @@ def predict_test():
     )
     arg_results = []
     for (elem_sentence, elem_event_types) in list(tqdm(zip(test_data, event_types))):
-        arg_results.append(argument_model(elem_sentence['content'], elem_event_types)['pred'])
+        argresult = argument_model(elem_sentence['content'], elem_event_types)
+        arg_results.append(argresult)
     del argument_model
 
     dump_jsonl(arg_results, test_file_dir + result_file_name)
