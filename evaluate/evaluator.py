@@ -243,13 +243,13 @@ def spans2events(event_types: StrList, triggers: List[SpanList], arguments: List
         for (elem_trigger, elem_argument) in zip(elem_triggers, elem_arguments):
             # elem_trigger: Span
             # elem_argument: List[SpanList]
-            cur_mentions = [{'word': "", 'span': list(elem_trigger), 'role': 'trigger'}]
+            cur_mentions = [{'word': content[elem_trigger[0]: elem_trigger[1]], 'span': list(elem_trigger), 'role': 'trigger'}]
             for idx_arg, elem_type_args in enumerate(elem_argument):
                 # elem_type_args: SpanList
                 cur_role_type = role_types[idx_arg]
                 for elem_arg in elem_type_args:
                     # elem_arg: Span
-                    cur_mentions.append({"word": "", "span": list(elem_arg), "role": cur_role_type})
+                    cur_mentions.append({"word": content[elem_arg[0]: elem_arg[1]], "span": list(elem_arg), "role": cur_role_type})
             cur_event = {
                 'type': elem_event,
                 'mentions': cur_mentions
