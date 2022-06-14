@@ -13,12 +13,13 @@ from work.EE import EE_settings
 
 
 temp_path = 'temp_data/'
+pretrained_path =  'hfl/chinese-roberta-wwm-ext-large'
 
-# initial_dataset_path = '../../../data/NLP/EventExtraction/FewFC-main'
-# dataset_type = 'FewFC'
+initial_dataset_path = '../../../data/NLP/EventExtraction/FewFC-main'
+dataset_type = 'FewFC'
 
-initial_dataset_path = '../../../data/NLP/EventExtraction/duee'
-dataset_type = 'Duee'
+# initial_dataset_path = '../../../data/NLP/EventExtraction/duee'
+# dataset_type = 'Duee'
 
 
 def remove_illegal_characters_p(data_dict: dict):
@@ -114,8 +115,8 @@ def event_detection_main():
 
     logger.info(f'[Step 5]tokenize')
     tokenize_content(f'train.{dataset_type}.ED.labeled.jsonl',
-                     f'train.{dataset_type}.ED.tokenized.pk', temp_path=temp_path,
-                     dataset_type=dataset_type)
+                     f'train.{dataset_type}.ED.RoBERTa.tokenized.pk', temp_path=temp_path,
+                     dataset_type=dataset_type, plm_path=pretrained_path)
 
 
     logger.info(f'处理valid数据中')
@@ -134,8 +135,8 @@ def event_detection_main():
 
     logger.info(f'[Step 4]tokenize')
     tokenize_content(f'valid.{dataset_type}.ED.extracted_type.jsonl',
-                     f'valid.{dataset_type}.ED.tokenized.pk', temp_path=temp_path,
-                     dataset_type=dataset_type)
+                     f'valid.{dataset_type}.ED.RoBERTa.tokenized.pk', temp_path=temp_path,
+                     dataset_type=dataset_type, plm_path=pretrained_path)
 
 if __name__ == '__main__':
     event_detection_main()
