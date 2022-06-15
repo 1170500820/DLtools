@@ -255,7 +255,6 @@ class DualQA_Trigger_Loss(nn.Module):
         return loss
 
 
-
 class DualQA_Trigger_Evaluator(BaseEvaluator):
     def __init__(self):
         super(DualQA_Trigger_Evaluator, self).__init__()
