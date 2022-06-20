@@ -267,8 +267,16 @@ class DualQA_EventType_Loss(nn.Module):
 
 
 class DualQA_EventType_Evaluator(BaseEvaluator):
-    def __init__(self):
+    def __init__(self, dataset_type: str = 'FewFC'):
         super(DualQA_EventType_Evaluator, self).__init__()
+        self.dataset_type = dataset_type
+        if dataset_type == 'FewFC':
+            self.event_types = EE_settings.event_types_full
+        elif dataset_type == 'Duee':
+            self.event_types = EE_settings.duee_event_types
+        else:
+            raise Exception(f'{dataset_type}数据集不存在！')
+
         self.classifier_evaluator = F1_Evaluator()
         self.identifier_evaluator = PrecisionEvaluator()
 
@@ -279,8 +287,15 @@ class DualQA_EventType_Evaluator(BaseEvaluator):
             'main': 'f1-measure'
         }
 
-    def eval_single(self, event_types_pred, event_types_identified, cls_gt, idf_gt):
-        pass
+    def eval_single(self, event_types_pred, event_types_identified, cls_gt: StrList, idf_gt: bool):
+        """
+
+        :param event_types_pred: (1, event_types_cnt)
+        :param event_types_identified: (1, 2)
+        :param cls_gt: StrList 包含着当前句子所存在的事件类
+        :param idf_gt: bool
+        :return:
+        """
 
     def eval_step(self) -> Dict[str, Any]:
         pass
