@@ -243,4 +243,4 @@ def JointEE_full():
 
 
 if __name__ == '__main__':
-    JointEE_main()
+    JointEE_full()

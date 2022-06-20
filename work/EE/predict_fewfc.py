@@ -14,16 +14,16 @@ dataset_type = 'FewFC'  # 不要更改
 # 模型配置部分
 plm_path = 'hfl/chinese-roberta-wwm-ext-large'
 
-arg_init_params_path = '../../checkpoint/save.init_params.JointEE.FewFC.mask.RoBERTa.best.pk'
-arg_state_dict_path = '../../checkpoint/save.state_dict.JointEE.FewFC.mask.RoBERTa.best.pth'
-event_state_dict_path = '../../checkpoint/save.state_dict.BertED.FewFC.RoBERTa.not_focal.best.pth'
-event_init_params_path = '../../checkpoint/save.init_params.BertED.FewFC.RoBERTa.not_focal.best.pk'
+arg_init_params_path = '../../checkpoint/save.init_params.JointEE.FewFC.mask.RoBERTa.full.best.pk'
+arg_state_dict_path = '../../checkpoint/save.state_dict.JointEE.FewFC.mask.RoBERTa.full.best.pth'
+event_state_dict_path = '../../checkpoint/save.state_dict.BertED.FewFC.RoBERTa.full.best.pth'
+event_init_params_path = '../../checkpoint/save.init_params.BertED.FewFC.RoBERTa.full.best.pk'
 
 use_gpu = True
 
 # 文件读取配置部分
 test_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
-test_file_name = 'val.json'
+test_file_name = 'test.json'
 gt_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
 gt_file_name = 'val.json'
 result_file_name = 'valid_predicted.json'
@@ -128,6 +128,63 @@ def event_extraction_metric(pred: dict, gt: dict):
     return total, predict, correct
 
 
+def event_extraction_wordlevel_metric(pred: dict, gt: dict):
+    total, predict, correct = 0, 0, 0
+
+    # 构造event_type -> mentions dict
+    pred_dict, gt_dict = {}, {}
+    for elem in pred['events']:
+        event_type, mentions = elem['type'], elem['mentions']
+        words = set(f'{x["role"]}-{x["word"]}' for x in mentions)
+        if event_type not in pred_dict:
+            pred_dict[event_type] = words
+        else:
+            pred_dict[event_type] = pred_dict[event_type].union(words)
+    for elem in gt['events']:
+        event_type, mentions = elem['type'], elem['mentions']
+        words = set(f'{x["role"]}-{x["word"]}' for x in mentions)
+        if event_type not in gt_dict:
+            gt_dict[event_type] = words
+        else:
+            gt_dict[event_type] = gt_dict[event_type].union(words)
+
+    # 首先找到二者预测的事件类型
+    pred_events = list(x['type'] for x in pred['events'])
+    gt_events = list(x['type'] for x in gt['events'])
+    pred_events_set, gt_events_set = set(pred_events), set(gt_events)
+    common_events_set = pred_events_set.intersection(gt_events_set)
+    pred_only = pred_events_set - gt_events_set
+    gt_only = gt_events_set - pred_events_set
+
+    # 先计算非公共的
+    for e_type in pred_only:
+        for e_mentions in pred_dict[e_type]:
+            predict += len(e_mentions)
+    for e_type in gt_only:
+        for e_mentions in gt_dict[e_type]:
+            total += len(e_mentions)
+
+    # 计算公共的
+    for e_type in common_events_set:
+        gt_word_set = gt_dict[e_type]
+        pred_word_set = pred_dict[e_type]
+
+        gt_char_set = ''.join(list(gt_word_set))
+        pred_char_set = ''.join(list(pred_word_set))
+        common_char = set(gt_char_set).intersection(set(pred_char_set))  # 共有的字
+        common_char_cnt = 0
+        for e_char in common_char:
+            common_char_cnt += min(gt_char_set.count(e_char), pred_char_set.count(e_char))
+        # total += len(gt_word_set)
+        # predict += len(pred_word_set)
+        # correct += len(gt_word_set.intersection(pred_word_set))
+        total += len(gt_char_set)
+        predict += len(pred_char_set)
+        correct += common_char_cnt
+
+    return total, predict, correct
+
+
 def evaluate_result():
     """
     评价标准：
@@ -140,7 +197,7 @@ def evaluate_result():
     results = load_jsonl(gt_file_dir + result_file_name)
     total, predict, correct = 0, 0, 0
     for i, (elem_gt, elem_result) in enumerate(zip(gts, results)):
-        p_total, p_predict, p_correct = event_extraction_metric(elem_result, elem_gt)
+        p_total, p_predict, p_correct = event_extraction_wordlevel_metric(elem_result, elem_gt)
         total += p_total
         predict += p_predict
         correct += p_correct

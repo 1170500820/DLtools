@@ -190,4 +190,4 @@ def event_detection_full():
 
 
 if __name__ == '__main__':
-    event_detection_main()
+    event_detection_full()
