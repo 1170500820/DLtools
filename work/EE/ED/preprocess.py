@@ -188,6 +188,103 @@ def event_detection_full():
                      dataset_type=dataset_type, plm_path=pretrained_path)
 
 
+def event_detection_merge():
+    logger.info(f'正在处理{dataset_type}数据')
+    logger.info(f'数据源文件的存放路径: {initial_dataset_path}')
+
+    logger.info(f'处理train数据中')
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.merge.{dataset_type}.ED.filtered_length.jsonl', merge=True)
+
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'train.merge.{dataset_type}.ED.filtered_length.jsonl',
+                              f'train.merge.{dataset_type}.ED.removed_illegal.jsonl', temp_path=temp_path,
+                              dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]提取句子中所包含的事件')
+    extract_event_types(f'train.merge.{dataset_type}.ED.removed_illegal.jsonl',
+                        f'train.merge.{dataset_type}.ED.extracted_type.jsonl', temp_path=temp_path,
+                        dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]为训练数据生成label')
+    generate_event_detection_label(f'train.merge.{dataset_type}.ED.extracted_type.jsonl',
+                                   f'train.merge.{dataset_type}.ED.labeled.jsonl', temp_path=temp_path,
+                                   dataset_type=dataset_type)
+
+    logger.info(f'[Step 5]tokenize')
+    tokenize_content(f'train.merge.{dataset_type}.ED.labeled.jsonl',
+                     f'train.merge.{dataset_type}.ED.RoBERTa.tokenized.pk', temp_path=temp_path,
+                     dataset_type=dataset_type, plm_path=pretrained_path)
+
+
+    logger.info(f'处理valid数据中')
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.merge.{dataset_type}.ED.filtered_length.jsonl', merge=True)
+
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'valid.merge.{dataset_type}.ED.filtered_length.jsonl',
+                              f'valid.merge.{dataset_type}.ED.removed_illegal.jsonl', temp_path=temp_path,
+                              dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]提取句子中所包含的事件')
+    extract_event_types(f'valid.merge.{dataset_type}.ED.removed_illegal.jsonl',
+                        f'valid.merge.{dataset_type}.ED.extracted_type.jsonl', temp_path=temp_path,
+                        dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]tokenize')
+    tokenize_content(f'valid.merge.{dataset_type}.ED.extracted_type.jsonl',
+                     f'valid.merge.{dataset_type}.ED.RoBERTa.tokenized.pk', temp_path=temp_path,
+                     dataset_type=dataset_type, plm_path=pretrained_path)
+
+
+def event_detection_merge2():
+    logger.info(f'正在处理{dataset_type}数据')
+    logger.info(f'数据源文件的存放路径: {initial_dataset_path}')
+
+    logger.info(f'处理train数据中')
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.merge2.{dataset_type}.ED.filtered_length.jsonl', merge2=True)
+
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'train.merge2.{dataset_type}.ED.filtered_length.jsonl',
+                              f'train.merge2.{dataset_type}.ED.removed_illegal.jsonl', temp_path=temp_path,
+                              dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]提取句子中所包含的事件')
+    extract_event_types(f'train.merge2.{dataset_type}.ED.removed_illegal.jsonl',
+                        f'train.merge2.{dataset_type}.ED.extracted_type.jsonl', temp_path=temp_path,
+                        dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]为训练数据生成label')
+    generate_event_detection_label(f'train.merge2.{dataset_type}.ED.extracted_type.jsonl',
+                                   f'train.merge2.{dataset_type}.ED.labeled.jsonl', temp_path=temp_path,
+                                   dataset_type=dataset_type)
+
+    logger.info(f'[Step 5]tokenize')
+    tokenize_content(f'train.merge2.{dataset_type}.ED.labeled.jsonl',
+                     f'train.merge2.{dataset_type}.ED.RoBERTa.tokenized.pk', temp_path=temp_path,
+                     dataset_type=dataset_type, plm_path=pretrained_path)
+
+
+    logger.info(f'处理valid数据中')
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.merge2.{dataset_type}.ED.filtered_length.jsonl', merge2=True)
+
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'valid.merge2.{dataset_type}.ED.filtered_length.jsonl',
+                              f'valid.merge2.{dataset_type}.ED.removed_illegal.jsonl', temp_path=temp_path,
+                              dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]提取句子中所包含的事件')
+    extract_event_types(f'valid.merge2.{dataset_type}.ED.removed_illegal.jsonl',
+                        f'valid.merge2.{dataset_type}.ED.extracted_type.jsonl', temp_path=temp_path,
+                        dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]tokenize')
+    tokenize_content(f'valid.merge2.{dataset_type}.ED.extracted_type.jsonl',
+                     f'valid.merge2.{dataset_type}.ED.RoBERTa.tokenized.pk', temp_path=temp_path,
+                     dataset_type=dataset_type, plm_path=pretrained_path)
+
 
 if __name__ == '__main__':
-    event_detection_full()
+    event_detection_merge2()

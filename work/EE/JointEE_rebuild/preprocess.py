@@ -208,7 +208,6 @@ def JointEE_main():
     tokenize_content(f'valid.{dataset_type}.removed_illegal.jsonl', f'valid.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path=pretrain_path)
 
 
-
 def JointEE_full():
     logger.info(f'正在处理{dataset_type}数据')
     logger.info(f'数据源文件的存放路径: {initial_dataset_path}')
@@ -240,7 +239,67 @@ def JointEE_full():
     tokenize_content(f'valid.full.{dataset_type}.removed_illegal.jsonl', f'valid.full.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path=pretrain_path)
 
 
+def JointEE_merge():
+    logger.info(f'正在处理{dataset_type}数据')
+    logger.info(f'数据源文件的存放路径: {initial_dataset_path}')
+
+    logger.info(f'处理train数据中')
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.merge.{dataset_type}.filtered_length.jsonl', merge=True)
+
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'train.merge.{dataset_type}.filtered_length.jsonl', f'train.merge.{dataset_type}.removed_illegal.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]正在合并触发词相同的论元')
+    merge_arguments_with_same_trigger(f'train.merge.{dataset_type}.removed_illegal.jsonl', f'train.merge.{dataset_type}.merged_arguments.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]正在tokenize')
+    tokenize_content(f'train.merge.{dataset_type}.merged_arguments.jsonl', f'train.merge.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path=pretrain_path)
+
+    logger.info(f'[Step 5]为trigger与argument生成label')
+    generate_label_for_trigger_and_argument(f'train.merge.{dataset_type}.RoBERTa.tokenized.pk', f'train.merge.{dataset_type}.RoBERTa.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'处理valid数据中')
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.merge.{dataset_type}.filtered_length.jsonl', merge=True)
+
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'valid.merge.{dataset_type}.filtered_length.jsonl', f'valid.merge.{dataset_type}.removed_illegal.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]正在tokenize')
+    tokenize_content(f'valid.merge.{dataset_type}.removed_illegal.jsonl', f'valid.merge.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path=pretrain_path)
+
+
+def JointEE_merge2():
+    logger.info(f'正在处理{dataset_type}数据')
+    logger.info(f'数据源文件的存放路径: {initial_dataset_path}')
+
+    logger.info(f'处理train数据中')
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'train', f'train.merge2.{dataset_type}.filtered_length.jsonl', merge2=True)
+
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'train.merge2.{dataset_type}.filtered_length.jsonl', f'train.merge2.{dataset_type}.removed_illegal.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]正在合并触发词相同的论元')
+    merge_arguments_with_same_trigger(f'train.merge2.{dataset_type}.removed_illegal.jsonl', f'train.merge2.{dataset_type}.merged_arguments.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 4]正在tokenize')
+    tokenize_content(f'train.merge2.{dataset_type}.merged_arguments.jsonl', f'train.merge2.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path=pretrain_path)
+
+    logger.info(f'[Step 5]为trigger与argument生成label')
+    generate_label_for_trigger_and_argument(f'train.merge2.{dataset_type}.RoBERTa.tokenized.pk', f'train.merge2.{dataset_type}.RoBERTa.labeled.pk', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'处理valid数据中')
+    logger.info(f'[Step 1]正在去除过长的句子')
+    data_filter(initial_dataset_path, dataset_type, temp_path, 'valid', f'valid.merge2.{dataset_type}.filtered_length.jsonl', merge2=True)
+
+    logger.info(f'[Step 2]正在去除空格以及非法字符')
+    remove_illegal_characters(f'valid.merge2.{dataset_type}.filtered_length.jsonl', f'valid.merge2.{dataset_type}.removed_illegal.jsonl', temp_path=temp_path, dataset_type=dataset_type)
+
+    logger.info(f'[Step 3]正在tokenize')
+    tokenize_content(f'valid.merge2.{dataset_type}.removed_illegal.jsonl', f'valid.merge2.{dataset_type}.RoBERTa.tokenized.pk', temp_path=temp_path, dataset_type=dataset_type, plm_path=pretrain_path)
 
 
 if __name__ == '__main__':
-    JointEE_full()
+    JointEE_merge2()

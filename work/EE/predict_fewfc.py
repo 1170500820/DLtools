@@ -14,23 +14,30 @@ dataset_type = 'FewFC'  # 不要更改
 # 模型配置部分
 plm_path = 'hfl/chinese-roberta-wwm-ext-large'
 
-arg_init_params_path = '../../checkpoint/save.init_params.JointEE.FewFC.mask.RoBERTa.full.best.pk'
-arg_state_dict_path = '../../checkpoint/save.state_dict.JointEE.FewFC.mask.RoBERTa.full.best.pth'
-event_state_dict_path = '../../checkpoint/save.state_dict.BertED.FewFC.RoBERTa.full.best.pth'
-event_init_params_path = '../../checkpoint/save.init_params.BertED.FewFC.RoBERTa.full.best.pk'
+arg_init_params_path = '../../checkpoint/save.init_params.JointEE.FewFC.mask.RoBERTa.merge2.best.pk'
+arg_state_dict_path = '../../checkpoint/save.state_dict.JointEE.FewFC.mask.RoBERTa.merge2.best.pth'
+event_state_dict_path = '../../checkpoint/save.state_dict.BertED.FewFC.RoBERTa.merge2.best.pth'
+event_init_params_path = '../../checkpoint/save.init_params.BertED.FewFC.RoBERTa.merge2.best.pk'
 
 use_gpu = True
 
 # 文件读取配置部分
+train_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
+train_file_name = 'merged_train2.json'
 test_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
-test_file_name = 'test.json'
+test_file_name = 'merged_test2.json'
+valid_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
+valid_file_name = 'val.json'
 gt_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
-gt_file_name = 'val.json'
-result_file_name = 'valid_predicted.json'
+gt_file_name = 'merged_test2.json'
+result_file_name = 'test_predicted2.json'
 
 examples = []
 
 
+test_types = {
+    '判决', '收购', '中标', '担保', '签署合同'
+}
 
 def predict_test():
     """
@@ -196,8 +203,18 @@ def evaluate_result():
     gts = load_jsonl(gt_file_dir + gt_file_name)
     results = load_jsonl(gt_file_dir + result_file_name)
     total, predict, correct = 0, 0, 0
+    sample = 0
     for i, (elem_gt, elem_result) in enumerate(zip(gts, results)):
-        p_total, p_predict, p_correct = event_extraction_wordlevel_metric(elem_result, elem_gt)
+        # p_total, p_predict, p_correct = event_extraction_wordlevel_metric(elem_result, elem_gt)
+        gt_types = [x['type'] for x in elem_gt['events']]
+        next_loop = False
+        for e_type in gt_types:
+            if e_type not in test_types:
+                next_loop = True
+        # if next_loop:
+        #     continue
+        sample += 1
+        p_total, p_predict, p_correct = event_extraction_metric(elem_result, elem_gt)
         total += p_total
         predict += p_predict
         correct += p_correct
@@ -207,11 +224,45 @@ def evaluate_result():
     recall = correct / total if total != 0 else 0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) != 0 else 0
 
-    print(f'precision: {precision}\nrecall: {recall}\nf1: {f1}')
+    print(f'precision: {precision}\nrecall: {recall}\nf1: {f1}\n\ncorrect: {correct}\npredict: {predict}\ntotal: {total}\nsample: {sample}')
     return scores
 
+
+def sample_cnt():
+    train_data = load_jsonl(train_file_dir + train_file_name)
+    test_data = load_jsonl(test_file_dir + test_file_name)
+    valid_data = load_jsonl(valid_file_dir + valid_file_name)
+
+    train_total, test_total, valid_total = len(train_data), len(test_data), len(valid_data)
+
+    def cnt(d):
+        half, full = 0, 0
+        for elem in d:
+            event_types = set(x['type'] for x in elem['events'])
+            contains, all = False, True
+            for elem in event_types:
+                if elem in test_types:
+                    contains = True
+                else:
+                    all = False
+            if contains and not all:
+                half += 1
+            if all:
+                full += 1
+        return half, full
+
+    train_half, train_full = cnt(train_data)
+    test_half, test_full = cnt(test_data)
+    valid_half, valid_full = cnt(valid_data)
+
+    print(f'train:\n\ttotal: {train_total}\n\thalf: {train_half}\n\tfull: {train_full}')
+    print('')
+    print(f'test:\n\ttotal: {test_total}\n\thalf: {test_half}\n\tfull: {test_full}')
+    print('')
+    print(f'valid:\n\ttotal: {valid_total}\n\thalf: {valid_half}\n\tfull: {valid_full}')
 
 
 if __name__ == '__main__':
     # predict_test()
     scores = evaluate_result()
+    # sample_cnt()
