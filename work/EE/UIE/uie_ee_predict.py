@@ -12,6 +12,7 @@ from loguru import logger
 
 
 threshold = 0.3
+batch_size = 8
 dataset_type = 'FewFC'
 use_gpu = True
 if use_gpu:
@@ -296,7 +297,7 @@ def fewfc_try():
     return ee, result
 
 
-def predict_duee(schema: dict = duee_schema, model_type: str = model_type):
+def predict_duee(schema: dict = duee_schema, model_type: str = model_type, batch_size: int = batch_size):
     """
     用uie模型预测DuEE，并将模型的直接输出保存。
     :param schema:
@@ -309,16 +310,30 @@ def predict_duee(schema: dict = duee_schema, model_type: str = model_type):
     ids = list(x['id'] for x in d)
 
     logger.info('DuEE预测：加载模型中')
-    ee = Taskflow('information_extraction', schema=schema, model=model_type)
+    ee = Taskflow('information_extraction', schema=schema, model=model_type, batch_size=batch_size)
 
     logger.info('DuEE预测：模型预测中')
     results = []
+    cached_id, cached_content = [], []
     for elem_id, elem_content in tqdm(list(zip(ids, contents))):
-        pred = ee(elem_content)
-        results.append({
-            'id': elem_id,
-            'content': elem_content,
-            'uie_result': pred
+        cached_id.append(elem_id)
+        cached_content.append(elem_content)
+        if len(cached_id) == batch_size:
+            preds = ee(cached_content)
+            for e_id, e_content, e_pred in zip(cached_id, cached_content, preds):
+                results.append({
+                    'id': e_id,
+                    'content': e_content,
+                    'uie_result': e_pred
+                })
+            cached_id, cached_content = [], []
+    if len(cached_id) != 0:
+        preds = ee(cached_content)
+        for e_id, e_content, e_pred in zip(cached_id, cached_content, preds):
+            results.append({
+                'id': e_id,
+                'content': e_content,
+                'uie_result': e_pred
         })
 
     logger.info('DuEE预测：保存模型输出中')
