@@ -114,7 +114,7 @@ def predict_fewfc(schema: dict = fewfc_schema, model_type: str = model_type):
 
     logger.info('FewFC预测：模型预测中')
     results = []
-    for elem_id, elem_content in zip(ids, contents):
+    for elem_id, elem_content in tqdm(zip(ids, contents)):
         pred = ee(elem_content)
         results.append({
             'id': elem_id,
