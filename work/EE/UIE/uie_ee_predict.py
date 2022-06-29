@@ -83,6 +83,34 @@ duee_schema = {}
 for key, value in EE_settings.duee_event_available_roles:
     # 因为Duee的事件类型的结构本来就包含'-'，所以这里的任务名也加了一个'-'来保持形式一致
     duee_schema[key + '-触发词'] = value
+duee_sample = {
+    "text": "消失的“外企光环”，5月份在华裁员900余人，香饽饽变“臭”了",
+    "id": "cba11b5059495e635b4f95e7484b2684",
+    "event_list":
+        [{
+            "event_type": "组织关系-裁员",
+            "trigger": "裁员",
+            "trigger_start_index": 15,
+            "arguments":
+                [{
+                    "argument_start_index": 17,
+                    "role": "裁员人数",
+                    "argument": "900余人", "alias": []
+                }, {
+                    "argument_start_index": 10,
+                    "role": "时间",
+                    "argument": "5月份",
+                    "alias": []
+                }],
+            "class": "组织关系"
+        }]
+}
+duee_types = set(duee_schema.keys())
+
+duee_test_file_dir = '../../../data/NLP/EventExtraction/duee/'
+duee_test_file = 'duee_test2.json/duee_test2.json'
+duee_raw_result = 'duee_test2.uie.raw_result.json'
+duee_predict_result = 'duee_test2.uie.result.json'
 
 
 model_type = 'uie-base'
@@ -260,11 +288,104 @@ def fewfc_main():
         evaluate_fewfc(gt_file, result_file, {elem})
 
 
-
 def fewfc_try():
     ee = Taskflow('information_extraction', schema=fewfc_schema, model=model_type)
     result = ee(fewfc_sample['content'])
     return ee, result
+
+
+def predict_duee(schema: dict = duee_schema, model_type: str = model_type):
+    """
+    用uie模型预测DuEE，并将模型的直接输出保存。
+    :param schema:
+    :param model_type:
+    :return:
+    """
+    logger.info('DuEE预测：读取数据中')
+    d = list(json.loads(x) for x in open(duee_test_file_dir + duee_test_file, 'r', encoding='utf-8').read().strip().split('\n'))
+    contents = list(x['text'] for x in d)
+    ids = list(x['id'] for x in d)
+
+    logger.info('DuEE预测：加载模型中')
+    ee = Taskflow('information_extraction', schema=schema, model=model_type)
+
+    logger.info('DuEE预测：模型预测中')
+    results = []
+    for elem_id, elem_content in tqdm(list(zip(ids, contents))):
+        pred = ee(elem_content)
+        results.append({
+            'id': elem_id,
+            'content': elem_content,
+            'uie_result': pred
+        })
+
+    logger.info('DuEE预测：保存模型输出中')
+    f = open(duee_test_file_dir + duee_raw_result, 'w', encoding='utf-8')
+    for elem in results:
+        f.write(json.dumps(elem, ensure_ascii=False) + '\n')
+    f.close()
+
+
+def convert_duee():
+    """
+    将fewfc的uie输出转为原格式
+
+    如果触发词的置信度小于threshold，则抛弃整个对应预测
+    如果论元的置信度小于threshold，则只抛弃该论元
+    :return:
+    """
+    logger.info('DuEE预测：将模型输出转为FewFC格式中')
+    results = list(json.loads(x) for x in open(duee_test_file_dir + duee_raw_result, 'r', encoding='utf-8').read().strip().split('\n'))
+    outputs = []
+    for elem in results:
+        uie_result = elem['uie_result']
+        events = []
+        for key_tirgger, value in uie_result.items():
+            event_type = key_tirgger[:-4]  # 删除后缀的"-触发词"四个字
+            for elem_event in value:
+                trigger_prob = elem_event['probability']
+                if trigger_prob < threshold:
+                    continue
+                trigger_word = elem_event['text']
+                trigger_span = (elem_event['start'], elem_event['end'])
+                mentions = []
+                for key_arg, value_arg in elem_event['relations'].items():
+                    arg_type = EE_settings.role_types_back_translate[key_arg]
+                    for elem_arg in value_arg:
+                        arg_prob = elem_arg['probability']
+                        if arg_prob < threshold:
+                            continue
+                        arg_word = elem_arg['text']
+                        arg_span = (elem_arg['start'], elem_arg['end'])
+                        mentions.append({
+                            'word': arg_word,
+                            'span': arg_span,
+                            'role': arg_type
+                        })
+                mentions.append({
+                    'word': trigger_word,
+                    'span': trigger_span,
+                    'role': 'trigger'
+                })
+                events.append({
+                    'type': event_type,
+                    'mentions': mentions
+                })
+        outputs.append({
+            'id': elem['id'],
+            'content': elem['content'],
+            'events': events
+        })
+
+    f = open(duee_test_file_dir + duee_predict_result, 'w', encoding='utf-8')
+    for elem in outputs:
+        f.write(json.dumps(elem, ensure_ascii=False) + '\n')
+    f.close()
+
+
+def duee_main():
+    predict_duee(duee_schema, model_type)
+    convert_duee()
 
 
 def main():
@@ -272,4 +393,5 @@ def main():
 
 
 if __name__ == '__main__':
-    fewfc_main()
+    # fewfc_main()
+    duee_main()
