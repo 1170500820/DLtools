@@ -14,10 +14,10 @@ dataset_type = 'FewFC'  # 不要更改
 # 模型配置部分
 plm_path = 'hfl/chinese-roberta-wwm-ext-large'
 
-arg_init_params_path = '../../checkpoint/save.init_params.JointEE.FewFC.mask.RoBERTa.merge2.best.pk'
-arg_state_dict_path = '../../checkpoint/save.state_dict.JointEE.FewFC.mask.RoBERTa.merge2.best.pth'
-event_state_dict_path = '../../checkpoint/save.state_dict.BertED.FewFC.RoBERTa.merge2.best.pth'
-event_init_params_path = '../../checkpoint/save.init_params.BertED.FewFC.RoBERTa.merge2.best.pk'
+arg_init_params_path = '../../checkpoint/save.init_params.JointEE.FewFC.mask.RoBERTa.merge4.best.pk'
+arg_state_dict_path = '../../checkpoint/save.state_dict.JointEE.FewFC.mask.RoBERTa.merge4.best.pth'
+event_state_dict_path = '../../checkpoint/save.state_dict.BertED.FewFC.RoBERTa.merge6.local.best.pth'
+event_init_params_path = '../../checkpoint/save.init_params.BertED.FewFC.RoBERTa.merge6.local.best.pk'
 
 use_gpu = True
 
@@ -25,12 +25,10 @@ use_gpu = True
 train_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
 train_file_name = 'merged_train2.json'
 test_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
-test_file_name = 'merged_test2.json'
+test_file_name = 'rearranged/test_trans.json'
 valid_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
 valid_file_name = 'val.json'
-gt_file_dir = '../../data/NLP/EventExtraction/FewFC-main/'
-gt_file_name = 'merged_test2.json'
-result_file_name = 'test_predicted2.json'
+result_file_name = 'test_predicted_merge6.json'
 
 examples = []
 
@@ -74,7 +72,7 @@ def predict_test():
         dataset_type=dataset_type
     )
     arg_results = []
-    for (elem_sentence, elem_event_types) in list(tqdm(zip(test_data, event_types))):
+    for (elem_sentence, elem_event_types) in tqdm(list(zip(test_data, event_types))):
         argresult = argument_model(elem_sentence['content'], elem_event_types)
         arg_results.append(argresult)
     del argument_model
@@ -200,8 +198,8 @@ def evaluate_result():
     :return:
     """
     scores = []
-    gts = load_jsonl(gt_file_dir + gt_file_name)
-    results = load_jsonl(gt_file_dir + result_file_name)
+    gts = load_jsonl(test_file_dir + test_file_name)
+    results = load_jsonl(test_file_dir + result_file_name)
     total, predict, correct = 0, 0, 0
     sample = 0
     for i, (elem_gt, elem_result) in enumerate(zip(gts, results)):
@@ -214,7 +212,7 @@ def evaluate_result():
         # if next_loop:
         #     continue
         sample += 1
-        p_total, p_predict, p_correct = event_extraction_metric(elem_result, elem_gt)
+        p_total, p_predict, p_correct = event_extraction_wordlevel_metric(elem_result, elem_gt)
         total += p_total
         predict += p_predict
         correct += p_correct
@@ -263,6 +261,6 @@ def sample_cnt():
 
 
 if __name__ == '__main__':
-    # predict_test()
+    predict_test()
     scores = evaluate_result()
     # sample_cnt()
