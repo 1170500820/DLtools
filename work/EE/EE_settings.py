@@ -41,6 +41,10 @@ role_types_translate = {
  'institution': '机构',  # 17
  'money': '金钱',  # 18
 }
+role_types_back_translate = {
+ v: k for (k, v) in role_types_translate.items()
+}
+
 role_index = {v: i for i, v in enumerate(role_types)}
 event_types_initial = [
     '质押',
