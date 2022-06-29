@@ -80,7 +80,7 @@ fewfc_predict_result = 'merged_test.uie.result.json'
 
 
 duee_schema = {}
-for key, value in EE_settings.duee_event_available_roles:
+for key, value in EE_settings.duee_event_available_roles.items():
     # 因为Duee的事件类型的结构本来就包含'-'，所以这里的任务名也加了一个'-'来保持形式一致
     duee_schema[key + '-触发词'] = value
 duee_sample = {
@@ -269,7 +269,7 @@ def evaluate_fewfc(gt_file_name: str, result_file_name: str, available_types: se
 
 
 def fewfc_main():
-    predict_fewfc(fewfc_schema, model_type)
+    # predict_fewfc(fewfc_schema, model_type)
     convert_fewfc()
 
     eval_types = ['word_level', 'span_level']
@@ -393,5 +393,5 @@ def main():
 
 
 if __name__ == '__main__':
-    # fewfc_main()
-    duee_main()
+    fewfc_main()
+    # duee_main()
