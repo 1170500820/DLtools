@@ -111,6 +111,7 @@ duee_test_file_dir = '../../../data/NLP/EventExtraction/duee/'
 duee_test_file = 'duee_test2.json/duee_test2.json'
 duee_raw_result = 'duee_test2.uie.raw_result.json'
 duee_predict_result = 'duee_test2.uie.result.json'
+duee_submit_result = 'duee_test2.uie.submit.json'
 
 
 model_type = 'uie-base'
@@ -180,19 +181,20 @@ def convert_fewfc():
                 trigger_word = elem_event['text']
                 trigger_span = (elem_event['start'], elem_event['end'])
                 mentions = []
-                for key_arg, value_arg in elem_event['relations'].items():
-                    arg_type = EE_settings.role_types_back_translate[key_arg]
-                    for elem_arg in value_arg:
-                        arg_prob = elem_arg['probability']
-                        if arg_prob < threshold:
-                            continue
-                        arg_word = elem_arg['text']
-                        arg_span = (elem_arg['start'], elem_arg['end'])
-                        mentions.append({
-                            'word': arg_word,
-                            'span': arg_span,
-                            'role': arg_type
-                        })
+                if 'relations' in elem_event:
+                    for key_arg, value_arg in elem_event['relations'].items():
+                        arg_type = EE_settings.role_types_back_translate[key_arg]
+                        for elem_arg in value_arg:
+                            arg_prob = elem_arg['probability']
+                            if arg_prob < threshold:
+                                continue
+                            arg_word = elem_arg['text']
+                            arg_span = (elem_arg['start'], elem_arg['end'])
+                            mentions.append({
+                                'word': arg_word,
+                                'span': arg_span,
+                                'role': arg_type
+                            })
                 mentions.append({
                     'word': trigger_word,
                     'span': trigger_span,
@@ -349,19 +351,20 @@ def convert_duee():
                 trigger_word = elem_event['text']
                 trigger_span = (elem_event['start'], elem_event['end'])
                 mentions = []
-                for key_arg, value_arg in elem_event['relations'].items():
-                    arg_type = EE_settings.role_types_back_translate[key_arg]
-                    for elem_arg in value_arg:
-                        arg_prob = elem_arg['probability']
-                        if arg_prob < threshold:
-                            continue
-                        arg_word = elem_arg['text']
-                        arg_span = (elem_arg['start'], elem_arg['end'])
-                        mentions.append({
-                            'word': arg_word,
-                            'span': arg_span,
-                            'role': arg_type
-                        })
+                if 'relations' in elem_event:
+                    for key_arg, value_arg in elem_event['relations'].items():
+                        arg_type = EE_settings.role_types_back_translate[key_arg]
+                        for elem_arg in value_arg:
+                            arg_prob = elem_arg['probability']
+                            if arg_prob < threshold:
+                                continue
+                            arg_word = elem_arg['text']
+                            arg_span = (elem_arg['start'], elem_arg['end'])
+                            mentions.append({
+                                'word': arg_word,
+                                'span': arg_span,
+                                'role': arg_type
+                            })
                 mentions.append({
                     'word': trigger_word,
                     'span': trigger_span,
@@ -383,9 +386,47 @@ def convert_duee():
     f.close()
 
 
+def convert_for_submit(origin: dict):
+    event_list = []
+    content = origin['content'].replace(' ', '_')
+    for elem_e in origin['events']:
+        event_type = elem_e['type']
+        arguments = []
+        for elem_m in elem_e['mentions']:
+            role, span = elem_m['role'], elem_m['span']
+            if role == 'trigger':
+                 continue
+            if role not in EE_settings.duee_event_available_roles[event_type]:
+                continue
+            word = content[span[0]: span[1]]
+            arguments.append({
+                'role': role,
+                'argument': word
+            })
+        event_list.append({
+            'event_type': event_type,
+            'arguments': arguments
+        })
+    return event_list
+
+
+def duee_convert_to_submit():
+    result = load_jsonl(duee_test_file_dir + duee_predict_result)
+    submit_results = []
+    for elem in result:
+        r = convert_for_submit(elem)
+        cid = elem['id']
+        submit_results.append({
+            'id': cid,
+            'event_list': r
+        })
+    dump_jsonl(submit_results, duee_test_file_dir + duee_submit_result)
+
+
 def duee_main():
     predict_duee(duee_schema, model_type)
     convert_duee()
+    duee_convert_to_submit()
 
 
 def main():
@@ -393,5 +434,5 @@ def main():
 
 
 if __name__ == '__main__':
-    fewfc_main()
-    # duee_main()
+    # fewfc_main()
+    duee_main()
