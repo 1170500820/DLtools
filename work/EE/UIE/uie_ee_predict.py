@@ -171,7 +171,7 @@ def convert_fewfc():
     for elem in results:
         uie_result = elem['uie_result']
         events = []
-        for key_tirgger, value in uie_result.items():
+        for key_tirgger, value in uie_result[0].items():
             event_type = key_tirgger[:-3]  # 删除后缀的"触发词"三个字
             for elem_event in value:
                 trigger_prob = elem_event['probability']
